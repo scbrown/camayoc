@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" width="200" alt="Camayoc logo — loose gray strands pass through the keeper's golden binding knot and emerge as ordered, colored, knotted quipu pendants"/>
+  <img src="assets/logo.svg" width="200" alt="Camayoc logo — loose gray strands enter from the left, the keeper's yupana counting board hangs from the main cord at center, and ordered, colored, knotted quipu pendants emerge on the right"/>
 </p>
 
 <h1 align="center">camayoc</h1>
@@ -100,6 +100,14 @@ millions, community cord-keeping survived into the modern era in Andean
 villages, and khipu scholarship is active — and the modern Quechua spellings
 are *khipu* and *khipukamayuq*; this stack uses the older hispanicized forms
 for continuity with its sibling repos.
+
+The logo's centerpiece is the **yupana**, the Andean counting board drawn at
+the khipukamayuq's side in Guaman Poma de Ayala's 1615 illustration of the
+*contador mayor* — the only primary-source depiction of one: five rows of
+cells holding five, three, two and one counters. It was the surface where a
+value was worked out before being committed to the knots — which is exactly
+this repo's job, so the keeper's own instrument sits at the center, between
+the loose thread coming in and the knotted record going out.
 
 ## Status
 

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="title desc">
   <title id="title">camayoc</title>
-  <desc id="desc">A quipu whose loose, unknotted strands on the left pass through the keeper's golden binding knot on the main cord and emerge on the right as ordered, colored, knotted pendant strings — raw thread becoming governed record.</desc>
+  <desc id="desc">A quipu whose loose, unknotted strands on the left pass the keeper's yupana — the Andean counting board from Guaman Poma's 1615 illustration, five rows of cells holding five, three, two and one dots — hung from the main cord, and emerge on the right as ordered, colored, knotted pendant strings: raw thread worked out on the board, then committed to the knots.</desc>
   <defs>
     <!-- Main cord, matching the quipu logo -->
     <linearGradient id="cordGrad" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -13,10 +13,15 @@
       <stop offset="0%" style="stop-color:#6E7286"/>
       <stop offset="100%" style="stop-color:#4E5265"/>
     </linearGradient>
-    <!-- The keeper's binding: gold -->
+    <!-- The keeper's gold -->
     <linearGradient id="keeper" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" style="stop-color:#F2CC8F"/>
       <stop offset="100%" style="stop-color:#D4A95A"/>
+    </linearGradient>
+    <!-- Board face: parchment -->
+    <linearGradient id="board" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#F6E7C8"/>
+      <stop offset="100%" style="stop-color:#E3C99A"/>
     </linearGradient>
     <!-- Governed pendant strings: the family palette -->
     <linearGradient id="str1" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -49,54 +54,93 @@
   <path d="M 66 148 Q 256 124 446 148" stroke="#725039" stroke-width="2" fill="none" stroke-linecap="round" stroke-dasharray="8 12" opacity="0.5"/>
 
   <!-- LEFT: loose, unknotted fiber drifting in — no knots, tangled, gray -->
-  <path d="M 100 146 Q 84 200 108 236 Q 130 268 100 300 Q 78 334 104 372"
+  <path d="M 96 146 Q 80 200 104 236 Q 126 268 96 300 Q 74 334 100 372"
         stroke="url(#loose)" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.75"/>
-  <path d="M 138 142 Q 158 190 132 228 Q 108 264 142 296 Q 168 326 140 366 Q 128 386 146 404"
+  <path d="M 132 142 Q 152 190 126 228 Q 102 264 136 296 Q 162 326 134 366 Q 122 386 140 404"
         stroke="url(#loose)" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.65"/>
-  <path d="M 176 138 Q 164 184 188 216 Q 210 246 180 282 Q 158 314 186 348"
+  <path d="M 168 138 Q 156 184 180 216 Q 202 246 172 282 Q 150 314 178 348"
         stroke="url(#loose)" stroke-width="4" fill="none" stroke-linecap="round" opacity="0.55"/>
   <!-- frayed ends -->
-  <path d="M 104 372 l -8 14 M 104 372 l 4 16" stroke="#4E5265" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
-  <path d="M 146 404 l -7 12 M 146 404 l 6 13" stroke="#4E5265" stroke-width="2.5" stroke-linecap="round" opacity="0.55"/>
-  <path d="M 186 348 l -8 13 M 186 348 l 5 15" stroke="#4E5265" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+  <path d="M 100 372 l -8 14 M 100 372 l 4 16" stroke="#4E5265" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+  <path d="M 140 404 l -7 12 M 140 404 l 6 13" stroke="#4E5265" stroke-width="2.5" stroke-linecap="round" opacity="0.55"/>
+  <path d="M 178 348 l -8 13 M 178 348 l 5 15" stroke="#4E5265" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
 
-  <!-- CENTER: the keeper's binding — a golden knot gathered around the main cord -->
+  <!-- CENTER: the keeper's yupana, hung from the main cord.
+       Guaman Poma (1615): a five-row board, each row four cells holding
+       five, three, two and one dots — where a value is worked out before
+       it is committed to a knot. -->
+  <!-- suspension cords + binding knot on the cord -->
+  <ellipse cx="256" cy="133" rx="9" ry="7" fill="#F2CC8F" stroke="#D4A95A" stroke-width="2" filter="url(#shadow)"/>
+  <path d="M 246 138 L 228 158 M 266 138 L 284 158" stroke="url(#keeper)" stroke-width="4" stroke-linecap="round"/>
+  <!-- the board -->
   <g filter="url(#shadow)">
-    <!-- the loop over the cord -->
-    <path d="M 238 118 Q 256 104 274 118 Q 288 130 280 146 Q 272 160 256 160 Q 240 160 232 146 Q 224 130 238 118 Z"
-          fill="none" stroke="url(#keeper)" stroke-width="7" stroke-linecap="round"/>
-    <!-- the binding wraps -->
-    <path d="M 240 152 Q 256 166 272 152" stroke="url(#keeper)" stroke-width="6" fill="none" stroke-linecap="round"/>
-    <path d="M 243 162 Q 256 174 269 162" stroke="url(#keeper)" stroke-width="5.5" fill="none" stroke-linecap="round"/>
-    <path d="M 246 172 Q 256 181 266 172" stroke="url(#keeper)" stroke-width="5" fill="none" stroke-linecap="round"/>
-    <!-- the keeper's knot itself -->
-    <ellipse cx="256" cy="192" rx="11" ry="8" fill="#F2CC8F" stroke="#D4A95A" stroke-width="2"/>
-    <ellipse cx="256" cy="192" rx="5" ry="3.5" fill="none" stroke="#B8904A" stroke-width="1.5" opacity="0.8"/>
+    <rect x="214" y="158" width="84" height="102" rx="6" fill="url(#board)" stroke="#B8904A" stroke-width="3"/>
+    <!-- column rules -->
+    <path d="M 235 158 V 260 M 256 158 V 260 M 277 158 V 260" stroke="#C9A667" stroke-width="1.5"/>
+    <!-- row rules -->
+    <path d="M 214 178.4 H 298 M 214 198.8 H 298 M 214 219.2 H 298 M 214 239.6 H 298" stroke="#C9A667" stroke-width="1.5"/>
   </g>
-  <!-- the certified tail dropping from the keeper's knot -->
-  <path d="M 256 200 Q 252 240 258 276 Q 263 306 256 336"
+  <!-- dots: per row, columns of 5, 3, 2, 1 — dark tokens with the odd white
+       counter, echoing the black-and-white dots of the source drawing -->
+  <g fill="#5C4327">
+    <!-- rows y-centers: 168.2, 188.6, 209, 229.4, 249.8 ; col x-centers: 224.5, 245.5, 266.5, 287.5 -->
+    <!-- col 1: five dots (quincunx) -->
+    <g>
+      <circle cx="219.5" cy="163.7" r="2.1"/><circle cx="229.5" cy="163.7" r="2.1"/><circle cx="219.5" cy="172.7" r="2.1"/><circle cx="229.5" cy="172.7" r="2.1"/><circle cx="224.5" cy="168.2" r="2.1" fill="#F6EFE0" stroke="#5C4327" stroke-width="1"/>
+      <circle cx="219.5" cy="184.1" r="2.1"/><circle cx="229.5" cy="184.1" r="2.1"/><circle cx="219.5" cy="193.1" r="2.1"/><circle cx="229.5" cy="193.1" r="2.1"/><circle cx="224.5" cy="188.6" r="2.1" fill="#F6EFE0" stroke="#5C4327" stroke-width="1"/>
+      <circle cx="219.5" cy="204.5" r="2.1"/><circle cx="229.5" cy="204.5" r="2.1"/><circle cx="219.5" cy="213.5" r="2.1"/><circle cx="229.5" cy="213.5" r="2.1"/><circle cx="224.5" cy="209" r="2.1" fill="#F6EFE0" stroke="#5C4327" stroke-width="1"/>
+      <circle cx="219.5" cy="224.9" r="2.1"/><circle cx="229.5" cy="224.9" r="2.1"/><circle cx="219.5" cy="233.9" r="2.1"/><circle cx="229.5" cy="233.9" r="2.1"/><circle cx="224.5" cy="229.4" r="2.1" fill="#F6EFE0" stroke="#5C4327" stroke-width="1"/>
+      <circle cx="219.5" cy="245.3" r="2.1"/><circle cx="229.5" cy="245.3" r="2.1"/><circle cx="219.5" cy="254.3" r="2.1"/><circle cx="229.5" cy="254.3" r="2.1"/><circle cx="224.5" cy="249.8" r="2.1" fill="#F6EFE0" stroke="#5C4327" stroke-width="1"/>
+    </g>
+    <!-- col 2: three dots (diagonal) -->
+    <g>
+      <circle cx="240.5" cy="163.7" r="2.1"/><circle cx="245.5" cy="168.2" r="2.1"/><circle cx="250.5" cy="172.7" r="2.1"/>
+      <circle cx="240.5" cy="184.1" r="2.1"/><circle cx="245.5" cy="188.6" r="2.1"/><circle cx="250.5" cy="193.1" r="2.1"/>
+      <circle cx="240.5" cy="204.5" r="2.1"/><circle cx="245.5" cy="209" r="2.1"/><circle cx="250.5" cy="213.5" r="2.1"/>
+      <circle cx="240.5" cy="224.9" r="2.1"/><circle cx="245.5" cy="229.4" r="2.1"/><circle cx="250.5" cy="233.9" r="2.1"/>
+      <circle cx="240.5" cy="245.3" r="2.1"/><circle cx="245.5" cy="249.8" r="2.1"/><circle cx="250.5" cy="254.3" r="2.1"/>
+    </g>
+    <!-- col 3: two dots -->
+    <g>
+      <circle cx="262" cy="165.5" r="2.1"/><circle cx="271" cy="171" r="2.1"/>
+      <circle cx="262" cy="185.9" r="2.1"/><circle cx="271" cy="191.4" r="2.1"/>
+      <circle cx="262" cy="206.3" r="2.1"/><circle cx="271" cy="211.8" r="2.1"/>
+      <circle cx="262" cy="226.7" r="2.1"/><circle cx="271" cy="232.2" r="2.1"/>
+      <circle cx="262" cy="247.1" r="2.1"/><circle cx="271" cy="252.6" r="2.1"/>
+    </g>
+    <!-- col 4: one dot, white — the counter placed and certified -->
+    <g>
+      <circle cx="287.5" cy="168.2" r="2.4" fill="#F6EFE0" stroke="#5C4327" stroke-width="1"/>
+      <circle cx="287.5" cy="188.6" r="2.4" fill="#F6EFE0" stroke="#5C4327" stroke-width="1"/>
+      <circle cx="287.5" cy="209" r="2.4" fill="#F6EFE0" stroke="#5C4327" stroke-width="1"/>
+      <circle cx="287.5" cy="229.4" r="2.4" fill="#F6EFE0" stroke="#5C4327" stroke-width="1"/>
+      <circle cx="287.5" cy="249.8" r="2.4" fill="#F6EFE0" stroke="#5C4327" stroke-width="1"/>
+    </g>
+  </g>
+  <!-- the certified tail: worked out on the board, committed as a knot -->
+  <path d="M 256 260 Q 252 292 258 320 Q 262 340 256 362"
         stroke="url(#keeper)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-  <ellipse cx="257" cy="276" rx="7" ry="5" fill="#F2CC8F" stroke="#D4A95A" stroke-width="1.5"/>
+  <ellipse cx="257" cy="320" rx="7" ry="5" fill="#F2CC8F" stroke="#D4A95A" stroke-width="1.5"/>
 
   <!-- RIGHT: governed pendants — ordered, colored, knotted -->
   <!-- terracotta, 2 knots -->
-  <path d="M 306 132 Q 300 200 310 258 Q 316 300 306 356 Q 302 384 308 412"
+  <path d="M 316 132 Q 310 200 320 258 Q 326 300 316 356 Q 312 384 318 412"
         stroke="url(#str1)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-  <ellipse cx="306" cy="212" rx="7" ry="5" fill="#E07A5F" stroke="#C45B3C" stroke-width="1.5"/>
-  <ellipse cx="308" cy="330" rx="7" ry="5" fill="#E07A5F" stroke="#C45B3C" stroke-width="1.5"/>
+  <ellipse cx="316" cy="212" rx="7" ry="5" fill="#E07A5F" stroke="#C45B3C" stroke-width="1.5"/>
+  <ellipse cx="318" cy="330" rx="7" ry="5" fill="#E07A5F" stroke="#C45B3C" stroke-width="1.5"/>
   <!-- blue, 3 knots, longest -->
-  <path d="M 350 130 Q 344 190 354 244 Q 362 292 352 344 Q 346 388 354 428"
+  <path d="M 356 130 Q 350 190 360 244 Q 368 292 358 344 Q 352 388 360 428"
         stroke="url(#str2)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-  <ellipse cx="350" cy="188" rx="7" ry="5" fill="#3D85C6" stroke="#2A6BAD" stroke-width="1.5"/>
-  <ellipse cx="355" cy="282" rx="7" ry="5" fill="#3D85C6" stroke="#2A6BAD" stroke-width="1.5"/>
-  <ellipse cx="352" cy="376" rx="7" ry="5" fill="#3D85C6" stroke="#2A6BAD" stroke-width="1.5"/>
+  <ellipse cx="356" cy="188" rx="7" ry="5" fill="#3D85C6" stroke="#2A6BAD" stroke-width="1.5"/>
+  <ellipse cx="361" cy="282" rx="7" ry="5" fill="#3D85C6" stroke="#2A6BAD" stroke-width="1.5"/>
+  <ellipse cx="358" cy="376" rx="7" ry="5" fill="#3D85C6" stroke="#2A6BAD" stroke-width="1.5"/>
   <!-- sage, 2 knots -->
-  <path d="M 394 132 Q 390 186 398 234 Q 404 276 396 322 Q 390 358 396 392"
+  <path d="M 398 132 Q 394 186 402 234 Q 408 276 400 322 Q 394 358 400 392"
         stroke="url(#str3)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-  <ellipse cx="396" cy="206" rx="7" ry="5" fill="#81B29A" stroke="#5E9B7E" stroke-width="1.5"/>
-  <ellipse cx="397" cy="304" rx="7" ry="5" fill="#81B29A" stroke="#5E9B7E" stroke-width="1.5"/>
+  <ellipse cx="400" cy="206" rx="7" ry="5" fill="#81B29A" stroke="#5E9B7E" stroke-width="1.5"/>
+  <ellipse cx="401" cy="304" rx="7" ry="5" fill="#81B29A" stroke="#5E9B7E" stroke-width="1.5"/>
   <!-- purple, 1 knot, shortest -->
-  <path d="M 434 138 Q 430 182 436 222 Q 441 256 434 292 Q 430 318 434 344"
+  <path d="M 436 138 Q 432 182 438 222 Q 443 256 436 292 Q 432 318 436 344"
         stroke="url(#str4)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-  <ellipse cx="435" cy="246" rx="7" ry="5" fill="#9B72AA" stroke="#7D5691" stroke-width="1.5"/>
+  <ellipse cx="437" cy="246" rx="7" ry="5" fill="#9B72AA" stroke="#7D5691" stroke-width="1.5"/>
 </svg>
