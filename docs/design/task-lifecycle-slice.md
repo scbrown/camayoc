@@ -1,9 +1,14 @@
 # Design: First Slice — task lifecycle + decisions
 
-> **Implementation status (2026-08-06):** ⬜ **Founding design — nothing built.**
-> This slice is the forcing function for the bootstrap ontology: no term is
-> minted until a row in the mapping below or a question in the competency
-> suite needs it.
+> **Implementation status (2026-08-06):** 🟡 **The spine is built and proven
+> end-to-end**: `ontology/core.ttl` + `shapes/core.shapes.ttl` ship (v1,
+> deliverables 1–2), the skill and plugin ship, and the loop was verified
+> against a live quipu with `validate_on_write` — bare store → bootstrap →
+> untagged probe **refused** → tagged Decision accepted → competency-style
+> query answers → session hook reports ACTIVE. Remaining: the crew-domain
+> vocabulary beyond core, the eval gate (deliverable 5), and the optional
+> enrichment parser (deliverable 6). No term is minted until a mapping row
+> or competency question needs it.
 
 ## 1. Why this slice
 

@@ -1,0 +1,10 @@
+{
+  "name": "camayoc",
+  "displayName": "Camayoc — governed memory",
+  "version": "0.1.0",
+  "description": "One install, governed memory: bootstrap a quipu knowledge store with the camayoc ontology and SHACL gate, query prior decisions before re-deciding, record decisions at the moment they happen, tag provenance honestly.",
+  "author": { "name": "Steve Brown", "url": "https://github.com/scbrown" },
+  "repository": "https://github.com/scbrown/camayoc",
+  "license": "MIT",
+  "keywords": ["knowledge-graph", "memory", "quipu", "provenance", "shacl"]
+}

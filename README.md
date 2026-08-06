@@ -64,6 +64,34 @@ shantytown / git / hank / sessions          (activity: raw fiber)
    maintained as the test harness for every ontology change.
    [competency/](competency/)
 
+## Install: one plugin, governed memory
+
+Camayoc ships as a **Claude Code plugin**. In Claude Code:
+
+```text
+/plugin marketplace add scbrown/camayoc
+/plugin install camayoc@camayoc
+```
+
+That gets you, immediately:
+
+- **The skill** — auto-triggers when memory matters; teaches the four moves.
+- **A SessionStart hook** — every session opens knowing the truth about its
+  memory: `ACTIVE (N facts, gate loaded)`, `reachable but gate not proven`,
+  or `unreachable` — and unreachable is reported as *"could not look"*,
+  never as *"nothing exists"*.
+- **`/camayoc:bootstrap`** — loads the core ontology + SHACL shapes into
+  your quipu (idempotent) and then **proves the gate**: it sends a
+  deliberately untagged probe and requires the store to refuse it. A store
+  that accepts the probe is reported, loudly, not ingested into.
+- **The ontology and shapes themselves** (`ontology/core.ttl`,
+  `shapes/core.shapes.ttl`) — work items, decisions, outcomes, and the
+  mandatory `sourceKind` provenance tag.
+
+The only prerequisite is a running [quipu](https://github.com/scbrown/quipu)
+(`cargo install quipu --features full; quipu-server --db .quipu/store.db`)
+with `validate_on_write` enabled — the bootstrap tells you if it isn't.
+
 ## How you use it: the skill is the interface
 
 Camayoc's primary consumer is an agent in a session, so camayoc **ships a

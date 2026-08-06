@@ -1,0 +1,85 @@
+# camayoc core — the bootstrap vocabulary (slice 1: work + decisions)
+#
+# NAMESPACE NOTE (v1 pragmatism, revisit deliberately): quipu's /episode path
+# emits node types and plain-named properties in the store's configured
+# base_ns (default: the aegis namespace). So these terms are declared in that
+# base namespace so that skill-guided episode writes and these declarations
+# agree OUT OF THE BOX. A deployment that overrides [quipu] base_ns must load
+# a regenerated copy — the namespace is a parameter, and this file's prefix is
+# where it is set. See docs/design/bootstrap-ontology.md §1.
+#
+# Discipline: rdfs:range only, never rdfs:domain (Q-SARC-VOCAB — these
+# predicates may later attach at statement level as well as node level).
+
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+
+# ---- Classes -----------------------------------------------------------
+
+aegis:WorkItem a rdfs:Class ;
+    rdfs:label "Work item" ;
+    rdfs:comment "A unit of intended work (a task, a bead, an issue). Tracker-agnostic: models the work, never the tracker's message format." .
+
+aegis:Decision a rdfs:Class ;
+    rdfs:label "Decision" ;
+    rdfs:comment "A choice made in the course of work: what was chosen, over what visible alternatives, why, by whom, under which work item. Recorded at the moment it happens." .
+
+# ---- Source tier (the mandatory ingress tag) ---------------------------
+
+aegis:sourceKind a rdf:Property ;
+    rdfs:label "source kind" ;
+    rdfs:comment "How this fact entered: observed (a record exists and was parsed), declared (a human said so), inferred (a model concluded it). Mandatory; SHACL-refused when absent. Never up-tag." ;
+    rdfs:range xsd:string .
+
+# ---- Work item properties ---------------------------------------------
+
+aegis:createdAt a rdf:Property ;
+    rdfs:label "created at" ;
+    rdfs:range xsd:string .
+
+aegis:closedAt a rdf:Property ;
+    rdfs:label "closed at" ;
+    rdfs:range xsd:string .
+
+aegis:outcome a rdf:Property ;
+    rdfs:label "outcome" ;
+    rdfs:comment "What actually happened: done, abandoned, superseded, failed. Distinct from the decision that aimed at it. Set at close; absence means open — never store a decaying 'in progress'." ;
+    rdfs:range xsd:string .
+
+aegis:assignedTo a rdf:Property ;
+    rdfs:label "assigned to" ;
+    rdfs:comment "The principal a work item is assigned to. Agents are aegis:Principal, exactly as the graph already holds them." .
+
+# ---- Decision properties ----------------------------------------------
+
+aegis:decidedIn a rdf:Property ;
+    rdfs:label "decided in" ;
+    rdfs:comment "The work item (or session) a decision was made under." .
+
+aegis:decidedBy a rdf:Property ;
+    rdfs:label "decided by" .
+
+aegis:chose a rdf:Property ;
+    rdfs:label "chose" ;
+    rdfs:comment "What was chosen. The one property a Decision cannot lack." ;
+    rdfs:range xsd:string .
+
+aegis:over a rdf:Property ;
+    rdfs:label "over" ;
+    rdfs:comment "The alternatives visible at the time. Absence means none were articulated — which is itself a fact worth knowing." ;
+    rdfs:range xsd:string .
+
+aegis:rationale a rdf:Property ;
+    rdfs:label "rationale" ;
+    rdfs:range xsd:string .
+
+aegis:about a rdf:Property ;
+    rdfs:label "about" ;
+    rdfs:comment "The entity/topic a decision concerns, when one is nameable — the anchor 'what did we decide about X' resolves against." .
+
+aegis:supersededBy a rdf:Property ;
+    rdfs:label "superseded by" ;
+    rdfs:comment "A later decision that replaces this one. The old decision is never deleted — bitemporality keeps it; this edge says who won." .
