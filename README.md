@@ -64,8 +64,23 @@ shantytown / git / hank / sessions          (activity: raw fiber)
    maintained as the test harness for every ontology change.
    [competency/](competency/)
 
+## How you use it: the skill is the interface
+
+Camayoc's primary consumer is an agent in a session, so camayoc **ships a
+skill** ([skills/camayoc/SKILL.md](skills/camayoc/SKILL.md)) that teaches any
+agent the four moves: **bootstrap** a bare store (load ontology + shapes,
+*prove* the SHACL gate is live), **query first** (ask the competency
+questions before re-deciding anything), **record at the moment** (decisions
+as episodes when they happen, not in a wrap-up), and **tag honestly**
+(`observed` / `declared` / `inferred` — never up-tagged). The skill guides;
+the shapes enforce — delete the skill and the store is exactly as safe, just
+harder to use well. No harness is required: any agent that can speak HTTP to
+a quipu can follow it. [docs/design/skill.md](docs/design/skill.md)
+
 **First domain: agentic coding.** The crew ontology + the task-lifecycle
-vertical slice, fed by shantytown's (planned, reserved) knowledge adapter.
+vertical slice, recorded by skill-guided agents; harness record parsers
+(shantytown, git) are optional `observed`-tier enrichment, never a
+dependency.
 [docs/design/task-lifecycle-slice.md](docs/design/task-lifecycle-slice.md)
 
 ## What this repo is deliberately NOT

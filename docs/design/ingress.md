@@ -32,39 +32,40 @@ mapped onto quipu named graphs with lattice labels:
 
 | Plane (named graph) | Contents | Velocity | `sourceKind` | Trust label |
 |---|---|---|---|---|
-| `crew:records` | task lifecycle, decisions, outcomes from st records | per-event | `observed` | high |
+| `crew:records` | task lifecycle, decisions, outcomes (skill-recorded or parser-backfilled) | per-event | `observed` / `declared` | high |
 | `crew:declared` | conventions, directives, standing decisions a human stated | occasional | `declared` | high (human root) |
 | `crew:inferred` | model-written summaries, diagnoses, lessons | per-session | `inferred` | low, promotable |
 | `code:*` | hank-promoted structure (already governed upstream) | per-commit | `observed` | per hank tier |
 
-## 3. Sources and their adapters
+## 3. Sources
 
-### 3.1 Shantytown — the reserved seam
+### 3.1 The skill-guided agent — the first-class source
 
-Shantytown's adapter table already reserves a **`knowledge` layer: "planned —
-not built," quipu first-class, none-adapter as the negative control**, under
-its two-implementations rule. The contract camayoc needs from that seam is
-deliberately thin:
+The primary ingress surface is **the agent itself**, guided by the shipped
+skill ([skill.md](skill.md), `skills/camayoc/SKILL.md`): it records
+decisions, work items and outcomes as tagged episodes at the moment they
+happen. Guidance and enforcement are deliberately separate — the skill makes
+the honest tag the path of least resistance; the shapes refuse what the
+skill failed to prevent. **No harness is a dependency**: any agent with HTTP
+reaches the whole surface.
 
-- St emits **its own record vocabulary** (task created/assigned/stopped/done,
-  with `ts`, `item`, `item_status` — the payload its event store already
-  learned an event must carry). It does not know camayoc's ontology.
-- Camayoc's crew adapter **translates records → episodes**: st's facts into
-  `camayoc:WorkItem`/`Decision`/`Outcome` terms, tagged `observed`, one
-  episode per record batch. The translation table lives in
-  [task-lifecycle-slice.md](task-lifecycle-slice.md).
-- The none-adapter proves the harness never depends on knowledge existing —
-  and equally, camayoc must work from st's *records on disk* if the emitter
-  is absent (tail mode), so neither repo hard-depends on the other's seam
-  being built first.
+### 3.2 Harness record parsers — optional enrichment
 
-### 3.2 Git
+A harness with its own records (shantytown's task/crew records, with the
+`ts`/`item`/`item_status` payload its event store already learned an event
+must carry) can be backfilled and corroborated by a deterministic parser
+translating records → episodes tagged `observed`. Shantytown's adapter table
+reserves a `knowledge` layer for the emit half; that is a welcome
+*integration* on that repo's schedule — camayoc works identically without
+it, and its none-adapter proves the independence in the other direction.
+
+### 3.3 Git
 
 Commit history → work-item linkage (`aegis:implements`, `aegis:modifies` —
 the provenance chain quipu's co-occurrence shapes already define). Pure
 `observed`; hank already promotes the structural half.
 
-### 3.3 Sessions (the inferred plane)
+### 3.4 Sessions (the inferred plane)
 
 Transcript-derived summaries and diagnoses, written by a model, landing in
 `crew:inferred` only. The interesting future here is the SARC trust-predicate
@@ -85,8 +86,10 @@ adapter is — but v1 claims only quarantine, not evaluation.
 
 - [bootstrap-ontology.md](bootstrap-ontology.md) — the vocabulary these
   writes carry.
-- [task-lifecycle-slice.md](task-lifecycle-slice.md) — the first adapter's
-  concrete translation table.
+- [skill.md](skill.md) — the skill-as-interface usage model this section
+  implements.
+- [task-lifecycle-slice.md](task-lifecycle-slice.md) — the first slice; its
+  record mapping is the enrichment parser's translation table.
 - shantytown `docs/adapters.md` — the reserved knowledge seam and the
   two-implementations rule; `shantytown/events.py` — the event-payload
   lessons §1.5 inherits.

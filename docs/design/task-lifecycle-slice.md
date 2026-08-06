@@ -14,7 +14,19 @@ shantytown's task/crew records exist today, are deterministic to parse, and
 their event architecture has already learned exactly which facts an event can
 carry truthfully.
 
-## 2. The mapping: st records → episodes
+## 2. Two paths into the graph — skill first, parser as enrichment
+
+**The spine is the skill-guided agent** ([skill.md](skill.md)): decisions,
+work items and outcomes recorded as tagged episodes at the moment they
+happen, by any agent in any harness. That path needs nothing built beyond
+the ontology, the shapes, and the skill this repo already ships.
+
+**The enrichment path** is a deterministic parser over a harness's records —
+shantytown's are the worked example below — backfilling and corroborating
+the skill-recorded spine with `observed`-tier facts. It is optional, and no
+harness is a dependency.
+
+### The record mapping (enrichment parser, st as the worked example)
 
 One episode per record batch, all facts tagged `sourceKind: observed`, into
 the `crew:records` plane. Candidate mapping (the implementation refines
@@ -48,15 +60,21 @@ named queries, and a trace a reviewer accepts.
 ## 4. Deliverables
 
 1. `ontology/core.ttl` + `shapes/core.shapes.ttl` — the bootstrap terms the
-   mapping actually needs (and no more).
+   slice actually needs (and no more).
 2. `ontology/crew.ttl` + `shapes/crew.shapes.ttl` — the crew domain.
-3. `camayoc crew ingest <st-root>` — the deterministic record→episode
-   adapter (tail mode; the st-native emitter seam comes later and does not
-   block).
+3. **The skill, exercised end-to-end**: `skills/camayoc/SKILL.md` ships
+   already; the slice proves it — a skill-guided agent bootstraps a bare
+   store, records a real session's decisions/work/outcomes, and the
+   competency questions answer from what it recorded.
 4. The competency queries as stored queries, shipped for `crew.qpack` when
-   quipu #79/#81 land; runnable as raw SPARQL until then.
-5. An eval gate: `just check` runs the questions against a fixture graph
-   built from recorded st activity.
+   quipu #79/#81 land; runnable as raw SPARQL until then (the skill carries
+   the patterns).
+5. An eval gate: `just check` runs the questions against a fixture graph —
+   built from skill-recorded episodes, optionally corroborated by the
+   enrichment parser.
+6. *(Optional, unblocking nothing)* `camayoc crew ingest <records-root>` —
+   the deterministic record→episode enrichment parser, st as the first
+   worked example.
 
 ## 5. Scope boundaries (honest)
 
@@ -64,7 +82,9 @@ named queries, and a trace a reviewer accepts.
   the git adapter, next slice) — the decision spine must stand alone first.
 - **No failure-memory** ("has this been seen before") — needs the inferred
   plane and its promotion story; deliberately after the observed spine.
-- **No st code changes required.** Tail mode reads records; the native
-  emitter is st's reserved seam, on st's schedule.
+- **No harness dependency, period.** The spine is skill + HTTP. The
+  enrichment parser reads records from outside; any harness-native emitter
+  (st's reserved `knowledge` seam) is that harness's integration, on its
+  schedule.
 - **Nothing here claims real-time.** Ingest is batch/poll; the crew's live
   coordination stays in st where it belongs.
