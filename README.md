@@ -114,6 +114,11 @@ choice, per component, never assumed:
   harness; pip-installed, then `st init` is *left to you* — it asks its five
   questions itself and shows every path before writing.
 
+…and offers to **seed the graph's anchors** from a codebase + docs (this
+project, a path, or a git URL): a deterministic, SHACL-gated walk mints the
+modules, symbols, documents and sections that decisions anchor to — because
+"what did we decide about X" needs X to exist before it can be answered.
+
 ## How you use it: the skill is the interface
 
 Camayoc's primary consumer is an agent in a session, so camayoc **ships a

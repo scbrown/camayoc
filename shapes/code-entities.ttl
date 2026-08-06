@@ -1,0 +1,302 @@
+# SHACL shapes for Bobbin code entity types.
+#
+# Defines validation constraints for CodeModule, CodeSymbol, Document,
+# Section, and Bundle — the core entity model for knowledge-aware bundles.
+#
+# Load via POST /shapes:
+#   curl -s localhost:3030/shapes -X POST \
+#     -H "Content-Type: application/json" \
+#     -d '{"action": "load", "name": "code-entities", "turtle": "<contents>"}'
+
+@prefix sh:     <http://www.w3.org/ns/shacl#> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix bobbin: <http://aegis.gastown.local/ontology/> .
+
+# ── CodeModule ─────────────────────────────────────────────────
+#
+# A source file in a repository. Every code module must declare its
+# file path, repository, and programming language.
+
+bobbin:CodeModuleShape a sh:NodeShape ;
+    sh:targetClass bobbin:CodeModule ;
+    # rdfs:label is REQUIRED. Ordered AFTER the emitter shipped, not before, and
+    # the order is measured rather than stylistic: the previous exporter emitted
+    # these four classes with NO label at all, so this constraint would have
+    # refused every promotion and left the hourly ingest's marker unadvanced —
+    # advise before enforce (see the bead). Verified on the DEPLOYED binary
+    # before this landed, not on its source, and across every repo the lane
+    # ingests: 15,311 entities, none unlabelled.
+    #
+    #     CodeModule 127/127   CodeSymbol 1850/1850  Document 29/29   Section 176/176
+    #     CodeModule 144/144   CodeSymbol 7638/7638  Document 57/57   Section 541/541
+    #     CodeModule 148/148   CodeSymbol 3436/3436  Document 154/154 Section 1011/1011
+    #
+    # xsd:string matches BundleShape/CommitShape below: the exporter writes plain
+    # literals, which are xsd:string in RDF 1.1. A language-tagged label would be
+    # rdf:langString and would NOT satisfy this — intentional, and consistent with
+    # those neighbours. Same rule as the in_repo note above: never require a
+    # predicate the emitter does not emit.
+    sh:property [
+        sh:path rdfs:label ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:filePath ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:repo ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:language ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    # bobbin:repo above is a LITERAL STRING and stays one — it is what the
+    # bobbin promotion path emits. But a string is not walkable: it left all
+    # 10,143 code entities unable to reach the ownership layer sitting beside
+    # them (0 of 537 modules had any edge to a repo_<name> entity).
+    # in_repo is the IRI counterpart: the edge that makes owns / shepherds /
+    # managed_by reachable from a source file in two hops.
+    #
+    # NOT minCount 1, deliberately — same rule as CommitShape below: never
+    # require a predicate the emitter does not emit. Bobbin writes bobbin:repo,
+    # not bobbin:in_repo, so requiring it here would fail every future promotion.
+    # Backfilling it stays a reconciliation step until the emitter learns to
+    # write it (see the bead).
+    #
+    # ⚠ in_repo is RANGE-MIXED across the store and this constraint does not
+    # change that: CommitShape constrains the SAME predicate to xsd:string, and
+    # ~443 Commit/GitCommit entities use the literal form. The two senses are
+    # scoped by targetClass, so `?x in_repo ?r` unfiltered returns both strings
+    # and IRIs. Bind the subject's type, or test isIRI(?r), before relying on it.
+    # NOT sh:class bobbin:Repo, deliberately — measured, not assumed. SHACL here
+    # validates the SUBMITTED turtle in isolation, never the store, so sh:class
+    # would demand every writer redundantly re-assert `repo_x a bobbin:Repo` in
+    # the same payload; omitting it failed with a `class` violation on an
+    # otherwise-correct write. A constraint that fails correct writes is one
+    # people learn to bypass. nodeKind alone catches the disease this edge exists
+    # to cure (a literal string where a walkable IRI belongs) — it fired on
+    # exactly that case in testing. Residual, accepted: the target being a *Repo*
+    # is not checkable at write time; that needs a store-aware validator.
+    sh:property [
+        sh:path bobbin:in_repo ;
+        sh:nodeKind sh:IRI ;
+        sh:maxCount 1 ;
+    ] .
+
+# ── CodeSymbol ─────────────────────────────────────────────────
+#
+# A named symbol (function, class, method, etc.) defined within a
+# CodeModule. The symbolKind is an enumerated string drawn from
+# common language-server symbol categories.
+
+bobbin:CodeSymbolShape a sh:NodeShape ;
+    sh:targetClass bobbin:CodeSymbol ;
+    # rdfs:label is REQUIRED. Ordered AFTER the emitter shipped, not before, and
+    # the order is measured rather than stylistic: the previous exporter emitted
+    # these four classes with NO label at all, so this constraint would have
+    # refused every promotion and left the hourly ingest's marker unadvanced —
+    # advise before enforce (see the bead). Verified on the DEPLOYED binary
+    # before this landed, not on its source, and across every repo the lane
+    # ingests: 15,311 entities, none unlabelled.
+    #
+    #     CodeModule 127/127   CodeSymbol 1850/1850  Document 29/29   Section 176/176
+    #     CodeModule 144/144   CodeSymbol 7638/7638  Document 57/57   Section 541/541
+    #     CodeModule 148/148   CodeSymbol 3436/3436  Document 154/154 Section 1011/1011
+    #
+    # xsd:string matches BundleShape/CommitShape below: the exporter writes plain
+    # literals, which are xsd:string in RDF 1.1. A language-tagged label would be
+    # rdf:langString and would NOT satisfy this — intentional, and consistent with
+    # those neighbours. Same rule as the in_repo note above: never require a
+    # predicate the emitter does not emit.
+    sh:property [
+        sh:path rdfs:label ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:name ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:symbolKind ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+        sh:in (
+            "function" "method" "class" "interface" "enum"
+            "struct" "variable" "constant" "module" "property"
+            "field" "constructor" "type_alias"
+        ) ;
+    ] ;
+    sh:property [
+        sh:path bobbin:definedIn ;
+        sh:class bobbin:CodeModule ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] .
+
+# ── Document ───────────────────────────────────────────────────
+#
+# A documentation file (Markdown, RST, plain text, etc.).
+
+bobbin:DocumentShape a sh:NodeShape ;
+    sh:targetClass bobbin:Document ;
+    # rdfs:label is REQUIRED. Ordered AFTER the emitter shipped, not before, and
+    # the order is measured rather than stylistic: the previous exporter emitted
+    # these four classes with NO label at all, so this constraint would have
+    # refused every promotion and left the hourly ingest's marker unadvanced —
+    # advise before enforce (see the bead). Verified on the DEPLOYED binary
+    # before this landed, not on its source, and across every repo the lane
+    # ingests: 15,311 entities, none unlabelled.
+    #
+    #     CodeModule 127/127   CodeSymbol 1850/1850  Document 29/29   Section 176/176
+    #     CodeModule 144/144   CodeSymbol 7638/7638  Document 57/57   Section 541/541
+    #     CodeModule 148/148   CodeSymbol 3436/3436  Document 154/154 Section 1011/1011
+    #
+    # xsd:string matches BundleShape/CommitShape below: the exporter writes plain
+    # literals, which are xsd:string in RDF 1.1. A language-tagged label would be
+    # rdf:langString and would NOT satisfy this — intentional, and consistent with
+    # those neighbours. Same rule as the in_repo note above: never require a
+    # predicate the emitter does not emit.
+    sh:property [
+        sh:path rdfs:label ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:filePath ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] .
+
+# ── Section ────────────────────────────────────────────────────
+#
+# A headed section within a Document. headingDepth is a positive
+# integer (1 = top-level heading, 2 = sub-heading, etc.).
+
+bobbin:SectionShape a sh:NodeShape ;
+    sh:targetClass bobbin:Section ;
+    # rdfs:label is REQUIRED. Ordered AFTER the emitter shipped, not before, and
+    # the order is measured rather than stylistic: the previous exporter emitted
+    # these four classes with NO label at all, so this constraint would have
+    # refused every promotion and left the hourly ingest's marker unadvanced —
+    # advise before enforce (see the bead). Verified on the DEPLOYED binary
+    # before this landed, not on its source, and across every repo the lane
+    # ingests: 15,311 entities, none unlabelled.
+    #
+    #     CodeModule 127/127   CodeSymbol 1850/1850  Document 29/29   Section 176/176
+    #     CodeModule 144/144   CodeSymbol 7638/7638  Document 57/57   Section 541/541
+    #     CodeModule 148/148   CodeSymbol 3436/3436  Document 154/154 Section 1011/1011
+    #
+    # xsd:string matches BundleShape/CommitShape below: the exporter writes plain
+    # literals, which are xsd:string in RDF 1.1. A language-tagged label would be
+    # rdf:langString and would NOT satisfy this — intentional, and consistent with
+    # those neighbours. Same rule as the in_repo note above: never require a
+    # predicate the emitter does not emit.
+    sh:property [
+        sh:path rdfs:label ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:heading ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:headingDepth ;
+        sh:datatype xsd:integer ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] .
+
+# ── Bundle ─────────────────────────────────────────────────────
+#
+# A named collection of code entities. Must have a label and contain
+# at least one member (CodeModule, CodeSymbol, Document, or Section).
+
+bobbin:BundleShape a sh:NodeShape ;
+    sh:targetClass bobbin:Bundle ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:contains ;
+        sh:minCount 1 ;
+        sh:or (
+            [ sh:class bobbin:CodeModule ]
+            [ sh:class bobbin:CodeSymbol ]
+            [ sh:class bobbin:Document ]
+            [ sh:class bobbin:Section ]
+        ) ;
+    ] .
+
+# ── Commit ─────────────────────────────────────────────────────
+#
+# A git commit emitted by the promotion path (bobbin → quipu). Hundreds of live
+# Commit entities were invisible to validation until this shape: no shape file
+# declared the kind. Constraints are reconciled to what the emitter ACTUALLY
+# writes — measured over a live sample (never require a predicate the emitter
+# does not emit). Required set = present on every sampled commit and single-
+# valued; touches/references are optional object properties (0..N IRIs).
+
+bobbin:CommitShape a sh:NodeShape ;
+    sh:targetClass bobbin:Commit ;
+    sh:property [
+        sh:path bobbin:sha ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:author ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:in_repo ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:comment ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:touches ;
+        sh:nodeKind sh:IRI ;
+    ] ;
+    sh:property [
+        sh:path bobbin:references ;
+        sh:nodeKind sh:IRI ;
+    ] .

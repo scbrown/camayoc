@@ -54,6 +54,24 @@ loop, and never blocks the others. After st installs, remind the user to run
 `st init` themselves — it asks five questions and shows every path before
 writing; the script deliberately does not answer them on the user's behalf.
 
+## Step 3 — seed the graph's anchors (offer after step 1 succeeds)
+
+Ask the user whether to seed the graph from a codebase + docs — the default
+being **this project**, or a path, or a git URL (shallow-cloned into
+`.quipu/seed/`). Explain why in one line: the competency questions hang off
+entities — "what did we decide about X" needs X to exist — and a
+deterministic walk of code and docs mints the modules, symbols, documents
+and sections that decisions anchor to.
+
+```text
+${CLAUDE_PLUGIN_ROOT}/scripts/seed_knowledge.sh [path-or-git-url]
+```
+
+The walk is SHACL-gated (code-entities shapes load first, so a malformed
+seed is refused, not absorbed) and observed-tier by construction. Report
+the ingested count. Re-running after big refactors is safe — the ingest is
+idempotent at the fact level.
+
 ## After
 
 Governed memory is ready: query before re-deciding, record decisions at the
