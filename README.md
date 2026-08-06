@@ -15,7 +15,7 @@
 
 > *Loose thread goes in. Knotted record comes out. The keeper decides what a knot may claim.*
 
-The *quipucamayoc* (khipukamayuq) was the Inca official who kept the quipus —
+The *quipucamayoc* (khipukamayuq) was the Quechua-titled official who kept the quipus —
 the one who tied knowledge into the knots and certified what was read back out.
 That is this repo's job: it owns **what the knots mean** and **how knowledge
 earns its way into the graph**, so that the store itself never has to trust an
@@ -81,6 +81,25 @@ vertical slice, fed by shantytown's (planned, reserved) knowledge adapter.
   observation. The tag is the reader's only signal of trust — that posture is
   inherited from NeuralAmplifier's datalinks pipeline, the proven instance of
   this pattern.
+
+## On the name
+
+The name honors the *khipukamayuq* (hispanicized *quipucamayoc*): the Quechua
+title for the specialists of the Inca state charged with making, maintaining,
+archiving, and interpreting the khipus — and answerable, personally, for what
+the knots were read to claim. *Kamayuq* on its own means "specialist, keeper,
+one who is charged with": Quechua formed many such titles (*punku kamayuq*,
+doorkeeper; *chaka kamayuq*, bridge keeper). Beside a sibling project named
+[quipu](https://github.com/scbrown/quipu), this repo's name completes the
+compound.
+
+This project borrows the role as a metaphor for a software layer that decides
+what a fact may claim before it enters a knowledge graph. It does not claim to
+represent Andean culture. Khipu is a living tradition — Quechua is spoken by
+millions, community cord-keeping survived into the modern era in Andean
+villages, and khipu scholarship is active — and the modern Quechua spellings
+are *khipu* and *khipukamayuq*; this stack uses the older hispanicized forms
+for continuity with its sibling repos.
 
 ## Status
 
