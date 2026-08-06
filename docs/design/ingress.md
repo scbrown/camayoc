@@ -49,15 +49,21 @@ the honest tag the path of least resistance; the shapes refuse what the
 skill failed to prevent. **No harness is a dependency**: any agent with HTTP
 reaches the whole surface.
 
-### 3.2 Harness record parsers — optional enrichment
+### 3.2 Tracker and harness record parsers — optional enrichment
 
-A harness with its own records (shantytown's task/crew records, with the
-`ts`/`item`/`item_status` payload its event store already learned an event
-must carry) can be backfilled and corroborated by a deterministic parser
-translating records → episodes tagged `observed`. Shantytown's adapter table
-reserves a `knowledge` layer for the emit half; that is a welcome
-*integration* on that repo's schedule — camayoc works identically without
-it, and its none-adapter proves the independence in the other direction.
+A tracker or harness with its own records can be backfilled and corroborated
+by a deterministic parser translating records → episodes tagged `observed`:
+
+- **Beads (`bd`)** is the cleanest such source: agent-first, JSON out, and a
+  bead *is* a `WorkItem` record — id, status, dependencies, lifecycle — so
+  the parse is nearly a projection. Where beads is st's tracker backend, one
+  parser covers both.
+- **Shantytown's own records** (task/crew, with the `ts`/`item`/`item_status`
+  payload its event store already learned an event must carry) parse the
+  same way. Shantytown's adapter table reserves a `knowledge` layer for a
+  native emit half; that is a welcome *integration* on that repo's schedule
+  — camayoc works identically without it, and its none-adapter proves the
+  independence in the other direction.
 
 ### 3.3 Git
 

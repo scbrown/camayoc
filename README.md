@@ -106,6 +106,10 @@ choice, per component, never assumed:
   added to `.mcp.json`.
 - **[hank](https://github.com/scbrown/hank)** — defs/refs, call graph, blast
   radius; installed from git (pre-release), `hank serve` added to `.mcp.json`.
+- **[beads](https://github.com/steveyegge/beads)** — the agent-first
+  work-item tracker (`bd`). Dual role: shantytown's first-class tracker
+  backend, and a deterministic observed-tier **ingress path** — a bead is a
+  `WorkItem` record camayoc can govern into the graph.
 - **[shantytown](https://github.com/scbrown/shantytown)** — the crew
   harness; pip-installed, then `st init` is *left to you* — it asks its five
   questions itself and shows every path before writing.

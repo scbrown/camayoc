@@ -75,9 +75,40 @@ setup_st() {
   say "st: every path before writing. Run it yourself in the project:  st init"
 }
 
+setup_beads() {
+  if command -v bd >/dev/null 2>&1; then
+    say "beads: already installed ($(command -v bd))"
+  else
+    say "beads: installing bd (trying npm, brew, go — in that order)..."
+    if command -v npm >/dev/null 2>&1 && npm install -g @beads/bd --silent >/dev/null 2>&1; then
+      say "beads: installed via npm"
+    elif command -v brew >/dev/null 2>&1 && brew install beads >/dev/null 2>&1; then
+      say "beads: installed via brew"
+    elif command -v go >/dev/null 2>&1 && go install github.com/steveyegge/beads/cmd/bd@latest >/dev/null 2>&1; then
+      say "beads: installed via go (ensure ~/go/bin is on PATH)"
+    else
+      say "beads: could not install — need one of npm, brew, or go."
+      say "  https://github.com/steveyegge/beads"
+      return 1
+    fi
+  fi
+  command -v bd >/dev/null 2>&1 || { say "beads: bd not on PATH after install — check your PATH"; return 1; }
+  if [ ! -d "$PROJECT_DIR/.beads" ]; then
+    ( cd "$PROJECT_DIR" && bd init ) || { say "beads: bd init failed"; return 1; }
+    say "beads: initialized in project (.beads/)"
+  else
+    say "beads: project already initialized"
+  fi
+  say "beads: done — work items live in bd, agent-first (JSON out, dependency graph)."
+  say "beads: shantytown uses bd as its first-class tracker automatically when present,"
+  say "beads: and bead records are a deterministic (observed-tier) ingress source for"
+  say "beads: camayoc work-item knowledge."
+}
+
 case "${1:-}" in
   bobbin) setup_bobbin ;;
   hank)   setup_hank ;;
   st)     setup_st ;;
-  *) say "usage: setup_component.sh bobbin|hank|st"; exit 64 ;;
+  beads)  setup_beads ;;
+  *) say "usage: setup_component.sh bobbin|hank|st|beads"; exit 64 ;;
 esac

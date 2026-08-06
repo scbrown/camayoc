@@ -31,15 +31,22 @@ to set up, briefly describing each:
   agents over MCP (`cargo install bobbin`, indexes this project).
 - **hank** — structural code facts: defs/refs, call graph, blast radius,
   over MCP (pre-release; installs from git, can take minutes).
+- **beads (bd)** — the agent-first work-item tracker (graph-based,
+  git-backed, JSON out). Two roles here: shantytown's first-class tracker
+  backend, and a deterministic observed-tier **ingress path** — bead
+  records are WorkItem records camayoc can govern into the graph.
 - **shantytown (st)** — a crew harness for running multiple coding agents
   (Python + tmux; its own `st init` stays interactive and is left to the
-  user).
+  user). Pairs naturally with beads; works without it (files tracker).
 
 For each selected component run, one at a time, reporting output faithfully:
 
 ```text
-${CLAUDE_PLUGIN_ROOT}/scripts/setup_component.sh <bobbin|hank|st>
+${CLAUDE_PLUGIN_ROOT}/scripts/setup_component.sh <bobbin|hank|beads|st>
 ```
+
+If the user picks both beads and st, run beads first so st finds bd and
+selects it as its tracker.
 
 Cargo installs take minutes — say so up front rather than looking hung. A
 component that fails to install is reported and skipped, never retried in a
