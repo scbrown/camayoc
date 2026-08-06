@@ -98,6 +98,18 @@ own server, config, and gate — and tells you honestly when it can't. (For
 setups that skip the plugin, `scripts/bootstrap.sh --with-claude-hooks` also
 merges the session status hook into `.claude/settings.json`.)
 
+After the core succeeds, **bootstrap offers the rest of the stack** — your
+choice, per component, never assumed:
+
+- **[bobbin](https://github.com/scbrown/bobbin)** — semantic code search +
+  context bundles; installed from crates.io, project indexed, `bobbin serve`
+  added to `.mcp.json`.
+- **[hank](https://github.com/scbrown/hank)** — defs/refs, call graph, blast
+  radius; installed from git (pre-release), `hank serve` added to `.mcp.json`.
+- **[shantytown](https://github.com/scbrown/shantytown)** — the crew
+  harness; pip-installed, then `st init` is *left to you* — it asks its five
+  questions itself and shows every path before writing.
+
 ## How you use it: the skill is the interface
 
 Camayoc's primary consumer is an agent in a session, so camayoc **ships a
