@@ -3,9 +3,14 @@
 > **Implementation status (2026-08-07):** 🟨 **Core ingress gate built:** WorkItem,
 > Decision, Verification, ExecutionPath, and Blocker provenance/validation shapes are
 > present. Bootstrap proves both an untagged-write refusal and a falsifier-less
-> Verification refusal. Execution-path and blocker facts now have strict ingress
-> distinctions; the shantytown/hank producers and Quipu stored queries remain the
-> next integration slice.
+> Verification refusal. Execution-path inventory is now produced by the scheduled,
+> ownership-neutral aegis source and the Quipu coverage query reports `Empty`,
+> `Partial`, or `Full` rather than a bare count. Hank now emits a falsifier-gated
+> `Verification` and a `built` `Blocker` for each signed unsatisfied verdict. Its
+> source change is merged, but it is not yet an installed/runtime producer: the
+> sanctioned installer consumes release artifacts and no verdict-drain schedule is
+> present. Until both are true, the blocker query's zero is an explicit gap, not
+> evidence that no blocker exists.
 
 ## 1. The discipline, in five rules
 
@@ -40,9 +45,10 @@
 8. **Blockers name their evidence strength.** A `Blocker` is exactly one of
    `stated` (a claim in a ticket/report) or `built` (a demonstrated failing
    case). When a built blocker links `demonstratedBy`, it must link a
-   falsifier-gated `Verification`; the hank/quipu integration is responsible
-   for emitting that link. A reader can therefore keep a stated blocker visible
-   without presenting it as a measurement.
+   falsifier-gated `Verification`; Hank emits that link for signed unsatisfied
+   verdicts. A reader can therefore keep a stated blocker visible without
+   presenting it as a measurement. Absence of such a record remains a producer
+   coverage question, not a claim that no blocker exists.
 
 ## 2. Planes by velocity
 
