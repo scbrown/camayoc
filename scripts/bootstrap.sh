@@ -183,6 +183,45 @@ else
   exit 2
 fi
 
+# Execution-path provenance is also a gate, not a checklist someone remembers:
+# the executed artifact, repository source, and refresh mechanism are the facts
+# a later reader needs to compare. Omit only repositorySource so this is a
+# discriminating M3 arm rather than another sourceKind test.
+PROBE=$(curl -s -m 10 -X POST "$SERVER/episode" -H 'Content-Type: application/json' "${AUTH[@]}" -d '{
+  "name": "camayoc-gate-probe-incomplete-execution-path",
+  "nodes": [{"name": "camayoc-execution-path-probe", "type": "ExecutionPath",
+             "description": "deliberately lacks its repository source",
+             "properties": {"sourceKind": "observed",
+                            "executesArtifact": "installed-probe",
+                            "refreshedBy": "refresh-probe"}}]
+}' 2>&1)
+if printf '%s' "$PROBE" | grep -qi 'conforms.*false\|violation\|refus\|repositorySource'; then
+  say "gate: PROVEN — incomplete ExecutionPath refused, as it must be."
+else
+  say "gate: NOT PROVEN — the store ACCEPTED an ExecutionPath without its repository source."
+  say "  response: $PROBE"
+  say "  Load the current camayoc core ontology and shapes, then enable write-time SHACL validation."
+  exit 2
+fi
+
+# A blocker that does not say whether it is merely stated or actually built is
+# the M4 category error. Omit only blockerEvidence; a sourceKind failure here
+# would prove the wrong gate.
+PROBE=$(curl -s -m 10 -X POST "$SERVER/episode" -H 'Content-Type: application/json' "${AUTH[@]}" -d '{
+  "name": "camayoc-gate-probe-unclassified-blocker",
+  "nodes": [{"name": "camayoc-blocker-probe", "type": "Blocker",
+             "description": "deliberately lacks its blocker evidence kind",
+             "properties": {"sourceKind": "observed"}}]
+}' 2>&1)
+if printf '%s' "$PROBE" | grep -qi 'conforms.*false\|violation\|refus\|blockerEvidence'; then
+  say "gate: PROVEN — unclassified Blocker refused, as it must be."
+else
+  say "gate: NOT PROVEN — the store ACCEPTED a Blocker without evidence kind."
+  say "  response: $PROBE"
+  say "  Load the current camayoc core ontology and shapes, then enable write-time SHACL validation."
+  exit 2
+fi
+
 [ "${1:-}" = "--with-claude-hooks" ] && install_claude_hooks
 
 say "camayoc: governed memory ready. Query first; record at the moment; tag honestly."
