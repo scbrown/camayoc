@@ -53,8 +53,9 @@ class MetricsUnitTests(unittest.TestCase):
     def test_parser_is_deterministic_and_carries_executable_method(self):
         rules = ingest.parse_rules(FIXTURE, strict=True)
         self.assertEqual(1, len(rules))
-        self.assertEqual("example_request_duration_seconds", rules[0].metric_name)
-        self.assertEqual("> 2", rules[0].threshold)
+        self.assertEqual("ExampleLatencyHigh", rules[0].metric_name)
+        self.assertEqual("> 0", rules[0].threshold)
+        self.assertEqual("vector(1) > 0", rules[0].expression)
         turtle = ingest.render_turtle(rules, "http://127.0.0.1:9999")
         self.assertIn('quipu:derivationSystem "prometheus"', turtle)
         self.assertIn('aegis:contentHash "', turtle)

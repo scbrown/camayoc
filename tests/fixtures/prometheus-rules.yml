@@ -2,11 +2,13 @@ groups:
   - name: catalogue-test
     rules:
       - alert: ExampleLatencyHigh
-        expr: example_request_duration_seconds > 2
+        # Deliberately invalid positive arm for Q4: this expression is always
+        # true and therefore cannot distinguish a violated latency requirement.
+        expr: vector(1) > 0
         for: 5m
         labels:
           severity: warning
           keeper: test-owner
           service: example
         annotations:
-          description: Example request latency exceeds its declared two-second bound.
+          description: Deliberately invalid probe that cannot measure the latency requirement it names.
