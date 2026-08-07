@@ -87,3 +87,71 @@ aegis:CamayocVerificationShape a sh:NodeShape ;
         sh:datatype xsd:string ;
         sh:message "camayoc: a Verification without a falsifier is an assertion, not verification — record the result that would have proved it wrong" ;
     ] .
+
+# An execution path makes the running artifact and refresh chain queryable.
+# It intentionally has no `isLive` field: live is a read-time verdict, while
+# each property here is an observed or declared fact that remains true later.
+aegis:CamayocExecutionPathShape a sh:NodeShape ;
+    sh:targetClass aegis:ExecutionPath ;
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: every ExecutionPath carries exactly one sourceKind of observed|declared|inferred" ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: an ExecutionPath needs exactly one rdfs:label" ;
+    ] ;
+    sh:property [
+        sh:path aegis:executesArtifact ;
+        sh:minCount 1 ;
+        sh:message "camayoc: an ExecutionPath must name the artifact that actually executes" ;
+    ] ;
+    sh:property [
+        sh:path aegis:repositorySource ;
+        sh:minCount 1 ;
+        sh:message "camayoc: an ExecutionPath must name the repository source to compare with its executed artifact" ;
+    ] ;
+    sh:property [
+        sh:path aegis:refreshedBy ;
+        sh:minCount 1 ;
+        sh:message "camayoc: an ExecutionPath must name what refreshes its artifact" ;
+    ] .
+
+# The type-level distinction is deliberately mandatory. A stated ticket claim
+# can be useful, but it must never read as a built reproduction. The optional
+# demonstration link is type-checked when present; the producer integration
+# that emits it belongs with hank/quipu, not a made-up write-time liveness rule.
+aegis:CamayocBlockerShape a sh:NodeShape ;
+    sh:targetClass aegis:Blocker ;
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: every Blocker carries exactly one sourceKind of observed|declared|inferred" ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a Blocker needs exactly one rdfs:label" ;
+    ] ;
+    sh:property [
+        sh:path aegis:blockerEvidence ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("stated" "built") ;
+        sh:message "camayoc: a Blocker must say whether its evidence is stated or built" ;
+    ] ;
+    sh:property [
+        sh:path aegis:demonstratedBy ;
+        sh:class aegis:Verification ;
+        sh:message "camayoc: blocker demonstration must be a Verification" ;
+    ] .

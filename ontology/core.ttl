@@ -31,6 +31,14 @@ aegis:Verification a rdfs:Class ;
     rdfs:label "Verification" ;
     rdfs:comment "A claim that a check established something at a stated time. It is admissible only with the falsifier: the result that would have proved the claim wrong." .
 
+aegis:ExecutionPath a rdfs:Class ;
+    rdfs:label "Execution path" ;
+    rdfs:comment "The concrete path by which a mechanism runs: the installed artifact, its repository source, and the refresh mechanism. It records provenance, not the decaying judgment that the path is live." .
+
+aegis:Blocker a rdfs:Class ;
+    rdfs:label "Blocker" ;
+    rdfs:comment "A reason work cannot proceed. A blocker must say whether it is stated by a reporter or built from a demonstrated failing case; those are different evidence strengths." .
+
 # ---- Source tier (the mandatory ingress tag) ---------------------------
 
 aegis:sourceKind a rdf:Property ;
@@ -42,6 +50,40 @@ aegis:falsifier a rdf:Property ;
     rdfs:label "falsifier" ;
     rdfs:comment "The observable result that would have disproved a Verification. Mandatory: a check that cannot name its failing result is an assertion, not verification." ;
     rdfs:range xsd:string .
+
+# ---- Execution provenance (M3) ----------------------------------------
+
+aegis:executesArtifact a rdf:Property ;
+    rdfs:label "executes artifact" ;
+    rdfs:comment "The installed artifact that this ExecutionPath actually invokes. This is the execution target, not a claim that it is currently live." .
+
+aegis:repositorySource a rdf:Property ;
+    rdfs:label "repository source" ;
+    rdfs:comment "The source artifact that should correspond to the executed artifact. Comparing these at read time detects armed-not-running drift." .
+
+aegis:refreshedBy a rdf:Property ;
+    rdfs:label "refreshed by" ;
+    rdfs:comment "The mechanism responsible for refreshing the execution artifact from its source." .
+
+aegis:lastRefreshedAt a rdf:Property ;
+    rdfs:label "last refreshed at" ;
+    rdfs:comment "The observed time the execution path was last refreshed. It is evidence for a read-time currency query, never a stored current/correct verdict." ;
+    rdfs:range xsd:string .
+
+aegis:ownedBy a rdf:Property ;
+    rdfs:label "owned by" ;
+    rdfs:comment "The principal that owns the path location. A single-principal owner is observable execution-path risk, not a liveness judgment." .
+
+# ---- Blocker evidence (M4) --------------------------------------------
+
+aegis:blockerEvidence a rdf:Property ;
+    rdfs:label "blocker evidence kind" ;
+    rdfs:comment "Whether a Blocker is stated (a report or ticket claim) or built (a constructed failing case). Readers must not present stated as demonstrated." ;
+    rdfs:range xsd:string .
+
+aegis:demonstratedBy a rdf:Property ;
+    rdfs:label "demonstrated by" ;
+    rdfs:comment "The Verification or other observed record that constructed and demonstrated a built blocker." .
 
 # ---- Work item properties ---------------------------------------------
 

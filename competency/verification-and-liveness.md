@@ -106,6 +106,23 @@ when Q2 and Q6 each return a **non-empty** result on a deliberately seeded
 fixture — a query that cannot return findings has the same defect as the checks
 in section A, one level up.
 
+### Ingress obligations already enforceable
+
+- A `Verification` without `falsifier` is refused (M1).
+- An `ExecutionPath` without its executed artifact, repository source, or
+  refresh mechanism is refused (M3). The resulting facts support Q11–Q13;
+  they do not store a liveness verdict.
+- A `Blocker` without exactly one `blockerEvidence` value (`stated` or
+  `built`) is refused. When a producer supplies `demonstratedBy`, it must be a
+  falsifier-gated Verification (M4). This keeps Q10's claim/measurement
+  distinction in the data while hank/quipu own the producer-side construction
+  proof.
+
+The remaining retrieval work is to load Q6–Q13 as Quipu stored queries and to
+have st/hank emit their observed records. Each query needs a seeded positive
+finding and a control negative; an empty result without those arms is not proof
+that the fleet is healthy.
+
 ## D. Cost and effort accounting — what did the work actually take?
 
 Added 2026-08-07. A crew running more than one agent program has no way to answer

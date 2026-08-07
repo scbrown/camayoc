@@ -1,9 +1,11 @@
 # Design: Ingress — how knowledge earns its way into the graph
 
 > **Implementation status (2026-08-07):** 🟨 **Core ingress gate built:** WorkItem,
-> Decision, and Verification provenance/validation shapes are present; bootstrap
-> proves both an untagged-write refusal and a falsifier-less Verification refusal.
-> The read-time liveness, execution-path, and blocker-evidence slices remain design work.
+> Decision, Verification, ExecutionPath, and Blocker provenance/validation shapes are
+> present. Bootstrap proves both an untagged-write refusal and a falsifier-less
+> Verification refusal. Execution-path and blocker facts now have strict ingress
+> distinctions; the shantytown/hank producers and Quipu stored queries remain the
+> next integration slice.
 
 ## 1. The discipline, in five rules
 
@@ -30,6 +32,17 @@
 6. **Verification names its falsifier.** A `Verification` carries the observable
    result that would have disproved it. The shape refuses a claim without one;
    bootstrap proves that refusal separately from the provenance-tag gate.
+7. **Liveness is calculated, never written.** Producers store timestamped
+   observations (a stop record, a refresh, an installed-artifact hash). A reader
+   combines them with the current process or artifact state. `ExecutionPath`
+   deliberately has no `isLive` property: a stored verdict would age into the
+   stale fact it claims to detect.
+8. **Blockers name their evidence strength.** A `Blocker` is exactly one of
+   `stated` (a claim in a ticket/report) or `built` (a demonstrated failing
+   case). When a built blocker links `demonstratedBy`, it must link a
+   falsifier-gated `Verification`; the hank/quipu integration is responsible
+   for emitting that link. A reader can therefore keep a stated blocker visible
+   without presenting it as a measurement.
 
 ## 2. Planes by velocity
 
