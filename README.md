@@ -81,7 +81,9 @@ it is absent, retrieval reports `unreachable` instead of inventing a default.
 The parser requires Python and PyYAML. `scripts/retrieve_metric.py` executes a
 method returned by the `camayoc_metric_retrieval_method` named query and prints
 `retrieved`, `unreachable`, `query_error`, or `unsupported`; it never persists
-the returned sample.
+the returned sample. Authenticated Prometheus deployments are read from
+`PROMETHEUS_BASIC_AUTH_USER` and `PROMETHEUS_BASIC_AUTH_PASSWORD`; credentials
+are never stored in the graph method.
 
 ## Install: one plugin, governed memory
 

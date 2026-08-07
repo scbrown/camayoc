@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
+import os
 import sys
 import urllib.error
 import urllib.parse
@@ -24,8 +26,14 @@ def execute(method: dict[str, Any], timeout: float = 5.0) -> dict[str, Any]:
     if not endpoint:
         return {"status": "unreachable", "system": system, "error": "no endpoint declared"}
     url = endpoint.rstrip("/") + "/api/v1/query?" + urllib.parse.urlencode({"query": query})
+    request = urllib.request.Request(url)
+    password = os.environ.get("PROMETHEUS_BASIC_AUTH_PASSWORD")
+    if password:
+        username = os.environ.get("PROMETHEUS_BASIC_AUTH_USER", "aegis")
+        token = base64.b64encode(f"{username}:{password}".encode()).decode()
+        request.add_header("Authorization", f"Basic {token}")
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as response:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             payload = json.load(response)
     except (OSError, ValueError, urllib.error.HTTPError) as exc:
         return {"status": "unreachable", "system": system, "error": str(exc)}
