@@ -78,6 +78,43 @@ not for relaxing the tag. Quarantine plus a promotion path is what lets valuable
 uncertain knowledge exist at all without contaminating what is certain
 (`ingress.md` rule 4).
 
+## 4b. DURABILITY IS THE ADDRESSABLE FORM OF REPRODUCIBILITY — declare it, do not infer it
+
+Sections 2 and 3 leave "is the graph the only copy?" as something a reader
+*infers* from whether a derivation method is present. That is too weak to act on.
+An inferred property can only be queried by ABSENCE — "show me facts missing a
+field" — which is a different and worse question than the one that matters:
+
+    which facts would be LOST if this store were lost?
+
+So durability is **declared explicitly**, per fact:
+
+    SoleRecord    the graph is the only copy. Loss is permanent.
+    Reproducible  re-derivable from a source that still exists.
+    Backed        independently persisted outside this store.
+
+**It composes.** A derived fact is only as durable as its least durable input —
+join a sole-record fact with a backed-up one and the result is sole-record,
+because you cannot reconstruct it without the fragile part. That is a meet, which
+makes durability a lattice axis alongside trust and freshness, while the
+derivation *method* stays a per-fact value (two methods do not meet into a third).
+
+**Two constraints inherited from the freshness axis, both mandatory:**
+
+- **Declared, never synthesized.** Nothing may infer `Backed` because a backup
+  ran once. The existing freshness type states the rule for itself — *"a producer
+  declares it; there is no synthesized fresh tag, ever"* — and it holds here.
+- **Undeclared is undeclared.** An unknown or missing durability must never
+  default to `Backed`. Not-measured rendering as safe is the exact failure this
+  whole document exists to prevent.
+
+**And durability decays, for the reason in §3.** `Reproducible` is a claim about a
+source that still exists; when that source rotates, the fact silently becomes
+`SoleRecord` and nothing notices. The tag records what a producer asserted at
+write time, so something must periodically re-assert or downgrade it — the same
+cadence problem freshness has, which is the argument for putting both on the same
+machinery rather than in prose.
+
 ## 5. IMPORTANCE gates CURATION, not storage
 
 Importance should decide what earns an agent's attention, never whether a fact is
