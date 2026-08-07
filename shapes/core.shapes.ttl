@@ -13,6 +13,7 @@
 @prefix sh:    <http://www.w3.org/ns/shacl#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix quipu: <http://quipu.dev/ontology/> .
 
 aegis:CamayocWorkItemShape a sh:NodeShape ;
     sh:targetClass aegis:WorkItem ;
@@ -155,3 +156,40 @@ aegis:CamayocBlockerShape a sh:NodeShape ;
         sh:class aegis:Verification ;
         sh:message "camayoc: blocker demonstration must be a Verification" ;
     ] .
+
+aegis:CamayocNonFunctionalRequirementShape a sh:NodeShape ;
+    sh:targetClass aegis:NonFunctionalRequirement ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("declared") ] ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:about ; sh:minCount 1 ] ;
+    sh:property [ sh:path aegis:threshold ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:unit ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:measurementWindow ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:ownedBy ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:createdAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] .
+
+aegis:CamayocMetricShape a sh:NodeShape ;
+    sh:targetClass aegis:Metric ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("declared") ] ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:unit ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:meaning ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:ownedBy ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:probe ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:measuresRequirement ; sh:minCount 1 ; sh:maxCount 1 ; sh:class aegis:NonFunctionalRequirement ] ;
+    sh:property [ sh:path quipu:derivedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path aegis:contentHash ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] .
+
+aegis:CamayocObservationShape a sh:NodeShape ;
+    sh:targetClass aegis:Observation ;
+    sh:property [ sh:path aegis:sourceKind ; sh:minCount 1 ; sh:maxCount 1 ; sh:in ("observed") ] ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:about ; sh:minCount 1 ] ;
+    sh:property [ sh:path aegis:observedAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path aegis:observedValue ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] .
+
+aegis:CamayocMetricDerivationShape a sh:NodeShape ;
+    sh:targetSubjectsOf quipu:derivationSystem ;
+    sh:property [ sh:path quipu:derivationSystem ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path quipu:derivationQuery ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path quipu:derivationParams ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] .

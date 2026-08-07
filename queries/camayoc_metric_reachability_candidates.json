@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_metric_reachability_candidates",
+  "description": "Q8 input: retrieval methods that must be executed to distinguish retrieved from unreachable. This query never fabricates a healthy verdict from method presence.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX quipu: <http://quipu.dev/ontology/> SELECT ?metric ?system ?query ?params WHERE { ?metric a aegis:Metric ; quipu:derivedBy ?method . ?method quipu:derivationSystem ?system ; quipu:derivationQuery ?query ; quipu:derivationParams ?params . } ORDER BY ?metric",
+  "params": []
+}

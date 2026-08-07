@@ -39,6 +39,18 @@ aegis:Blocker a rdfs:Class ;
     rdfs:label "Blocker" ;
     rdfs:comment "A reason work cannot proceed. A blocker must say whether it is stated by a reporter or built from a demonstrated failing case; those are different evidence strengths." .
 
+aegis:NonFunctionalRequirement a rdfs:Class ;
+    rdfs:label "Nonfunctional requirement" ;
+    rdfs:comment "A declared, testable service promise. It is separate from the Metric that claims to measure it so validity and coverage remain queryable." .
+
+aegis:Metric a rdfs:Class ;
+    rdfs:label "Metric" ;
+    rdfs:comment "A catalogued measurement identity, its meaning, owner, probe, and executable retrieval method. Samples remain in the measurement system." .
+
+aegis:Observation a rdfs:Class ;
+    rdfs:label "Observation" ;
+    rdfs:comment "An observed violation or decision input. It is deliberately not a time-series sample mirror." .
+
 # ---- Source tier (the mandatory ingress tag) ---------------------------
 
 aegis:sourceKind a rdf:Property ;
@@ -84,6 +96,60 @@ aegis:blockerEvidence a rdf:Property ;
 aegis:demonstratedBy a rdf:Property ;
     rdfs:label "demonstrated by" ;
     rdfs:comment "The Verification or other observed record that constructed and demonstrated a built blocker." .
+
+# ---- Metrics and nonfunctional requirements ---------------------------
+
+aegis:threshold a rdf:Property ;
+    rdfs:label "threshold" ;
+    rdfs:comment "The declared comparison and bound that makes a nonfunctional requirement testable." ;
+    rdfs:range xsd:string .
+
+aegis:unit a rdf:Property ;
+    rdfs:label "unit" ;
+    rdfs:range xsd:string .
+
+aegis:measurementWindow a rdf:Property ;
+    rdfs:label "measurement window" ;
+    rdfs:range xsd:string .
+
+aegis:meaning a rdf:Property ;
+    rdfs:label "meaning" ;
+    rdfs:range xsd:string .
+
+aegis:metricName a rdf:Property ;
+    rdfs:label "metric name" ;
+    rdfs:comment "The measurement-system series or expression identity parsed from the source rule." ;
+    rdfs:range xsd:string .
+
+aegis:probe a rdf:Property ;
+    rdfs:label "probe" ;
+    rdfs:comment "The actual expression evaluated. An alert name is never a substitute for this mechanism." ;
+    rdfs:range xsd:string .
+
+aegis:measuresRequirement a rdf:Property ;
+    rdfs:label "measures requirement" ;
+    rdfs:comment "A Metric's claim that its probe tests a NonFunctionalRequirement. Keeping this as a claim makes invalid and orphan instrumentation queryable." .
+
+aegis:gates a rdf:Property ;
+    rdfs:label "gates" ;
+    rdfs:comment "The alert, release, or decision surface gated by this metric." .
+
+aegis:probeValidatedBy a rdf:Property ;
+    rdfs:label "probe validated by" ;
+    rdfs:comment "A falsifier-gated Verification that demonstrated the probe changes when the requirement is violated." .
+
+aegis:observedAt a rdf:Property ;
+    rdfs:label "observed at" ;
+    rdfs:range xsd:string .
+
+aegis:observedValue a rdf:Property ;
+    rdfs:label "observed value" ;
+    rdfs:range xsd:string .
+
+aegis:contentHash a rdf:Property ;
+    rdfs:label "content hash" ;
+    rdfs:comment "A deterministic hash of the source definition used by reconcilers to distinguish unchanged from changed catalogue entries." ;
+    rdfs:range xsd:string .
 
 # ---- Work item properties ---------------------------------------------
 

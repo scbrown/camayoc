@@ -8,6 +8,5 @@ default:
 check:
     npx --yes markdownlint-cli2 "**/*.md" "!node_modules"
 
-# Placeholder until the first slice lands its eval gate
 test:
-    echo "no tests yet — the competency suite becomes the gate (see docs/design/task-lifecycle-slice.md §4)"
+    python3 -m unittest discover -s tests -v

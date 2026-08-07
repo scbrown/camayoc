@@ -147,6 +147,14 @@ R=$(python3 -c 'import json,sys; print(json.dumps({"action":"load","name":"camay
     | curl -sf -m 10 -X POST "$SERVER/shapes" -H 'Content-Type: application/json' "${AUTH[@]}" -d @- 2>&1) \
   && say "shapes: loaded (camayoc-core)" || { say "shapes load FAILED: $R"; exit 1; }
 
+for query in "$PLUGIN_ROOT"/queries/*.json; do
+  [ -e "$query" ] || continue
+  R=$(curl -sf -m 10 -X POST "$SERVER/queries" -H 'Content-Type: application/json' \
+      "${AUTH[@]}" --data-binary @"$query" 2>&1) \
+    && say "query: loaded ($(basename "$query" .json))" \
+    || { say "query load FAILED ($query): $R"; exit 1; }
+done
+
 PROBE=$(curl -s -m 10 -X POST "$SERVER/episode" -H 'Content-Type: application/json' "${AUTH[@]}" -d '{
   "name": "camayoc-gate-probe-untagged",
   "nodes": [{"name": "camayoc-gate-probe", "type": "Decision",

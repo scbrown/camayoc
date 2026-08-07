@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_metrics_for_subject",
+  "description": "Q1: metrics catalogued for a service or component, including meaning and owner.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?metric ?label ?meaning ?owner WHERE { ?requirement a aegis:NonFunctionalRequirement ; aegis:about <{subject}> . ?metric a aegis:Metric ; aegis:measuresRequirement ?requirement ; rdfs:label ?label ; aegis:meaning ?meaning ; aegis:ownedBy ?owner . } ORDER BY ?label",
+  "params": [
+    {
+      "name": "subject",
+      "type": "iri",
+      "required": true,
+      "description": "Service or component IRI."
+    }
+  ]
+}

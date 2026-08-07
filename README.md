@@ -64,6 +64,25 @@ shantytown / git / hank / sessions          (activity: raw fiber)
    maintained as the test harness for every ontology change.
    [competency/](competency/)
 
+### Metrics and nonfunctional requirements
+
+Camayoc catalogues metric definitions and executable retrieval methods; it does
+not copy time-series samples into Quipu. Prometheus rule ingress is a reconciled
+producer snapshot, so changing or removing a rule converges the catalogue
+without appending duplicate episode comments:
+
+```bash
+scripts/reconcile_metrics.sh /path/to/prometheus/rules https://prometheus.example
+```
+
+The first argument may be one rule file or a directory containing YAML/Jinja
+rule templates. The optional endpoint is stored as a retrieval parameter; when
+it is absent, retrieval reports `unreachable` instead of inventing a default.
+The parser requires Python and PyYAML. `scripts/retrieve_metric.py` executes a
+method returned by the `camayoc_metric_retrieval_method` named query and prints
+`retrieved`, `unreachable`, `query_error`, or `unsupported`; it never persists
+the returned sample.
+
 ## Install: one plugin, governed memory
 
 Camayoc ships as a **Claude Code plugin**. In Claude Code:

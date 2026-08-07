@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_metric_retrieval_method",
+  "description": "Q7: executable derivation method for a metric. Samples remain in the named system.",
+  "template": "PREFIX quipu: <http://quipu.dev/ontology/> SELECT ?system ?query ?params WHERE { <{metric}> quipu:derivedBy ?method . ?method quipu:derivationSystem ?system ; quipu:derivationQuery ?query ; quipu:derivationParams ?params . }",
+  "params": [
+    {
+      "name": "metric",
+      "type": "iri",
+      "required": true,
+      "description": "Metric IRI."
+    }
+  ]
+}

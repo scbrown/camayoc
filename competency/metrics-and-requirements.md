@@ -113,6 +113,13 @@ sources, none discoverable from the others, and the first two answers were wrong
 
 ## Acceptance
 
+**Implementation status (2026-08-07): built.** Q1, Q4, Q7, and the Q8
+reachability-input query ship in `queries/`; the seeded integration fixture
+executes all four. Q7 also runs through a real HTTP adapter, while Q8 proves the
+same adapter reports an unreachable backend distinctly and never renders that
+absence as healthy. Prometheus definitions reconcile through an atomic Quipu
+producer snapshot; samples are never written.
+
 The slice is done when 1, 4 and 7 run as named queries against a fixture, **and**:
 
 - **Q7 executes.** A metric's stored method must actually retrieve a value in a

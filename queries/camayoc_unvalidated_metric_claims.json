@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_unvalidated_metric_claims",
+  "description": "Q4: metric-to-requirement claims whose probe has no falsifier-gated validation. Absence is reported as unvalidated, never as valid.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?metric ?metricLabel ?requirement ?probe WHERE { ?metric a aegis:Metric ; rdfs:label ?metricLabel ; aegis:measuresRequirement ?requirement ; aegis:probe ?probe . FILTER NOT EXISTS { ?metric aegis:probeValidatedBy ?verification . ?verification a aegis:Verification ; aegis:falsifier ?falsifier . } } ORDER BY ?metricLabel",
+  "params": []
+}
