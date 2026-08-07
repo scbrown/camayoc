@@ -105,3 +105,51 @@ The slice is done when 1–13 run as named queries against a fixture graph, and
 when Q2 and Q6 each return a **non-empty** result on a deliberately seeded
 fixture — a query that cannot return findings has the same defect as the checks
 in section A, one level up.
+
+## D. Cost and effort accounting — what did the work actually take?
+
+Added 2026-08-07. A crew running more than one agent program has no way to answer
+what any of it cost, and the gap is not the provider's fault: **both harnesses
+already write complete token accounting to local disk**, per session, with no API
+and no credentials.
+
+    codex   ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
+            input · cached_input · cache_write · output · reasoning_output · total
+    claude  ~/.claude/projects/<slug>/<session>.jsonl
+            input · cache_creation · cache_read · output · ephemeral_1h/5m
+
+These are **deterministic-parser facts** — ingress rule 3 applies directly: a
+parser can produce them from a record, so a parser does, and they enter as
+`observed` with no model in the loop.
+
+The distinction that makes this tractable, learned by getting it wrong: **remaining
+quota and consumed effort are different quantities from different sources.** A
+provider may publish neither, one, or both. Consumption is ours; the ceiling is
+theirs. Conflating them cost this crew a closed investigation and a governor half
+that was declared impossible.
+
+Questions:
+
+16. What did `<work-item>` cost, in tokens, across every principal that touched it?
+17. What has `<principal>` consumed in `<time-window>`, by provider?
+18. What is the work-per-token of `<principal>` or `<provider>` — items closed,
+    or decisions recorded, per unit of consumption?
+19. Which sessions carry NO usage record? (These must read as UNKNOWN, never as
+    zero; a missing measurement that aggregates as 0 is wrong in the flattering
+    direction, and three of seven local sessions had none.)
+20. At `<time>`, what was the burn RATE per provider — and is that answerable
+    without ever knowing the ceiling? (It is: rate needs consumption alone, which
+    is why the pace question survives a provider that publishes no quota.)
+21. What did `<decision>` cost to reach — i.e. consumption attributable to the
+    work items in which it was made?
+
+**Why this belongs in the graph rather than a dashboard.** A dashboard answers
+17 and stops. Questions 16, 18 and 21 are joins — consumption against work items,
+decisions and outcomes that this ontology already models. Cost becomes a property
+of *work*, not of a time-window, which is the only form in which it can inform
+what to build next.
+
+**Acceptance.** Q16 and Q18 must run against a fixture where the expected answer
+is known independently — a session whose printed token count is compared against
+the parsed one. A usage reader checkable only against itself is the section-A
+defect wearing an accountant's hat.
