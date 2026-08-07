@@ -59,3 +59,31 @@ aegis:CamayocDecisionShape a sh:NodeShape ;
         sh:datatype xsd:string ;
         sh:message "camayoc: a Decision without 'chose' is not a decision — record what was chosen" ;
     ] .
+
+# Verification is deliberately stricter than the founding WorkItem/Decision
+# shapes: its whole claim to trust is that it names the result that could have
+# proved it wrong.  This is an ingress obligation, not a convention for a
+# reader to remember.
+aegis:CamayocVerificationShape a sh:NodeShape ;
+    sh:targetClass aegis:Verification ;
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: every Verification carries exactly one sourceKind of observed|declared|inferred — the tag is the reader's only signal of trust" ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a Verification needs exactly one rdfs:label" ;
+    ] ;
+    sh:property [
+        sh:path aegis:falsifier ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a Verification without a falsifier is an assertion, not verification — record the result that would have proved it wrong" ;
+    ] .

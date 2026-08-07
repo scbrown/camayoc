@@ -164,6 +164,25 @@ else
   exit 2
 fi
 
+# A verification that is otherwise well-formed but cannot say what would have
+# disproved it must also be refused.  This is deliberately a separate arm from
+# the untagged Decision above: otherwise a sourceKind failure could make a
+# missing-falsifier shape look enforced when it never ran.
+PROBE=$(curl -s -m 10 -X POST "$SERVER/episode" -H 'Content-Type: application/json' "${AUTH[@]}" -d '{
+  "name": "camayoc-gate-probe-no-falsifier",
+  "nodes": [{"name": "camayoc-falsifier-probe", "type": "Verification",
+             "description": "deliberately lacks its falsifier",
+             "properties": {"sourceKind": "observed"}}]
+}' 2>&1)
+if printf '%s' "$PROBE" | grep -qi 'conforms.*false\|violation\|refus\|falsifier'; then
+  say "gate: PROVEN — falsifier-less Verification refused, as it must be."
+else
+  say "gate: NOT PROVEN — the store ACCEPTED a Verification without a falsifier."
+  say "  response: $PROBE"
+  say "  Load the current camayoc core ontology and shapes, then enable write-time SHACL validation."
+  exit 2
+fi
+
 [ "${1:-}" = "--with-claude-hooks" ] && install_claude_hooks
 
 say "camayoc: governed memory ready. Query first; record at the moment; tag honestly."

@@ -38,12 +38,12 @@ Questions:
    this distinction is the counterpart to Q1 and prevents discarding good
    evidence.)
 
-**Proposed shape obligation.** `camayoc:falsifier`, `sh:minCount 1`, on any
+**Shape obligation.** `camayoc:falsifier`, `sh:minCount 1`, on any
 `Verification` — the same posture `sourceKind` already takes on `WorkItem` and
 `Decision`, and for the same stated reason: *the tag is the reader's only signal
 of trust*. A verification without a falsifier is refused at ingress rather than
-stored and believed. This is the bootstrap's own untagged-probe gate
-generalized: the bootstrap already proves the store refuses what it should.
+stored and believed. Bootstrap proves both refusal arms independently: an
+untagged Decision and an otherwise valid Verification missing only its falsifier.
 
 ## B. Held-work liveness — the four-beads-one-cause family
 

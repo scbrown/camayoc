@@ -1,6 +1,9 @@
 # Design: Ingress — how knowledge earns its way into the graph
 
-> **Implementation status (2026-08-06):** ⬜ **Founding design — nothing built.**
+> **Implementation status (2026-08-07):** 🟨 **Core ingress gate built:** WorkItem,
+> Decision, and Verification provenance/validation shapes are present; bootstrap
+> proves both an untagged-write refusal and a falsifier-less Verification refusal.
+> The read-time liveness, execution-path, and blocker-evidence slices remain design work.
 
 ## 1. The discipline, in five rules
 
@@ -24,6 +27,9 @@
    (a graph move, bitemporal and auditable) — it can never masquerade.
 5. **Facts true at write time.** No stored judgment that decays (liveness,
    currency, "still in progress"). Judgments are queries at read time.
+6. **Verification names its falsifier.** A `Verification` carries the observable
+   result that would have disproved it. The shape refuses a claim without one;
+   bootstrap proves that refusal separately from the provenance-tag gate.
 
 ## 2. Planes by velocity
 

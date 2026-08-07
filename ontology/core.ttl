@@ -27,11 +27,20 @@ aegis:Decision a rdfs:Class ;
     rdfs:label "Decision" ;
     rdfs:comment "A choice made in the course of work: what was chosen, over what visible alternatives, why, by whom, under which work item. Recorded at the moment it happens." .
 
+aegis:Verification a rdfs:Class ;
+    rdfs:label "Verification" ;
+    rdfs:comment "A claim that a check established something at a stated time. It is admissible only with the falsifier: the result that would have proved the claim wrong." .
+
 # ---- Source tier (the mandatory ingress tag) ---------------------------
 
 aegis:sourceKind a rdf:Property ;
     rdfs:label "source kind" ;
     rdfs:comment "How this fact entered: observed (a record exists and was parsed), declared (a human said so), inferred (a model concluded it). Mandatory; SHACL-refused when absent. Never up-tag." ;
+    rdfs:range xsd:string .
+
+aegis:falsifier a rdf:Property ;
+    rdfs:label "falsifier" ;
+    rdfs:comment "The observable result that would have disproved a Verification. Mandatory: a check that cannot name its failing result is an assertion, not verification." ;
     rdfs:range xsd:string .
 
 # ---- Work item properties ---------------------------------------------
