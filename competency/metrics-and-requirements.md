@@ -57,6 +57,30 @@ unaskable — see Q4.
 > section A of the verification slice applied one layer up: **an alert whose probe
 > cannot fail when the requirement is violated is a check that cannot fail.**
 
+### Testability — the question that must come BEFORE Q4
+
+Q4 asks whether an alert measures the requirement it names. That question is
+**unanswerable if the requirement was never testable in the first place**, and
+this file did not ask that until prior art pointed it out (see below).
+
+22. Which requirements are UNTESTABLE as written — stated with unquantified
+    words like *quickly*, *large*, *sufficient*, *as needed*, *reasonable*? No
+    metric can validate them, so a metric claiming to is asserting something it
+    cannot support.
+23. Which requirements have a threshold, a unit, and a measurement window? (The
+    positive form: a requirement is testable when all three are present.)
+
+> **Prior art, credited.** The Pennant knowledge-engineering studio
+> (github.com/galeluka/Pennant, MIT) ships this as a deterministic analyzer —
+> *"Untestable operational rule: quickly / large / sufficient / as needed inside
+> a rule it implements"*, severity MEDIUM. It is a text scan, needs no model, and
+> catches the defect at authoring time rather than at measurement time. Its
+> companion is sharper still — *"Two quotes or no finding: both sides quoted with
+> chapter references, or it is not a contradiction"* — which is the general form:
+> **a finding must carry its own evidence or it does not count as a finding.**
+> That is the same rule this stack states as "causes carry their evidence", and
+> Pennant makes it executable instead of aspirational.
+
 ### Retrieval — the ontology as pointer
 
 7. How do I fetch `<metric>` right now — which system, which query, which
