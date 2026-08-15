@@ -1027,8 +1027,11 @@ flowchart TB
    cannot read as success.
 
 In a further contemplated embodiment, a projected policy's predicate is
-*entity-grounded* rather than lexical: a candidate extractor (for
-example a token pattern) proposes operands, and truth is membership of
+*entity-grounded* rather than lexical: a candidate extractor — in the
+simplest form, mere tokenization of the introduced text, no pattern
+being required, so that the authoritative set itself wholly defines
+what an identifier looks like — proposes operands, and truth is
+membership of
 the candidate in an authoritative entity set held by the governed store
 — for example, whether a token in a source comment identifies a real
 tracked work item — the set being projected into the fast plane under
@@ -1041,6 +1044,17 @@ failed grounding projection renders the rule unevaluated per § 8,
 never satisfied by an empty set. Because the store is bitemporal, a
 grounded reference may further be required to be in a given state
 (for example, an open work item) as computed at read time. In a
+further contemplated embodiment grounding is by *embedding
+similarity*: an embedded representation of the introduced text is
+compared against projected embeddings of the authoritative entities,
+a reference being grounded when similarity to some entity exceeds a
+declared threshold; the verdict records the matched entity, the
+score, the threshold, the embedding-model identity, and the corpus
+snapshot watermark — a score being meaningless outside the model and
+corpus that produced it — and, similarity being a thresholded
+classifier, the predicate carries a distinct
+reproducible-but-approximate tier, declares nonzero error tolerances,
+and is confined to advisory or escalation placement. In a
 related contemplated embodiment a predicate is *model-judged* —
 evaluating a semantic property no token pattern captures — and is
 governed by this disclosure's own disciplines: it carries a distinct
@@ -1317,16 +1331,33 @@ exemplary and non-limiting.
     a grounded reference may further be required to satisfy a state
     condition computed at read time from the store's temporal history.
 
-27. The method of aspect 23, wherein a predicate evaluating a semantic
-    property is designated with a distinct model tier in the closed
-    tier vocabulary, is refused at definition time unless it declares
-    nonzero error tolerances, is confined by placement validation to
-    advisory, post-action, or escalation enforcement rather than
-    pre-action denial, and records any resulting fact with a
-    machine-inferred provenance kind subject to quarantine per aspect
-    4.
+27. The method of aspect 26, wherein the candidate extractor is
+    tokenization of the introduced text without a pattern, membership
+    in the projected grounding set alone determining whether a token
+    identifies an entity.
 
-28. A system comprising a processor and storage configured to perform
+28. The method of aspect 23, wherein grounding is determined by
+    similarity between an embedded representation of the introduced
+    text and projected embeddings of the governed store's
+    authoritative entities exceeding a declared threshold, the
+    resulting verdict recording at least the matched entity, the
+    similarity score, the threshold, an identity of the embedding
+    model, and a snapshot watermark of the embedded corpus, and the
+    predicate carrying a tier distinct from both exact membership and
+    generative judgment, declaring nonzero error tolerances, and
+    being confined by placement validation to advisory or escalation
+    enforcement.
+
+29. The method of aspect 23, wherein a predicate evaluating a semantic
+    property by generative model judgment is designated with a
+    distinct model tier in the closed tier vocabulary, is refused at
+    definition time unless it declares nonzero error tolerances, is
+    confined by placement validation to advisory, post-action, or
+    escalation enforcement rather than pre-action denial, and records
+    any resulting fact with a machine-inferred provenance kind subject
+    to quarantine per aspect 4.
+
+30. A system comprising a processor and storage configured to perform
     the methods of aspects 1, 4, 6, 8, 10, 13, 17, 18, and 23 in
     combination, wherein a governed knowledge store enforces the
     provenance, verification, and liveness schemas of aspects 1, 6,
@@ -1336,7 +1367,7 @@ exemplary and non-limiting.
     agents serves tier-tagged, freshness-honest, typed-non-answer
     responses per aspects 13, 17, and 18, and the same server enforces
     the store's policies at the agents' edit boundary per aspects 23
-    through 27, whereby no path exists in the combined system by which
+    through 29, whereby no path exists in the combined system by which
     machine-written information is admitted untagged, presented above
     its precision, aged into falsehood, read as healthy through
     silence, or landed as an edit against an entity that does not
