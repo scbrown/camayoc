@@ -1026,6 +1026,30 @@ flowchart TB
    *discovered* rather than configured, with a nonzero exit a script
    cannot read as success.
 
+In a further contemplated embodiment, a projected policy's predicate is
+*entity-grounded* rather than lexical: a candidate extractor (for
+example a token pattern) proposes operands, and truth is membership of
+the candidate in an authoritative entity set held by the governed store
+— for example, whether a token in a source comment identifies a real
+tracked work item — the set being projected into the fast plane under
+the same freshness-and-cache-age machinery as the rules themselves.
+Evaluation then has three outcomes, not two: grounded (the candidate
+resolves to a real entity), unresolvable (the candidate matches the
+extractor's shape but resolves to nothing — a fabricated reference,
+reported as its own violation class), and no-candidate; a missing or
+failed grounding projection renders the rule unevaluated per § 8,
+never satisfied by an empty set. Because the store is bitemporal, a
+grounded reference may further be required to be in a given state
+(for example, an open work item) as computed at read time. In a
+related contemplated embodiment a predicate is *model-judged* —
+evaluating a semantic property no token pattern captures — and is
+governed by this disclosure's own disciplines: it carries a distinct
+model tier that can never masquerade as exact, must declare nonzero
+error tolerances at definition time, is confined by placement rules to
+advisory, post-action, or escalation seams rather than hard pre-action
+denial, and any fact it records lands machine-inferred and quarantined
+per §§ 2–3.
+
 In alternative embodiments the fast plane is any in-memory or
 edge-resident evaluation engine consuming a projection of a governed
 policy store (API gateways over policy databases, admission
@@ -1281,7 +1305,28 @@ exemplary and non-limiting.
     was judged, and retaining, rather than discarding, spooled
     verdicts that the governed store rejects.
 
-26. A system comprising a processor and storage configured to perform
+26. The method of aspect 23, wherein a projected policy's predicate
+    comprises a candidate extractor and a grounding set projected from
+    the governed store's authoritative entities under the same
+    freshness declaration and cache-age machinery as the policies,
+    evaluation distinguishing a candidate grounded in a real entity, a
+    candidate matching the extractor but resolving to no entity —
+    reported as a distinct fabricated-reference violation — and the
+    absence of candidates, wherein a missing grounding projection
+    renders the policy unevaluated rather than satisfied, and wherein
+    a grounded reference may further be required to satisfy a state
+    condition computed at read time from the store's temporal history.
+
+27. The method of aspect 23, wherein a predicate evaluating a semantic
+    property is designated with a distinct model tier in the closed
+    tier vocabulary, is refused at definition time unless it declares
+    nonzero error tolerances, is confined by placement validation to
+    advisory, post-action, or escalation enforcement rather than
+    pre-action denial, and records any resulting fact with a
+    machine-inferred provenance kind subject to quarantine per aspect
+    4.
+
+28. A system comprising a processor and storage configured to perform
     the methods of aspects 1, 4, 6, 8, 10, 13, 17, 18, and 23 in
     combination, wherein a governed knowledge store enforces the
     provenance, verification, and liveness schemas of aspects 1, 6,
@@ -1291,7 +1336,7 @@ exemplary and non-limiting.
     agents serves tier-tagged, freshness-honest, typed-non-answer
     responses per aspects 13, 17, and 18, and the same server enforces
     the store's policies at the agents' edit boundary per aspects 23
-    through 25, whereby no path exists in the combined system by which
+    through 27, whereby no path exists in the combined system by which
     machine-written information is admitted untagged, presented above
     its precision, aged into falsehood, read as healthy through
     silence, or landed as an edit against an entity that does not
