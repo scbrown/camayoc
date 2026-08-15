@@ -1,0 +1,108 @@
+# edit-grounding.ttl — the governed policy pack for the Yupana↔Quipu
+# edit-boundary integration (grounding cluster §9; aspects 19, 23–26).
+#
+# Camayoc owns what a citation MEANS; this pack is the deployment-facing
+# policy config that puts the grounding discipline on the wire: load it into
+# a Quipu store (`quipu knot shapes/policies/edit-grounding.ttl --db …`) and
+# Yupana's projection (GROUNDED_POLICY_QUERY / POLICY_QUERY) picks it up on
+# the next pre-edit guard refresh. Everything here reuses the aegis:
+# vocabulary already minted in quipu shapes/governance.ttl — no new terms,
+# which is why there is no companion competency question.
+#
+# The pack is one coherent catalog, deliberately self-contained: do NOT load
+# it alongside quipu's shapes/policies/treesitter.ttl in the same plane —
+# that catalog carries a `must-not-ground` exemplar of the same vocabulary,
+# and the two disciplines contradict each other on whether an edit may cite
+# a work item. One store, one citation discipline.
+#
+# NB: a backslash in a Turtle string is an escape — a regex `\b` is `\\b`.
+
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+
+# ═══════════════════════════════════════════════════════════════════
+# edit-cites-work-item — the ENTITY-GROUNDED discipline (must-ground,
+# block). No regex: candidates are the tokens of the introduced text,
+# truth is membership in the graph's own work-item id set. Evaluation
+# has THREE outcomes:
+#   grounded      — the citation resolves to a tracked work item: pass
+#   unresolvable  — id-shaped but resolves to NOTHING: the FABRICATED
+#                   REFERENCE violation class, the hallucination caught
+#                   by the graph rather than a reviewer
+#   no-candidate  — no citation at all: the edit is untracked work
+# A missing grounding projection renders the rule UNEVALUATED (loud),
+# never satisfied by an empty set.
+# ═══════════════════════════════════════════════════════════════════
+
+aegis:pred_edit_cites_work_item a aegis:Predicate ;
+    aegis:name "edit-cites-work-item" ;
+    rdfs:label "every edit cites the tracked work item it implements" ;
+    # For a grounded predicate the evidence is the projected id set itself,
+    # not a pattern — the evaluator can say WHERE membership came from.
+    aegis:evidenceSource "graph:work-item-id-set" ;
+    # Candidates are simply the introduced text's tokens; the id set alone
+    # defines what an identifier looks like (no pattern authority).
+    aegis:candidateSource "token" ;
+    aegis:groundingQuery "SELECT ?id WHERE { ?w a aegis:WorkItem ; aegis:identifier ?id }" ;
+    aegis:matchType "must-ground" ;
+    aegis:enforcementTier "block" ;
+    aegis:tier "tree-sitter+graph" ;
+    rdfs:comment "an edit that cites no tracked work item is untracked work, and a citation that resolves to nothing is a fabricated reference — cite a real item" .
+
+aegis:op_edit_cites_work_item a aegis:OperatingPoint ;
+    aegis:kind "exact_predicate" ;
+    # Membership against a projected set: no classifier, no score to
+    # threshold. The residual error is projection staleness, which the
+    # verdict's declared freshness/cache-age already names.
+    aegis:falsePositiveTolerance 0.0 ;
+    aegis:falseNegativeTolerance 0.0 .
+
+# ═══════════════════════════════════════════════════════════════════
+# todo-needs-ticket — the structural (tree-sitter tier) companion:
+# a TODO comment must carry an id-shaped citation. Selector is a
+# tree-sitter capture query, predicate a gated must-match regex.
+# effect "deny": at this seam an untracked TODO does not land.
+# ═══════════════════════════════════════════════════════════════════
+
+aegis:sel_rust_line_comments_cam a aegis:Selector ;
+    aegis:name "rust-line-comments" ;
+    aegis:evidenceSource "(line_comment) @c" ;
+    aegis:language "rust" ;
+    aegis:tier "tree-sitter" .
+
+aegis:pred_todo_cites_item a aegis:Predicate ;
+    aegis:name "todo-needs-ticket" ;
+    aegis:evidenceSource "\\b[a-z]+-[a-z0-9]+\\b" ;
+    aegis:matchType "must-match" ;
+    aegis:gate "\\bTODO\\b" ;
+    aegis:tier "tree-sitter" .
+
+aegis:policy_todo_needs_ticket_cam a aegis:Policy ;
+    rdfs:label "todo-needs-ticket" ;
+    aegis:targets "CodeModule" ;
+    aegis:claim "for each rust line_comment matching /\\bTODO\\b/: its text matches /\\b[a-z]+-[a-z0-9]+\\b/" ;
+    aegis:boundary "action" ;
+    aegis:effect "deny" ;
+    aegis:selector aegis:sel_rust_line_comments_cam ;
+    aegis:predicate aegis:pred_todo_cites_item ;
+    aegis:constraintClass "hard" ;
+    aegis:verificationPoint "PAG" ;
+    aegis:hostedAtLayer "orchestration" ;
+    aegis:sourceType "operational" ;
+    aegis:authority "engineering-conventions" ;
+    aegis:operatingPoint aegis:op_edit_cites_work_item ;
+    aegis:latencyBudgetMs 10 .
+
+# ═══════════════════════════════════════════════════════════════════
+# VerifierRegistration — the root of trust for yupana's edit-time
+# verdicts. `publicKey` is deliberately absent HERE: a human (or the
+# e2e installer acting on a human's run) registers the key printed by
+# `yupana verifier` as a separate write, mirroring quipu's
+# "a human registers the verifier's key" model. Until then this is a
+# valid AUTHORITY record — a yupana verdict is accepted at write, and
+# TRUSTED once the key is registered.
+# ═══════════════════════════════════════════════════════════════════
+
+aegis:reg_yupana_grounding a aegis:VerifierRegistration ;
+    aegis:verifier "yupana" ;
+    aegis:attests "edit-cites-work-item" , "todo-needs-ticket" .
