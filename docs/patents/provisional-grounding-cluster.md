@@ -270,6 +270,42 @@ an inability to project the rule plane at all is a failure surface —
 a status operation exits with a reserved failure code — never a
 silently ungoverned session.
 
+In another aspect, the invention provides assignment-time governed
+context: upon the binding of an autonomous agent to a tracked work item,
+and before the agent's first action, a briefing is injected into the
+agent's context comprising the item's observed ground — the paths prior
+work on the item touched, derived from the same commit-provenance chain
+that scopes enforcement, each with the symbols defined there and the
+files their callers occupy — together with the announced enforcement
+posture (the constraint announces itself before the first violation,
+naming both legitimate exits), the central entities of the item's
+neighborhood computed by personalized graph ranking seeded from the
+item's provenance-touched entities, related in-flight items by
+co-occurrence that excludes hub entities (an entity touched by more
+distinct items than a declared degree cap evidences shared residence,
+not shared work), similar prior items each carrying its declared
+outcome so that successfully concluded work is presented as a reusable
+exemplar with the ground it touched, and the governed rules in force;
+wherein similar-work retrieval is corroboration-voted across
+heterogeneous sources (whole-text match, distinctive-term probes,
+provenance co-occurrence, and semantic similarity), a candidate
+supported by only one weak source being pruned whenever corroborated
+candidates exist and the result never being blanked; wherein semantic
+acceptance is query-relative — a hit supports only within a declared
+fraction of the query's own top non-self similarity, above a noise
+floor, with the query's self-match excluded from setting the scale, and
+with no negative inference drawn from a mid-scale score; wherein a
+lexical source that exists to compensate a weaker matcher is retired
+per-query when the stronger source answers; and wherein the retrieval
+feature set is admitted by an ablation gate that runs the shipped
+artifact with each source removed in turn and fails unless every
+source's removal strictly degrades the measured score — the
+contribution analog of the installation-time gate proof; and wherein
+every absence in the briefing is typed per the non-answer discipline,
+an unreadable store rendering as "empty because it could not be read,
+not because nothing governs you" and an item with no history rendering
+as a fresh start, never as an unbounded scope.
+
 In further aspects, the invention provides: pre-existing-condition
 discrimination in guarding, wherein a finding also present in the
 pre-action state is reported as pre-existing and attributed to no
@@ -340,6 +376,15 @@ policies, the projection engine (210) targeting a policy supertype
 durable projection cache with age declaration (216), the edit-boundary
 guard (218), the nonexistent-reference rejection (220), and the signed
 verdict return path with retained spool (222).
+
+**FIG. 10** is a diagram of assignment-time governed context, showing
+the work-item binding (230), the briefing composer (232), the
+provenance-derived observed ground with structural neighborhood (234),
+the announced enforcement posture (236), degree-capped co-occurrence
+(238), corroboration-voted similar-work retrieval over heterogeneous
+sources with query-relative semantic acceptance (240), outcome-carrying
+exemplars (242), and the ablation gate proving each retrieval source's
+contribution (244).
 
 ## Detailed Description of the Invention
 
@@ -1106,7 +1151,20 @@ observation, and one scope resolution feeds three consumers (policy,
 trace, context). The trace substrate — work-item stamping that abstains
 rather than guesses, command resolution to typed action tuples, an
 advisory recording hook that always permits — is implemented in the
-reference system; the scope-resolution and enforcement model is design
+reference system, and so are the ladder's `observed` rung and two of
+the three consumers: the reference implementation derives an observed
+scope from the paths the item's commit-provenance chain reaches
+(commit-implements-item, commit-modifies-entity, entity-carries-path),
+projects it into the fast plane under the same freshness-and-cache
+machinery as the policies, and enforces it at the edit boundary staged
+by a declared level whose effective value is ceilinged by the ambient
+mode — advise before enforce, an out-of-scope edit under advise drawing
+an advisory that names the rung, the item, and both legitimate exits
+(update the tracked item, or have an operator widen the declared
+scope), and under enforce a denial naming the same exits — while an
+unknown scope draws a once-per-session advisory, never a silent allow.
+The context consumer is the assignment-time briefing of § 11. The
+`declared` graph vocabulary and the `derived` rung remain design
 intent, and the pattern is claimed at the ladder-and-advisory level in
 the aspects.
 
@@ -1143,6 +1201,118 @@ the aspects.
   motivating deployment because it maximizes the rate at which
   plausible falsehoods are produced and minimizes per-fact human
   review.
+
+### 11. Assignment-time governed context; corroborated similar-work retrieval (FIG. 10)
+
+#### 11.1 The briefing: the constraint announces itself before the first mistake
+
+The edit-boundary guard of § 9 is the last line of defense; this
+section's machinery is the first. The same resolution that scopes
+enforcement (§ 10.1) feeds the CONTEXT consumer: when the tracker binds
+an agent to a work item (230), a session-start hook composes and
+injects a briefing (232) into the agent's context before its first
+action. Everything the briefing says is drawn from surfaces the system
+already serves — the policy projection, the governed store's context
+pipeline and graph-ranking endpoints, the analysis server's structural
+graph — never recomputed in the briefing layer.
+
+```mermaid
+flowchart TB
+    BIND["Work-item binding (230)<br/>tracker publishes the plate"] --> COMP["Briefing composer (232)"]
+    subgraph sources["Reused surfaces"]
+        GRD["Observed ground + structural<br/>neighborhood (234)"]
+        POST["Announced posture (236):<br/>what happens outside the ground"]
+        CO["Degree-capped co-occurrence (238)"]
+        SIM["Corroboration-voted similar work (240):<br/>phrase + terms + provenance + semantic"]
+        EX["Outcome-carrying exemplars (242):<br/>done => reuse; open => coordinate"]
+    end
+    COMP --> sources --> INJ["Injected context —<br/>BEFORE the first action"]
+    ABL["Ablation gate (244):<br/>each source's removal must<br/>strictly degrade measured F1"] -.proves.- sources
+```
+
+The briefing comprises: the item's observed ground (234) — the paths
+prior work on the item touched, per § 10.1's provenance chain — each
+with the symbols defined there and the files their callers occupy, so
+the agent knows where an edit will be felt from; the announced
+enforcement posture (236), stating what will happen to an edit outside
+the ground and naming both legitimate exits, so the constraint teaches
+before it ever refuses; the central entities of the neighborhood,
+computed by personalized graph ranking seeded from the item's
+provenance-touched entities; related in-flight items; similar prior
+items each carrying its declared outcome (242), a `done` outcome
+rendered as a reusable exemplar with the ground it touched ("study and
+reuse its approach before inventing one") and an open one as a
+coordination signal; and the governed rules in force. Every absence is
+typed per § 8: a store that could not be projected renders as "the
+governed sections are EMPTY because they could not be read, not because
+nothing governs you," and an item with no history renders as a fresh
+start, never as an unbounded scope.
+
+#### 11.2 Degree-capped co-occurrence (238)
+
+Relatedness by shared touched entity (§ 10.1's chain run sideways) has
+a failure mode measured in the reference implementation: an entity
+touched by many distinct work items — a build file, a contributor
+guide — manufactures relatedness between strangers. Co-occurrence
+therefore excludes hub entities: an entity whose distinct-item degree
+exceeds a declared cap contributes nothing, because shared residence is
+not shared work. The degree count includes the querying item's own
+edges, so a hub is a hub regardless of who asks.
+
+#### 11.3 Corroboration-voted retrieval; query-relative semantic acceptance (240)
+
+Similar-work retrieval draws on heterogeneous sources — whole-text
+match, distinctive-term probes, provenance co-occurrence, and (where
+the store has an embedding provider) semantic similarity — and the
+sources VOTE: a candidate nominated by a single weak source (one shared
+term) is pruned whenever corroborated candidates exist, and the result
+is never blanked — when nothing is corroborated, the uncorroborated
+candidates remain the best available answer.
+
+Semantic acceptance is deliberately query-relative. On the measured
+serving surface, even self-similarity varies severalfold across
+queries, so a fixed similarity floor misfires in both directions; a
+hit supports only when it scores within a declared fraction of the
+query's own top non-self similarity, that top exceeds a noise floor,
+and the query's self-match is excluded from setting the scale. Equally
+deliberate is the absence of a semantic veto: mid-scale true and false
+positives were measured indistinguishable (the false one scoring
+higher), so a low semantic score is not treated as evidence against a
+lexically corroborated candidate — the negative-inference rule the
+data refused to support is not claimed as a mechanism.
+
+A compensatory source retires when the deficiency it compensates is
+absent: the distinctive-term probes exist because the store's fallback
+matcher is whole-substring containment, under which two items about
+the same thing in different words never meet; when the semantic
+surface answers a query, the term probes are withheld for that query —
+a retirement justified by ablation measurement, where the collisions
+they admit on a semantic store cost more than the recall they add.
+
+#### 11.4 Ablation-gated feature admission (244)
+
+The retrieval feature set is admitted by measurement, mirroring § 6's
+installation-time gate proof: an evaluation harness runs the SHIPPED
+artifact against a labeled corpus organized as problem classes (each
+probe isolating one retrieval situation, including classes whose only
+correct answer is silence), then re-runs it with each retrieval source
+removed in turn — feature removal of the real code path, never a
+reimplementation. The gate fails unless the full configuration clears
+a declared floor AND every source's removal strictly degrades the
+measured score. As each refusal gate is proven by a refusal only it
+can produce (§ 6), each retrieval source is proven by a degradation
+only its removal causes; a feature whose absence changes nothing is
+removed rather than shipped as decoration. In the reference
+implementation this gate detected, and the implementation then
+adopted, the term-probe retirement of § 11.3.
+
+In alternative embodiments the briefing generalizes to any pre-action
+context injection driven by a task-binding event (ticket assignment,
+run-book invocation, incident acknowledgment); the vote weights and
+caps are any declared scheme in which corroboration dominates any
+single source; and the ablation gate generalizes to any feature set
+whose members must each demonstrate marginal contribution on a
+problem-classed corpus before shipping.
 
 ## Exemplary Aspects
 
@@ -1391,7 +1561,80 @@ exemplary and non-limiting.
     a reference to the exemplar, a later refusal under the policy
     citing the exemplar in its explanation.
 
-31. A system comprising a processor and storage configured to perform
+31. The method of aspect 21, wherein the observed scope comprises the
+    paths reached from the work item through a commit-provenance chain
+    in the governed store, projected into the analysis server's fast
+    plane under the same freshness declaration and durable-cache-age
+    machinery as the policies of aspect 23; wherein enforcement of the
+    observed scope is staged by a declared level whose effective value
+    is the lesser of that level and an ambient enforcement mode; and
+    wherein an action outside the observed scope draws, at an advisory
+    level, an advisory naming the scope's provenance rung, the work
+    item, and each available remedy, and at an enforcing level a
+    denial naming the same remedies, an unknown scope drawing a
+    bounded per-session advisory and never a silent allowance.
+
+32. A method of computing work relatedness by entity co-occurrence,
+    comprising excluding from the computation any entity whose count
+    of distinct co-occurring work items exceeds a declared degree cap,
+    the count including the querying item's own edges, whereby an
+    entity touched by many items' work evidences shared residence
+    rather than shared work and manufactures no relatedness.
+
+33. A method of briefing an autonomous agent, comprising: detecting
+    the binding of the agent to a tracked work item; composing, from
+    surfaces already served by a governed store and an analysis
+    server, a briefing comprising the item's observed ground with the
+    symbols defined on each path and the files referencing them, an
+    announcement of the enforcement posture applicable outside that
+    ground including each available remedy, central entities computed
+    by personalized graph ranking seeded from the item's
+    provenance-touched entities, related in-flight items per aspect
+    32, and similar prior items each with its declared outcome, a
+    successfully concluded item being presented as a reusable
+    exemplar together with the ground it touched; and injecting the
+    briefing into the agent's context before the agent's first
+    action, every absent section being rendered as a typed absence
+    distinguishing could-not-read from nothing-governs and
+    no-history-yet from unbounded scope.
+
+34. A method of retrieving similar work items, comprising: nominating
+    candidates from a plurality of heterogeneous sources including at
+    least a whole-text match, distinctive-term probes, provenance
+    co-occurrence, and, when available, semantic similarity; awarding
+    each candidate votes weighted by source; pruning candidates
+    supported by fewer votes than a corroboration threshold only when
+    at least one candidate meets the threshold, the result never
+    being emptied by the pruning; and ranking survivors by votes then
+    score.
+
+35. The method of aspect 34, wherein a semantic hit supports a
+    candidate only when its similarity score is within a declared
+    fraction of the query's highest non-self score and that highest
+    score exceeds a noise floor, the query's self-match being excluded
+    from setting the scale; and wherein no negative inference is
+    drawn from a low semantic score against an otherwise corroborated
+    candidate.
+
+36. The method of aspect 34, wherein a compensatory source — one that
+    exists to compensate a measured deficiency of another source — is
+    withheld, per query, whenever the source it compensates for
+    answers that query, the withholding being justified by an
+    ablation measurement showing the compensatory source degrades the
+    retrieval score in the compensated configuration.
+
+37. A method of admitting a retrieval feature set, comprising:
+    evaluating a shipped artifact against a labeled corpus organized
+    as problem classes, at least one class having the empty result as
+    its only correct answer; re-evaluating with each retrieval source
+    disabled in turn in the same artifact; and refusing the feature
+    set unless the full configuration clears a declared score floor
+    and each source's removal strictly degrades the score, whereby
+    each source is proven by a degradation only its removal causes,
+    as each refusal gate of aspect 10 is proven by a refusal only it
+    can produce.
+
+38. A system comprising a processor and storage configured to perform
     the methods of aspects 1, 4, 6, 8, 10, 13, 17, 18, and 23 in
     combination, wherein a governed knowledge store enforces the
     provenance, verification, and liveness schemas of aspects 1, 6,
@@ -1399,13 +1642,16 @@ exemplary and non-limiting.
     10, machine-inferred facts are quarantined and promoted per
     aspects 4 and 5, an analysis fact server consulted by the same
     agents serves tier-tagged, freshness-honest, typed-non-answer
-    responses per aspects 13, 17, and 18, and the same server enforces
+    responses per aspects 13, 17, and 18, the same server enforces
     the store's policies at the agents' edit boundary per aspects 23
-    through 30, whereby no path exists in the combined system by which
-    machine-written information is admitted untagged, presented above
-    its precision, aged into falsehood, read as healthy through
-    silence, or landed as an edit against an entity that does not
-    exist or a policy that forbids it.
+    through 31, and the same resolution briefs each agent at
+    assignment time per aspects 32 through 37, whereby no path exists
+    in the combined system by which machine-written information is
+    admitted untagged, presented above its precision, aged into
+    falsehood, read as healthy through silence, or landed as an edit
+    against an entity that does not exist or a policy that forbids
+    it, and no agent begins governed work uninformed of the ground,
+    the boundary, and the precedent that govern it.
 
 ---
 
