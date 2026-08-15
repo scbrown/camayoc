@@ -1064,6 +1064,23 @@ advisory, post-action, or escalation seams rather than hard pre-action
 denial, and any fact it records lands machine-inferred and quarantined
 per §§ 2–3.
 
+In a further contemplated embodiment the loop closes in the reverse
+direction — *policy by example*: a human reviewing a recorded edit or
+verdict, or rejecting an escalated request, designates it an exemplar
+in one gesture; the system drafts a candidate policy from the exemplar
+— extracting the structural context as the selector, offering
+predicate candidates at each tier (exact identifier membership, an
+approvable narrowing pattern, and the exemplar's embedding as a
+similarity anchor), and scaffolding the metadata the definition-time
+placement validation requires, which still runs and still refuses a
+malformed result; the candidate is replayed against recorded history
+before creation so the human sees what it would have stopped and its
+false-positive surface; the accepted policy is created advisory and
+promoted to enforcing only through evidence gates over recorded
+traffic; and the created policy retains a link to its motivating
+exemplar, so that a later refusal under it is explained by the very
+case that birthed it.
+
 In alternative embodiments the fast plane is any in-memory or
 edge-resident evaluation engine consuming a projection of a governed
 policy store (API gateways over policy databases, admission
@@ -1357,7 +1374,24 @@ exemplary and non-limiting.
     any resulting fact with a machine-inferred provenance kind subject
     to quarantine per aspect 4.
 
-30. A system comprising a processor and storage configured to perform
+30. A method of creating a policy from an observed action, comprising:
+    receiving a designation of a recorded action, verdict, or rejected
+    escalation request as an exemplar; deriving from the exemplar a
+    candidate policy comprising a structural selector extracted from
+    the exemplar's context, one or more predicate candidates including
+    at least an exact-membership form and a similarity form anchored
+    on an embedded representation of the exemplar, and scaffolded
+    metadata satisfying a definition-time placement validation that is
+    nonetheless evaluated and may refuse the candidate; replaying the
+    candidate against recorded history and presenting the actions it
+    would have affected before the candidate is created; creating the
+    accepted candidate with an advisory effect, promotion to an
+    enforcing effect being conditioned on evidence gates over
+    subsequently recorded traffic; and retaining on the created policy
+    a reference to the exemplar, a later refusal under the policy
+    citing the exemplar in its explanation.
+
+31. A system comprising a processor and storage configured to perform
     the methods of aspects 1, 4, 6, 8, 10, 13, 17, 18, and 23 in
     combination, wherein a governed knowledge store enforces the
     provenance, verification, and liveness schemas of aspects 1, 6,
@@ -1367,7 +1401,7 @@ exemplary and non-limiting.
     agents serves tier-tagged, freshness-honest, typed-non-answer
     responses per aspects 13, 17, and 18, and the same server enforces
     the store's policies at the agents' edit boundary per aspects 23
-    through 29, whereby no path exists in the combined system by which
+    through 30, whereby no path exists in the combined system by which
     machine-written information is admitted untagged, presented above
     its precision, aged into falsehood, read as healthy through
     silence, or landed as an edit against an entity that does not
