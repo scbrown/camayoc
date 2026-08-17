@@ -109,6 +109,7 @@ decides who fixes it:
 | Trust lattice, labels, query-time floors | **exists** | `src/lattice.rs`, `src/store/labels.rs:730` |
 | HTTP or CLI route to *set* a graph label | **does not exist** | only caller of `set_graph_label` is `src/pack.rs:450` |
 | Labelling a graph `/episode` created | **refused** — the write interns the IRI without registering it | `src/store/labels.rs:344-350` vs `src/episode/mod.rs:371` |
+| Store-level primitive that *registers* a graph | **exists, with no caller** | `Store::graph_create`, `src/store/overlays.rs:42` |
 
 So routing is blocked in a specific and fixable way rather than generally:
 
@@ -121,12 +122,28 @@ So routing is blocked in a specific and fixable way rather than generally:
    per-row annotation, query-time floors — is built and reachable only from
    Rust. A plane camayoc created could not be labelled `low-trust` even by hand.
 
-**What unblocks this, in order.** Quipu needs a route that registers a graph and
-one that sets its label; camayoc then moves agent-recorded facts to `/episode`
-with `graph` derived from `sourceKind`. Until the label route exists, routing
-alone would produce separate graphs that every query still reads at equal trust
-— which is the appearance of quarantine without the substance, and worse than
-none. That ordering is why this is not partially shipped.
+**What unblocks this, in order.** Re-verified 2026-08-17, and the estimate is
+smaller than it looks, because the missing pieces are *exposure* rather than
+mechanism:
+
+- `Store::graph_create` (`src/store/overlays.rs:42`) is **exactly** the
+  registration `set_graph_label` presumes — written, tested, idempotent, and
+  refusing a class change. It has **no caller outside its own tests**.
+- `Store::set_graph_label` (`src/store/labels.rs:208`) is likewise built and
+  reachable only from Rust, its single production caller being `src/pack.rs:450`.
+
+So quipu does not need two mechanisms built; it needs `graph_create` invoked
+when `/episode` is handed a `graph` it has not seen (or a route that does it),
+and an HTTP route over `set_graph_label`. Camayoc then moves agent-recorded
+facts to `/episode` with `graph` derived from `sourceKind` — and note that
+`/episode`'s `graph` field **already works**, so camayoc's half is not blocked
+on routing at all, only on the labels.
+
+Until the label route exists, routing alone would produce separate graphs that
+every query still reads at equal trust — the appearance of quarantine without
+the substance, and worse than none. **That ordering, not the missing routing,
+is why this is not partially shipped**, and it is worth being precise about:
+camayoc could route today and must not.
 
 This is a `built` blocker in the sense of §1.8, not a `stated` one: the
 citations above are the demonstration.
