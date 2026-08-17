@@ -41,6 +41,38 @@ The gate proofs (`scripts/gate_probe.sh`) must be able to FAIL, and
 `tests/test_gate_probe.py` is what holds them to it — a probe that cannot
 distinguish a refusal from an unreachable store is not a gate.
 
+## Beads: this repo is JSONL-only, no Dolt
+
+**Do not run `bd init` here, and do not create a Dolt database.**
+
+`.beads/issues.jsonl` **is** this repo's tracker — not an export of one. There
+is no Dolt database and `bd` 1.2.1 states that "Dolt is the default and only
+supported storage backend", so `bd` commands cannot read or write this tracker.
+`bd init` would create a second identity alongside the `project_id` already in
+`.beads/metadata.json` rather than adopting it.
+
+Use the script:
+
+```bash
+scripts/beads-jsonl.py list [--status open]
+scripts/beads-jsonl.py close <id> --reason "..."
+scripts/beads-jsonl.py note  <id> --text   "..."
+```
+
+It refuses any write that loses information — a record disappearing, a closed
+issue reopening, notes or comments shrinking — because the file has no schema
+enforcement and one bad write is a silent data loss committed as a normal diff.
+`note` appends and never replaces.
+
+Commit these changes normally, with `chore(beads): … (jsonl export)` in the
+subject, matching the convention already in this repo's history.
+
+**On the managed block below.** It describes a Dolt-backed architecture and
+calls hand-editing the JSONL an anti-pattern. That warning is correct *when a
+Dolt store exists*, because then the JSONL is derived and the next export
+reverts the edit. Here there is no store to derive from and nothing to revert
+it. Where that block and this section disagree, this section governs.
+
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:46cd31e7 -->
 ## Beads Issue Tracker
 
