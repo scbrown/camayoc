@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_blockers_by_evidence_kind",
+  "description": "verification-and-liveness Q10: blockers separated into stated (a claim) and built (a demonstrated failing case). The two were confused three times in one night.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?blocker ?label ?evidence ?demonstratedBy WHERE { ?blocker a aegis:Blocker ; rdfs:label ?label ; aegis:blockerEvidence ?evidence . OPTIONAL { ?blocker aegis:demonstratedBy ?demonstratedBy } } ORDER BY ?evidence ?label",
+  "params": []
+}

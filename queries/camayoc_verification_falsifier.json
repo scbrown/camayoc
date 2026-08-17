@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_verification_falsifier",
+  "description": "verification-and-liveness Q1: the falsifier recorded for a verification \u2014 the result that would have proved it wrong.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?verification ?label ?falsifier WHERE { BIND(<{verification}> AS ?verification) ?verification a aegis:Verification ; rdfs:label ?label ; aegis:falsifier ?falsifier . }",
+  "params": [
+    {
+      "name": "verification",
+      "type": "iri",
+      "required": true,
+      "description": "Verification IRI."
+    }
+  ]
+}

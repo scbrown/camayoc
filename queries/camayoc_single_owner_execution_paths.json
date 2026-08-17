@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_single_owner_execution_paths",
+  "description": "verification-and-liveness Q13: execution paths resolving into a location owned by a single principal rather than a shared, refreshed, read-only checkout. Observable execution-path risk, not a liveness judgment.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?path ?label ?owner WHERE { ?path a aegis:ExecutionPath ; rdfs:label ?label ; aegis:ownedBy ?owner . } ORDER BY ?owner ?label",
+  "params": []
+}

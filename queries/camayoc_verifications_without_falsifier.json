@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_verifications_without_falsifier",
+  "description": "verification-and-liveness Q2: verifications carrying no falsifier \u2014 assertions wearing a verification's clothes. Structurally empty for gated writes; non-empty only for data that entered before the M1 shape or around it, which is exactly what it is for.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?verification ?label WHERE { ?verification a aegis:Verification ; rdfs:label ?label . FILTER NOT EXISTS { ?verification aegis:falsifier ?f } } ORDER BY ?label",
+  "params": []
+}

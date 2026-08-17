@@ -19,3 +19,8 @@ competency question:
 # The parsed suite, with its watermark.
 competency-list:
     @python3 scripts/competency.py --list
+
+# Per-question stored-query coverage for the competency suite (camayoc-102).
+# A question with no stored query is an ontology GAP reported as itself.
+query-coverage *args:
+    @python3 scripts/query_coverage.py {{args}}

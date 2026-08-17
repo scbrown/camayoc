@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_execution_path_for_mechanism",
+  "description": "verification-and-liveness Q11: which artifact actually runs for a mechanism, from where, refreshed by what, and when it was last refreshed.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?path ?label ?executesArtifact ?repositorySource ?refreshedBy ?lastRefreshedAt WHERE { BIND(<{mechanism}> AS ?path) ?path a aegis:ExecutionPath ; rdfs:label ?label ; aegis:executesArtifact ?executesArtifact ; aegis:repositorySource ?repositorySource ; aegis:refreshedBy ?refreshedBy . OPTIONAL { ?path aegis:lastRefreshedAt ?lastRefreshedAt } }",
+  "params": [
+    {
+      "name": "mechanism",
+      "type": "iri",
+      "required": true,
+      "description": "ExecutionPath IRI."
+    }
+  ]
+}

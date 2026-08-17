@@ -1,0 +1,92 @@
+# Fixture graph for the verification-and-liveness competency queries.
+#
+# Deliberately seeded so each query has BOTH a positive finding and a control
+# negative. The competency suite's own acceptance criterion demands this: "each
+# query needs a seeded positive finding and a control negative; an empty result
+# without those arms is not proof that the fleet is healthy." A fixture that
+# only contains healthy data would let every query return zero rows and pass.
+
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex:    <http://camayoc.test/fixture/> .
+
+# --- Verifications --------------------------------------------------------
+# Positive control for Q1: a well-formed verification that names its falsifier.
+ex:verification-byte-identity
+    a aegis:Verification ;
+    rdfs:label "byte-identity check on the installed guard" ;
+    aegis:sourceKind "observed" ;
+    aegis:falsifier "a differing sha256 between installed and repository copy" .
+
+ex:verification-schema-columns
+    a aegis:Verification ;
+    rdfs:label "schema comparison including column set" ;
+    aegis:sourceKind "observed" ;
+    aegis:falsifier "a column present in one schema and absent from the other" .
+
+# Positive finding for Q2, and the reason Q2 exists at all.
+#
+# A Verification with no falsifier CANNOT be written through a gated ingress —
+# the M1 shape refuses it (shapes/core.shapes.ttl:85). So this node models data
+# that entered BEFORE the shape existed, or through a path that bypassed it.
+# That is precisely the population Q2 is meant to find: the store's own legacy,
+# not new writes. See tests/test_competency_queries.py for why this matters.
+ex:verification-legacy-belt-and-braces
+    a aegis:Verification ;
+    rdfs:label "belt-and-braces guard check (pre-gate, A1)" ;
+    aegis:sourceKind "observed" .
+
+ex:verification-legacy-grep-count
+    a aegis:Verification ;
+    rdfs:label "grep -c over the test payload (pre-gate, A5)" ;
+    aegis:sourceKind "observed" .
+
+# --- Blockers -------------------------------------------------------------
+# Q10 needs both arms populated or it cannot show the distinction it exists for.
+ex:blocker-stated
+    a aegis:Blocker ;
+    rdfs:label "upstream API said to be rate-limiting us" ;
+    aegis:sourceKind "declared" ;
+    aegis:blockerEvidence "stated" .
+
+ex:blocker-built
+    a aegis:Blocker ;
+    rdfs:label "reproduced 429 with a minimal request loop" ;
+    aegis:sourceKind "observed" ;
+    aegis:blockerEvidence "built" ;
+    aegis:demonstratedBy ex:verification-byte-identity .
+
+# --- Execution paths ------------------------------------------------------
+# Q11 positive: a fully-described path.
+ex:path-shared-checkout
+    a aegis:ExecutionPath ;
+    rdfs:label "policy guard, shared read-only checkout" ;
+    aegis:sourceKind "observed" ;
+    aegis:executesArtifact "/opt/aegis/current/guard.sh" ;
+    aegis:repositorySource "scbrown/camayoc:scripts/guard.sh" ;
+    aegis:refreshedBy "deploy pipeline" ;
+    aegis:lastRefreshedAt "2026-08-17T09:00:00Z" .
+
+# Q13 positive: the single-principal-owned path, which is the risk shape.
+ex:path-home-working-tree
+    a aegis:ExecutionPath ;
+    rdfs:label "policy guard, run from an individual working tree" ;
+    aegis:sourceKind "observed" ;
+    aegis:executesArtifact "/home/strider/camayoc/scripts/guard.sh" ;
+    aegis:repositorySource "scbrown/camayoc:scripts/guard.sh" ;
+    aegis:refreshedBy "whoever remembers to git pull" ;
+    aegis:ownedBy ex:principal-strider ;
+    aegis:lastRefreshedAt "2026-07-05T11:30:00Z" .
+
+# Q13 control negative: also owned, but by a shared service principal. Present
+# so the query cannot pass by returning every owned path indiscriminately —
+# a reader must be able to tell these two apart.
+ex:path-service-owned
+    a aegis:ExecutionPath ;
+    rdfs:label "metrics reconciler, service-owned location" ;
+    aegis:sourceKind "observed" ;
+    aegis:executesArtifact "/srv/aegis/reconcile.sh" ;
+    aegis:repositorySource "scbrown/camayoc:scripts/reconcile_metrics.sh" ;
+    aegis:refreshedBy "deploy pipeline" ;
+    aegis:ownedBy ex:principal-shared-service ;
+    aegis:lastRefreshedAt "2026-08-17T09:00:00Z" .
