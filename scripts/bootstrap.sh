@@ -8,9 +8,10 @@
 #   4. (--with-claude-hooks) merge the SessionStart hook into project
 #      .claude/settings.json for installs that skipped the plugin
 #
-# Exits non-zero only when the store accepted what it must refuse, or when
-# nothing could be installed. A gate that is off is a report, never a
-# workaround.
+# Exit codes: 1 nothing could be installed; 2 the store ACCEPTED what it must
+# refuse; 3 no verdict could be reached at all. A gate that is off is a report,
+# never a workaround — and a gate we could not question is neither a pass nor a
+# failure, so it gets its own code rather than being rounded to either.
 set -u
 
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
@@ -155,80 +156,11 @@ for query in "$PLUGIN_ROOT"/queries/*.json; do
     || { say "query load FAILED ($query): $R"; exit 1; }
 done
 
-PROBE=$(curl -s -m 10 -X POST "$SERVER/episode" -H 'Content-Type: application/json' "${AUTH[@]}" -d '{
-  "name": "camayoc-gate-probe-untagged",
-  "nodes": [{"name": "camayoc-gate-probe", "type": "Decision",
-             "properties": {"chose": "nothing — this is a gate probe"}}]
-}' 2>&1)
-if printf '%s' "$PROBE" | grep -qi 'conforms.*false\|violation\|refus\|sourceKind'; then
-  say "gate: PROVEN — untagged probe refused, as it must be."
-else
-  say "gate: NOT PROVEN — the store ACCEPTED an untagged Decision."
-  say "  response: $PROBE"
-  say "  Enable [quipu.shacl] validate_on_write (bootstrap writes this into"
-  say "  .bobbin/config.toml for servers it starts; a pre-existing server"
-  say "  needs its own config fixed and a restart)."
-  say "  Not retrying, not routing around. Fix the gate first."
-  exit 2
-fi
-
-# A verification that is otherwise well-formed but cannot say what would have
-# disproved it must also be refused.  This is deliberately a separate arm from
-# the untagged Decision above: otherwise a sourceKind failure could make a
-# missing-falsifier shape look enforced when it never ran.
-PROBE=$(curl -s -m 10 -X POST "$SERVER/episode" -H 'Content-Type: application/json' "${AUTH[@]}" -d '{
-  "name": "camayoc-gate-probe-no-falsifier",
-  "nodes": [{"name": "camayoc-falsifier-probe", "type": "Verification",
-             "description": "deliberately lacks its falsifier",
-             "properties": {"sourceKind": "observed"}}]
-}' 2>&1)
-if printf '%s' "$PROBE" | grep -qi 'conforms.*false\|violation\|refus\|falsifier'; then
-  say "gate: PROVEN — falsifier-less Verification refused, as it must be."
-else
-  say "gate: NOT PROVEN — the store ACCEPTED a Verification without a falsifier."
-  say "  response: $PROBE"
-  say "  Load the current camayoc core ontology and shapes, then enable write-time SHACL validation."
-  exit 2
-fi
-
-# Execution-path provenance is also a gate, not a checklist someone remembers:
-# the executed artifact, repository source, and refresh mechanism are the facts
-# a later reader needs to compare. Omit only repositorySource so this is a
-# discriminating M3 arm rather than another sourceKind test.
-PROBE=$(curl -s -m 10 -X POST "$SERVER/episode" -H 'Content-Type: application/json' "${AUTH[@]}" -d '{
-  "name": "camayoc-gate-probe-incomplete-execution-path",
-  "nodes": [{"name": "camayoc-execution-path-probe", "type": "ExecutionPath",
-             "description": "deliberately lacks its repository source",
-             "properties": {"sourceKind": "observed",
-                            "executesArtifact": "installed-probe",
-                            "refreshedBy": "refresh-probe"}}]
-}' 2>&1)
-if printf '%s' "$PROBE" | grep -qi 'conforms.*false\|violation\|refus\|repositorySource'; then
-  say "gate: PROVEN — incomplete ExecutionPath refused, as it must be."
-else
-  say "gate: NOT PROVEN — the store ACCEPTED an ExecutionPath without its repository source."
-  say "  response: $PROBE"
-  say "  Load the current camayoc core ontology and shapes, then enable write-time SHACL validation."
-  exit 2
-fi
-
-# A blocker that does not say whether it is merely stated or actually built is
-# the M4 category error. Omit only blockerEvidence; a sourceKind failure here
-# would prove the wrong gate.
-PROBE=$(curl -s -m 10 -X POST "$SERVER/episode" -H 'Content-Type: application/json' "${AUTH[@]}" -d '{
-  "name": "camayoc-gate-probe-unclassified-blocker",
-  "nodes": [{"name": "camayoc-blocker-probe", "type": "Blocker",
-             "description": "deliberately lacks its blocker evidence kind",
-             "properties": {"sourceKind": "observed"}}]
-}' 2>&1)
-if printf '%s' "$PROBE" | grep -qi 'conforms.*false\|violation\|refus\|blockerEvidence'; then
-  say "gate: PROVEN — unclassified Blocker refused, as it must be."
-else
-  say "gate: NOT PROVEN — the store ACCEPTED a Blocker without evidence kind."
-  say "  response: $PROBE"
-  say "  Load the current camayoc core ontology and shapes, then enable write-time SHACL validation."
-  exit 2
-fi
+# The gate proof lives in its own script so it can be run and TESTED without
+# an install (camayoc-045). tests/test_gate_probe.py drives run_gate_probes
+# against stub servers that refuse, accept, echo, fault and vanish.
+. "$PLUGIN_ROOT/scripts/gate_probe.sh"
+run_gate_probes
 
 [ "${1:-}" = "--with-claude-hooks" ] && install_claude_hooks
 

@@ -29,13 +29,17 @@ harness), scbrown/hank (code structure), scbrown/bobbin (retrieval).
 
 ```bash
 just check           # markdown lint (grows the competency eval gate)
-just test            # placeholder until slice 1
+just test            # metrics slice + gate-probe refusal tests
 ```
 
 ## Before Every Push
 
-Run `just check`. Do not push on failure. Work is not complete until
-`git push` succeeds.
+Run `just check` and `just test`. Do not push on failure. Work is not
+complete until `git push` succeeds.
+
+The gate proofs (`scripts/gate_probe.sh`) must be able to FAIL, and
+`tests/test_gate_probe.py` is what holds them to it — a probe that cannot
+distinguish a refusal from an unreachable store is not a gate.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:46cd31e7 -->
 ## Beads Issue Tracker
