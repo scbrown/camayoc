@@ -64,9 +64,67 @@ R=$(python3 -c 'import json,sys; print(json.dumps({"turtle": open(sys.argv[1]).r
   say "  A refusal means the gate is working — fix the walker output, don't bypass."
   exit 2
 }
-COUNT=$(printf '%s' "$R" | sed -n 's/.*"count"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/p')
-CONFORMS=$(printf '%s' "$R" | sed -n 's/.*"conforms"[[:space:]]*:[[:space:]]*\(true\|false\).*/\1/p')
-say "seed: ingested ${COUNT:-?} facts (conforms: ${CONFORMS:-n/a})"
+# The idempotency rule this repo teaches (skills/camayoc/SKILL.md 52-54) is
+# "branch on `outcome`, never on `count`; `unchanged` is success". camayoc-16y
+# caught the seed path not following it. Two things were wrong:
+#
+#   * the response was read with sed over the raw body, so a "count" appearing
+#     anywhere in it matched — the same read-a-verdict-out-of-text mistake the
+#     gate probes had (camayoc-045);
+#   * the status line led with the count, so a converged re-run announced
+#     "ingested 0 facts". That is the SUCCESS case reading as a failure, which
+#     is precisely what the rule exists to prevent.
+#
+# The rule is written for POST /episode and the seed uses POST /knot, so
+# whether /knot carries an `outcome` at all is quipu's contract and not ours.
+# This branches on it when present and says plainly when it is absent, rather
+# than inventing a convergence signal the store never sent.
+python3 -c '
+import json, sys
+
+try:
+    doc = json.loads(sys.argv[1])
+except Exception:
+    doc = None
+
+if not isinstance(doc, dict):
+    print("seed: the store accepted the write, but its answer was not JSON we could read.")
+    print("seed: convergence is unconfirmed — that is \"could not tell\", not \"nothing landed\".")
+    raise SystemExit(0)
+
+outcome, count, conforms = doc.get("outcome"), doc.get("count"), doc.get("conforms")
+
+# A refusal that arrives with a 2xx would otherwise slide past: curl -sf caught
+# the HTTP-level refusal above, and this catches the one that did not use it.
+if conforms is False:
+    print("seed: ingest REFUSED — the store returned conforms: false.")
+    for violation in (doc.get("violations") or doc.get("results") or [])[:5]:
+        if isinstance(violation, dict):
+            violation = violation.get("message") or json.dumps(violation)
+        print(f"seed:   {violation}")
+    print("seed: A refusal means the gate is working — fix the walker output, do not bypass.")
+    raise SystemExit(2)
+
+if isinstance(outcome, str):
+    if outcome == "unchanged":
+        print("seed: unchanged — the graph already holds this walk, which is SUCCESS.")
+        print("seed: the seed is meant to converge on a re-run, not to accumulate.")
+    else:
+        print(f"seed: outcome {outcome}")
+else:
+    print("seed: the store sent no `outcome`, so convergence cannot be confirmed from")
+    print("seed: this response. Below is what it did send.")
+
+detail = []
+if isinstance(count, int):
+    detail.append(f"count {count}")
+if conforms is True:
+    detail.append("conforms true")
+if detail:
+    print("seed: " + ", ".join(detail) + " — detail, not the verdict. A count of 0 on a")
+    print("seed: re-run is convergence, not a failed ingest.")
+' "$R" || exit 2
+
 say "seed: done — modules, symbols, documents and sections are now anchors for"
 say "seed: decisions ('what did we decide about X' has its X). Re-run after big"
 say "seed: refactors; the ingest is idempotent at the fact level."
