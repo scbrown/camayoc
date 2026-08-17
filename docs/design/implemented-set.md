@@ -23,7 +23,7 @@ who finds one unbuilt claim stops believing the built ones.
 | 3 | Governed promotion | ❌ **Design-only** | `docs/design/ingress.md:109-111` defines it; no implementation. Doubly blocked: it is a graph *move* between planes, and the planes do not exist. See `camayoc-mip`. |
 | 4 | Falsifier-gated verification | ✅ **Built** | `shapes/core.shapes.ttl:85-89` — `aegis:falsifier`, `sh:minCount 1` on `Verification`, with the refusal message. Probed by `scripts/gate_probe.sh`; the probe's own discrimination is `camayoc-104`. |
 | 5 | Liveness by deliberate absence | 🟡 **Partial — and the partiality is the point** | The *vocabulary* exists (`ontology/core.ttl:74, :87` — `executionPath`, `pathOwner`), and the deliberate absence is explicit at `shapes/core.shapes.ttl:130`: liveness "belongs with hank/quipu, not a made-up write-time liveness rule". What does **not** exist is the read-time side: the liveness questions (verification-and-liveness #6-10) have **no stored queries**. See §2. |
-| 6 | Installation-time gate proof | ✅ **Built** | `scripts/gate_probe.sh` (248 lines) with `tests/test_gate_probe.py` (302 lines) holding the probes to being able to fail. Independence of the arms is **not** yet established — `camayoc-104`. |
+| 6 | Installation-time gate proof | ✅ **Built, and now independence-proven** | `scripts/gate_probe.sh` with `tests/test_gate_probe.py` holding the probes to being able to fail. `camayoc-104` closed the remaining gap: each probe is shown to omit exactly one required property (parsed from the shapes, not hardcoded), and a store enforcing one shape at a time proves only its own arm. Claimable as stated. |
 | 7 | Tier-honest serving | 🟡 **Partial** | `aegis:tier` is carried on policies (`shapes/policies/edit-grounding.ttl:49, :71, :78`) and the tier vocabulary is in `ontology/core.ttl:54`. But camayoc does not *serve* facts — yupana does. What camayoc owns is the tag's definition and its mandatory-ness, not the serving. **Claim the vocabulary; do not claim the serving.** |
 | 8 | Typed non-answers | 🟡 **Partial, one instance** | Fully realised in exactly one place: `scripts/competency.py` returns `Empty \| Partial \| Full` with a `NO COVERAGE` verdict, method/threshold/watermark carried, 18 tests. That is a real instance of the discipline. It is **one** instance, on the ontology's own coverage, not a general non-answer taxonomy across camayoc's surfaces. |
 
@@ -86,17 +86,23 @@ the four-beads-one-cause family (#6-#10) that `camayoc-101` proposes as the
 paper's empirical core, and the falsifier questions (#1-#5) that motivate the
 aspect the paper is strongest on.
 
-That is a coverage figure of **4/47 ≈ 9%**, and it is the honest headline for
-the evaluation section rather than something to work around. The competency
-suite's own rule — every question must eventually run as a named stored query —
-is currently met by under a tenth of it.
+That was a coverage figure of **4/47 ≈ 9%** when this audit was written.
 
-The consequence for drafting order is concrete: `camayoc-101` proposes writing
-up the incident night as a labelled corpus, and the natural reviewer question is
-"could your system have *answered* these questions at the time?". Today the
-answer is no, because the queries do not exist. Either they get written
-(`camayoc-102`), or the paper is explicit that the corpus motivates a
-capability rather than demonstrating one.
+> **Update after `camayoc-102`:** the verification-and-liveness slice now has
+> **5 of its 13** questions stored and executing (`just query-coverage`), and
+> working it produced a better finding than the count. **Only five of the
+> thirteen can be expressed at all** with today's vocabulary; the remaining
+> eight name terms the ontology does not carry, so they are *competency gaps*
+> rather than unwritten queries. Aspect 5's read-time gap above is the largest
+> of them: Q6 and Q8 need a `Principal` and an observed liveness record to join
+> against, and neither is modelled.
+
+The consequence for drafting order is unchanged and concrete: `camayoc-101`
+writes up the incident night as a labelled corpus, and the natural reviewer
+question is "could your system have *answered* these questions at the time?".
+The answer is still no — but it is now a measured and attributable no, with
+eight named missing terms rather than a vague shortfall. The paper states that
+the corpus motivates a capability rather than demonstrating one.
 
 ## 3. Method
 
@@ -104,4 +110,4 @@ Each row was produced by grepping for the mechanism outside `docs/` and
 `competency/` — a term that appears only in design prose is design-only by
 definition, which is exactly how aspects 2 and 3 were classified. Gates green at
 the time of writing: `just test` 46 passed (1 skipped), `just check` 0 issues
-across 17 files.
+across 17 files. After `camayoc-102` and `camayoc-104`: 65 passed, 21 files.

@@ -2,8 +2,9 @@
 
 > **Implementation status (2026-08-17):** 🟡 **Planned.** Nothing drafted. The
 > evidence is unusually asymmetric: the *corpus* is strong and already
-> taxonomized, the *evaluation* is thin — 4 of 47 competency questions run as
-> stored queries. Read
+> taxonomized, the *evaluation* is thin — 5 of the verification slice's 13
+> competency questions run as stored queries (`just query-coverage`), and the
+> other 8 are ontology gaps rather than unwritten queries. Read
 > [`implemented-set.md`](implemented-set.md) before drafting a single sentence;
 > it is the gate on what this paper may claim.
 
@@ -99,8 +100,10 @@ reporting (convergent, both keep, neither claims).
 - **C4 — Installation-time gate proof.** Each refusal gate is proven by a probe
   that omits exactly one required property, so the arms discriminate — the
   paper's own thesis applied to the paper's own installer. Built
-  (`scripts/gate_probe.sh`, `tests/test_gate_probe.py`); *independence* of the
-  arms is open (`camayoc-104`) and is a precondition for claiming C4 as stated.
+  (`scripts/gate_probe.sh`, `tests/test_gate_probe.py`), and **independence is
+  now established** (`camayoc-104`): each probe provably omits exactly one
+  required property, and a store enforcing one shape at a time proves only its
+  own arm. Claimable as stated.
 - **C5 — Liveness by deliberate absence, as a design position.** Judgments that
   decay are never stored; liveness is a read-time join. Claim the position and
   the vocabulary. **Do not claim the mechanism** — see §6.
@@ -162,33 +165,51 @@ The suite is 47 questions across three slices, machine-readable and watermarked
 (`sha256:7a0cc4abad386885`, `scripts/competency.py`). The suite sets its own bar:
 *every question must eventually run as a named stored query.*
 
-**Current coverage: 4 of 47 (≈9%).** All four stored queries serve the metrics
-slice. The verification-and-liveness slice — the one this paper's corpus is
-about — has **zero**.
+**Coverage of the verification-and-liveness slice: 5 of 13 (`Partial`).**
+Reported per question by `scripts/query_coverage.py` (`just query-coverage`),
+and the figure is pinned by a test so it cannot drift silently.
 
-That is the evaluation section's headline and it must be stated, not managed.
-It has a direct consequence for the paper's claim: the corpus in §4 **motivates**
-a capability rather than demonstrating one. A reviewer will ask "could your
-system have answered these questions on the night?", and today the answer is no.
+Working `camayoc-102` turned the evaluation gap into the evaluation's most
+interesting result. **Only five of the slice's thirteen questions can be
+expressed at all with today's vocabulary.** The other eight name things the
+ontology does not carry — and a question that cannot be expressed as a query is
+an ontology gap, which is a finding rather than a backlog item
+(`camayoc-b6h`).
 
-Three routes, in order of preference:
+| | Questions | State |
+|---|---|---|
+| Stored and executing | Q1, Q2, Q10, Q11, Q13 | falsifier retrieval, unfalsifiable verifications, blockers by evidence kind, execution paths, single-owner paths |
+| **Competency gaps** | Q3, Q4, Q5, Q6, Q7, Q8, Q9, Q12 | each reported with the terms it would need |
 
-1. **Close the gap for the slice that matters** (`camayoc-102`): implement Q1–Q13
-   as stored queries against a fixture graph. The suite's own acceptance
-   criterion already demands that Q2 and Q6 return **non-empty** results on a
-   deliberately seeded fixture — *a query that cannot return findings has the
-   same defect as the checks in section A, one level up.* That self-application
-   is a paper-worthy sentence and it is already written down.
-2. **Report per-question coverage as a result**, using the `Empty | Partial |
-   Full` verdict the tooling already produces, and treat the gaps as findings —
-   a question that cannot be expressed as a query is an ontology gap
-   (`camayoc-b6h`).
-3. Draft without an evaluation and submit as a design paper. **Not recommended**;
-   the competency-question methodology is the reason an ontology paper is
-   reviewable at all, and skipping it forfeits the strongest available frame.
+The gaps are the paper's real evaluation finding, and three of them are
+pointed:
 
-**Route 1 is the recommendation, and it is the critical path.** Everything else
-in this plan is writing; this is the only item that requires building.
+- **Q6 and Q8 (liveness) are the largest gap, and they block the family §4
+  leads with.** There is no `Principal` and no observed liveness record. This is
+  *correctly* not a stored fact — ingress rule 5 forbids storing judgments that
+  decay — but a read-time join still needs something to join *to*, and nothing
+  is modelled. **The paper must say this plainly: the four-beads-one-cause
+  corpus motivates a capability the ontology cannot yet express.**
+- **Q4 asks which checks were proven adversarial rather than asserted to work.**
+  The ontology cannot record that property — even though `camayoc-104` just
+  established exactly that property for the gate probes. The system practises a
+  discipline it cannot yet describe. That is a good, honest paragraph.
+- **Q2 has a subtlety worth a footnote.** A `Verification` without a falsifier
+  cannot be written through a gated ingress, so Q2's population is precisely the
+  store's *pre-gate legacy*, and against a store that was always gated it
+  correctly returns nothing. The fixture seeds pre-gate rows so the query is
+  proven able to find them.
+
+Every stored query executes against a fixture with **both arms** — a seeded
+positive finding and a control negative — per the suite's own acceptance
+criterion: *a query that cannot return findings has the same defect as the
+checks in section A, one level up.* That self-application is the sentence to
+put in §7.
+
+**What this means for the claim.** The corpus in §4 still **motivates** a
+capability rather than demonstrating one, and the paper must say so. But the
+shape of the shortfall is now measured and attributable rather than vague:
+five questions answerable, eight blocked on eight named terms.
 
 ## 6. Scope boundaries (honest)
 
@@ -236,11 +257,15 @@ From [`implemented-set.md`](implemented-set.md), which is authoritative:
 1. ~~Agree the yupana boundary~~ — done, [`thesis-boundary.md`](thesis-boundary.md).
 2. ~~Produce the implemented set~~ — done, [`implemented-set.md`](implemented-set.md).
 3. ~~Write up the incident corpus with denominator and rate~~ — done, [`incident-corpus.md`](incident-corpus.md).
-4. **Prove the gate probes adversarially** (`camayoc-104`) — precondition for C4.
-5. **Close the competency-query gap for the verification slice** (`camayoc-102`)
-   — the critical path, and the only build work.
-6. Draft §§1–5 from the mechanism docs; they are stable.
-7. Draft §7 last, against whatever coverage step 5 actually reaches.
+4. ~~Prove the gate probes adversarially~~ — done (`camayoc-104`); C4 is claimable.
+5. ~~Close the competency-query gap for the verification slice~~ — done
+   (`camayoc-102`), reaching 5/13 and converting the other 8 into named
+   ontology gaps.
+6. **Decide whether to close any of the eight gaps before drafting.** Q6/Q8
+   (liveness) is the one that changes what §4 can claim; the rest can ship as
+   future work. This is now the only open build decision, and it is ian's.
+7. Draft §§1–5 from the mechanism docs; they are stable.
+8. Draft §7 last, against whatever coverage step 6 settles on.
 
 ## 9. What this paper is not
 
