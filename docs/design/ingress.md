@@ -10,14 +10,43 @@
 > source change is merged, but it is not yet an installed/runtime producer: the
 > sanctioned installer consumes release artifacts and no verdict-drain schedule is
 > present. Until both are true, the blocker query's zero is an explicit gap, not
-> evidence that no blocker exists.
+> evidence that no blocker exists. **Rule 1 corrected (2026-08-16):** it claimed
+> episode-shaped ingress; every real ingest is and always was a `/knot` write, so
+> the rule now states the boundary it actually governs and `tests/test_knot_provenance.py`
+> enforces the `actor` + `source` floor it narrowed to (camayoc-99t).
 
 ## 1. The discipline, in five rules
 
-1. **Episode-shaped writes only.** Every camayoc ingress goes through quipu's
-   `/episode` path, which supplies `prov:wasGeneratedBy` automatically and is
-   idempotent (branch on `outcome`, never on `count`). No free-Turtle writes
-   to governed planes — the provenance chain must be unskippable.
+1. **Episode-shaped writes for agent-recorded facts.** Everything the skill
+   records in the moment — decisions, work items, outcomes — goes through
+   quipu's `/episode` path, which supplies `prov:wasGeneratedBy` automatically
+   and is idempotent (branch on `outcome`, never on `count`). That is where the
+   provenance chain must be unskippable: those facts have an author, a moment
+   and a motive, and a later reader has to be able to weigh them.
+
+   **Bulk deterministic loads go through `POST /knot`, and this rule does not
+   pretend otherwise.** The ontology and shapes (`scripts/bootstrap.sh`), the
+   repository walk (`scripts/seed_knowledge.sh`) and the metric catalogue
+   (`scripts/reconcile_metrics.sh`) are free-Turtle knot writes. They carry
+   `actor` and `source` in the payload instead of a PROV activity;
+   `prov:wasGeneratedBy` appears nowhere in the codebase outside these design
+   docs.
+
+   This rule previously read "every camayoc ingress goes through `/episode` …
+   no free-Turtle writes to governed planes", which was false in every
+   particular: the *only* `/episode` calls in the repository are the four
+   deliberately-invalid gate probes in `scripts/gate_probe.sh`, and every
+   successful ingest has always been a knot write (camayoc-99t).
+
+   **What the narrowing costs.** `actor` + `source` is a weaker record than a
+   PROV activity: it names who wrote and what they read, but not the run, and
+   it is not chained, so a knot-written fact cannot be traced to the invocation
+   that produced it. That is an acceptable trade for the ontology and shapes —
+   schema, not claims — and a real gap for the seed walk and the metric
+   catalogue, which *are* claims about a codebase. `tests/test_knot_provenance.py`
+   holds the narrowed rule to its own terms: a knot write that names neither
+   its actor nor its source fails the suite, so the weaker record cannot
+   quietly become no record.
 2. **SHACL refuses the untagged.** Every fact carries `camayoc:sourceKind`
    (`observed` | `declared` | `inferred`) and a source reference. Closed
    vocabulary, `minCount 1`, from the first load. This is NeuralAmplifier's

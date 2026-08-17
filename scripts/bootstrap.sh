@@ -140,7 +140,9 @@ ONTO="$PLUGIN_ROOT/ontology/core.ttl"
 SHAPES="$PLUGIN_ROOT/shapes/core.shapes.ttl"
 [ -f "$ONTO" ] && [ -f "$SHAPES" ] || { say "missing $ONTO / $SHAPES"; exit 1; }
 
-R=$(python3 -c 'import json,sys; print(json.dumps({"turtle": open(sys.argv[1]).read(), "actor": "camayoc-bootstrap"}))' "$ONTO" \
+# actor AND source: ingress rule 1 narrows to knot writes carrying both, and
+# this load named only its actor (camayoc-99t).
+R=$(python3 -c 'import json,sys; print(json.dumps({"turtle": open(sys.argv[1]).read(), "actor": "camayoc-bootstrap", "source": sys.argv[2]}))' "$ONTO" "ontology/core.ttl" \
     | curl -sf -m 10 -X POST "$SERVER/knot" -H 'Content-Type: application/json' "${AUTH[@]}" -d @- 2>&1) \
   && say "ontology: loaded (core.ttl)" || { say "ontology load FAILED: $R"; exit 1; }
 
