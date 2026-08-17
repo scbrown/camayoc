@@ -85,6 +85,30 @@ class KnotWriteInventoryTests(unittest.TestCase):
                         "not allowed to become.",
                     )
 
+    def test_no_knot_payload_carries_a_graph_key(self):
+        """The trap camayoc-s0h would otherwise walk into.
+
+        `/knot` writes to ROOT unconditionally (quipu `src/rdf.rs:180-182`) and
+        parses its body as free-form JSON with no unknown-field rejection
+        (`src/mcp/mod.rs:411-436`). So a `"graph"` key added here to "implement
+        routing" is accepted, ignored, and produces a green run that routes
+        nothing — the failure would be invisible until somebody queried a plane
+        and found it empty.
+
+        Routing belongs on `/episode`, which does have a `graph` field
+        (`src/episode/mod.rs:177-181`). When that move happens this test should
+        fail on the script that moved, and the fix is to move it out of the knot
+        inventory — not to loosen this.
+        """
+        for path in self.knot_writers():
+            with self.subTest(script=path.name):
+                self.assertNotRegex(
+                    path.read_text(),
+                    r'"graph"\s*:',
+                    f"{path.name} builds a \"graph\" key on a /knot payload, which quipu "
+                    "silently drops. Route through /episode instead.",
+                )
+
     def test_the_only_episode_writes_are_the_gate_probes(self):
         """The premise the narrowing rests on, pinned.
 

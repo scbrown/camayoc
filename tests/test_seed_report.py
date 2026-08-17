@@ -10,16 +10,24 @@ converged run announced "seed: ingested 0 facts".
 Nobody had ever run the seed twice against a stub and looked at what it said,
 which is why it went unnoticed. These tests do exactly that.
 
-## The part this cannot settle
+## Which branch is the real one
 
-The rule is written for `POST /episode`; the seed writes to `POST /knot`.
-Whether `/knot` returns an `outcome` field at all is quipu's contract, not
-camayoc's, and there is no quipu here to ask. So the script branches on
-`outcome` when it is present and says plainly when it is absent —
-`test_a_response_without_an_outcome_says_so_rather_than_guessing` pins that
-behaviour, which is the honest one either way. If quipu turns out never to send
-`outcome` on `/knot`, the fix is a sibling-repo change and this test still
-holds.
+The rule is written for `POST /episode`; the seed writes to `POST /knot`. Read
+against quipu's source rather than guessed at: `/episode` returns `outcome`,
+one of `created` | `updated` | `unchanged` (`src/episode/mod.rs:96-102`), and
+`/knot` does not — its success body is `{conforms, tx_id, count, snapshot,
+replaced}` (`src/mcp/mod.rs:512-518`).
+
+So `test_a_response_without_an_outcome_says_so_rather_than_guessing` is the
+*production* path today, not a hypothetical: the seed genuinely cannot tell
+convergence from a re-add, and saying so is the honest report. The
+outcome-carrying tests keep the branch honest for the day `/knot` grows one, or
+for the day the seed moves to `/episode` (camayoc-s0h).
+
+The failure body is also quipu's real one — `violations` is an integer COUNT
+and `issues` is the list, arriving with HTTP 200 (`src/mcp/mod.rs:471-477`).
+The first draft of this suite invented a shape where `violations` was the list,
+and the parser written against it raised a TypeError on the real thing.
 """
 
 from __future__ import annotations
@@ -131,14 +139,31 @@ class SeedReportTests(unittest.TestCase):
         result = self.seed(
             {
                 "conforms": False,
-                "count": 0,
-                "violations": [{"message": "CodeModule lacks aegis:sourceKind"}],
+                "violations": 1,
+                "warnings": 0,
+                "issues": [{"message": "CodeModule lacks aegis:sourceKind"}],
+                "hint": "every fact carries camayoc:sourceKind",
             }
         )
         self.assertEqual(REFUSED, result.returncode, result.stdout + result.stderr)
         self.assertIn("REFUSED", result.stdout)
         self.assertIn("CodeModule lacks aegis:sourceKind", result.stdout)
         self.assertNotIn("seed: done", result.stdout)
+
+
+    def test_a_violation_count_with_no_issue_list_still_refuses(self):
+        """`violations` is an integer COUNT in quipu, not a list.
+
+        The first version of this parser sliced it as a list, which is a
+        TypeError — the operator would have got a traceback instead of the
+        reason their seed was rejected. With no `issues` to print, the hint
+        stands in rather than a bare number.
+        """
+        result = self.seed({"conforms": False, "violations": 3, "hint": "load the shapes first"})
+        self.assertEqual(REFUSED, result.returncode, result.stdout + result.stderr)
+        self.assertIn("REFUSED", result.stdout)
+        self.assertIn("load the shapes first", result.stdout)
+        self.assertNotIn("Traceback", result.stdout + result.stderr)
 
     # ------------------------------------------- structured, not text-scraped
     def test_a_nested_count_is_not_read_as_the_count(self):

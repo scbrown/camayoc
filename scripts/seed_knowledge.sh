@@ -75,10 +75,17 @@ R=$(python3 -c 'import json,sys; print(json.dumps({"turtle": open(sys.argv[1]).r
 #     "ingested 0 facts". That is the SUCCESS case reading as a failure, which
 #     is precisely what the rule exists to prevent.
 #
-# The rule is written for POST /episode and the seed uses POST /knot, so
-# whether /knot carries an `outcome` at all is quipu's contract and not ours.
-# This branches on it when present and says plainly when it is absent, rather
-# than inventing a convergence signal the store never sent.
+# The rule is written for POST /episode and the seed uses POST /knot. Read
+# against quipu: /episode returns `outcome` — one of created|updated|unchanged
+# (src/episode/mod.rs:96-102) — and /knot does NOT. Its success body is
+# {conforms, tx_id, count, snapshot, replaced} (src/mcp/mod.rs:512-518).
+#
+# So on today's quipu this always takes the no-outcome branch, and that is the
+# honest report rather than a defect: the seed cannot tell convergence from a
+# re-add, and says so, instead of reading a count as if it were a verdict.
+# Routing the seed through /episode would earn the signal and is camayoc-s0h.
+# The branch stays because the rule is the rule, and because a /knot that grows
+# `outcome` should be believed the day it does.
 python3 -c '
 import json, sys
 
@@ -96,12 +103,24 @@ outcome, count, conforms = doc.get("outcome"), doc.get("count"), doc.get("confor
 
 # A refusal that arrives with a 2xx would otherwise slide past: curl -sf caught
 # the HTTP-level refusal above, and this catches the one that did not use it.
-if conforms is False:
-    print("seed: ingest REFUSED — the store returned conforms: false.")
-    for violation in (doc.get("violations") or doc.get("results") or [])[:5]:
-        if isinstance(violation, dict):
-            violation = violation.get("message") or json.dumps(violation)
-        print(f"seed:   {violation}")
+# quipu returns the SHACL failure body with HTTP 200 (src/mcp/mod.rs:471-477):
+#   {"conforms": false, "violations": N, "warnings": N, "issues": [...], "hint": "..."}
+# `violations` is a COUNT and `issues` is the list. Slicing the count as a list
+# is a TypeError, which would replace the violation messages with a traceback
+# at the exact moment the operator needs them.
+counted = doc.get("violations")
+counted = counted if isinstance(counted, int) and not isinstance(counted, bool) else 0
+issues = [i for i in (doc.get("issues") or doc.get("results") or []) if i]
+
+if conforms is False or counted or issues:
+    print("seed: ingest REFUSED — the store did not accept the walk.")
+    for issue in issues[:5]:
+        if isinstance(issue, dict):
+            issue = issue.get("message") or issue.get("resultMessage") or json.dumps(issue)
+        print(f"seed:   {issue}")
+    if not issues:
+        hint = doc.get("hint")
+        print(f"seed:   {hint}" if isinstance(hint, str) and hint else f"seed:   {counted} violation(s)")
     print("seed: A refusal means the gate is working — fix the walker output, do not bypass.")
     raise SystemExit(2)
 

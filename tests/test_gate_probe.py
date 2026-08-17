@@ -126,6 +126,32 @@ class ProbeBehaviourTests(unittest.TestCase):
         self.assertEqual(4, result.stdout.count("PROVEN"))
         self.assertNotIn("NOT PROVEN", result.stdout)
 
+    def test_quipus_real_shacl_failure_body_proves_the_gate(self):
+        """The shape quipu actually returns, rather than a generic SHACL report.
+
+        `violations` is a COUNT and `issues` is the list (src/mcp/mod.rs:471-477),
+        and it arrives with HTTP 200 — so a probe that keyed off the status line
+        or read `violations` as a list would get this wrong in both directions.
+        """
+        result = self.probe_against(
+            payload={
+                "conforms": False,
+                "violations": 1,
+                "warnings": 0,
+                "issues": [{"message": "sourceKind is required"}],
+                "hint": "tag the node",
+            }
+        )
+        self.assertEqual(REFUSED, result.returncode, result.stdout + result.stderr)
+        self.assertEqual(4, result.stdout.count("PROVEN"))
+        self.assertNotIn("NOT PROVEN", result.stdout)
+
+    def test_a_violation_count_alone_is_a_refusal(self):
+        """No detail list, just a nonzero count. Still a no."""
+        result = self.probe_against(payload={"conforms": False, "violations": 2})
+        self.assertEqual(REFUSED, result.returncode, result.stdout + result.stderr)
+        self.assertNotIn("NOT PROVEN", result.stdout)
+
     def test_a_4xx_decline_proves_the_gate_without_a_violation_body(self):
         """Not every store returns a SHACL report. A refusal is still a refusal."""
         result = self.probe_against(status=422, payload={"error": "validation failed"})

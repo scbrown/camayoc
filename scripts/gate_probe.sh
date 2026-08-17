@@ -84,13 +84,22 @@ conforms = doc.get("conforms")
 if isinstance(conforms, str):
     conforms = {"true": True, "false": False}.get(conforms.lower())
 
+# The SHACL failure body from quipu is
+#   {"conforms": false, "violations": N, "warnings": N, "issues": [...], "hint": "..."}
+# returned as HTTP 200 (src/mcp/mod.rs:471-477). Note `violations` is a COUNT,
+# not a list — reading it as one is why `issues` is checked first here. The
+# other key names are kept so a differently-shaped SHACL report still parses.
 reports = []
-for key in ("violations", "results", "validation_results", "errors"):
+for key in ("issues", "violations", "results", "validation_results", "errors"):
     value = doc.get(key)
     if isinstance(value, list):
         reports.extend(item for item in value if item)
     elif isinstance(value, str) and value:
         reports.append(value)
+
+# A nonzero violation COUNT is a refusal even when the detail list is absent.
+counted = doc.get("violations")
+counted = counted if isinstance(counted, int) and not isinstance(counted, bool) else 0
 
 
 def text(item):
@@ -104,8 +113,14 @@ def text(item):
     return json.dumps(item)
 
 
-if conforms is False or reports:
-    print("; ".join(text(r) for r in reports[:4]) or "conforms: false")
+if conforms is False or reports or counted:
+    summary = "; ".join(text(r) for r in reports[:4])
+    if not summary:
+        hint = doc.get("hint")
+        summary = hint if isinstance(hint, str) and hint else (
+            f"{counted} violation(s)" if counted else "conforms: false"
+        )
+    print(summary)
     sys.exit(0)
 if conforms is True or doc.get("ok") is True or any(k in doc for k in ("id", "episode", "nodes")):
     sys.exit(1)

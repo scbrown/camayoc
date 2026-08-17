@@ -91,6 +91,46 @@ mapped onto quipu named graphs with lattice labels:
 | `crew:inferred` | model-written summaries, diagnoses, lessons | per-session | `inferred` | low, promotable |
 | `code:*` | hank-promoted structure (already governed upstream) | per-commit | `observed` | per hank tier |
 
+### 2.1 Implementation status: the table above is a design, not a deployment
+
+**Nothing routes yet.** No script names a graph, no shape targets one, no query
+carries a `GRAPH` clause. An `inferred`-tagged node lands in exactly the same
+place an `observed` one does, so quarantine is skill discipline and a `sourceKind`
+string — not an enforced boundary (camayoc-s0h).
+
+Read against quipu's source rather than assumed, because the shape of the gap
+decides who fixes it:
+
+| Capability | State in quipu | Citation |
+|---|---|---|
+| Quad store, `GRAPH` / `FROM NAMED` in SPARQL | **exists** | `src/store/migrate.rs:33`, `src/sparql/pattern.rs:352-372` |
+| Write into a named graph via `/episode` | **exists** (`graph` field) | `src/episode/mod.rs:177-181`, test at `src/episode/tests.rs:912` |
+| Write into a named graph via `/knot` | **does not exist** | hardcoded to ROOT, `src/rdf.rs:180-182` |
+| Trust lattice, labels, query-time floors | **exists** | `src/lattice.rs`, `src/store/labels.rs:730` |
+| HTTP or CLI route to *set* a graph label | **does not exist** | only caller of `set_graph_label` is `src/pack.rs:450` |
+| Labelling a graph `/episode` created | **refused** — the write interns the IRI without registering it | `src/store/labels.rs:344-350` vs `src/episode/mod.rs:371` |
+
+So routing is blocked in a specific and fixable way rather than generally:
+
+1. **Every real camayoc ingest is a `/knot` write** (rule 1), and `/knot` cannot
+   target a graph. Worse, it takes a free-form JSON body with no unknown-field
+   rejection, so a `"graph"` key added to a knot payload is **silently dropped** —
+   routing would appear to be implemented and do nothing. `tests/test_knot_provenance.py`
+   pins that no knot payload carries one.
+2. **Labels have no write route at all.** The whole lattice — composition,
+   per-row annotation, query-time floors — is built and reachable only from
+   Rust. A plane camayoc created could not be labelled `low-trust` even by hand.
+
+**What unblocks this, in order.** Quipu needs a route that registers a graph and
+one that sets its label; camayoc then moves agent-recorded facts to `/episode`
+with `graph` derived from `sourceKind`. Until the label route exists, routing
+alone would produce separate graphs that every query still reads at equal trust
+— which is the appearance of quarantine without the substance, and worse than
+none. That ordering is why this is not partially shipped.
+
+This is a `built` blocker in the sense of §1.8, not a `stated` one: the
+citations above are the demonstration.
+
 ## 3. Sources
 
 ### 3.1 The skill-guided agent — the first-class source
