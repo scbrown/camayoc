@@ -12,6 +12,9 @@
 @prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix bobbin: <http://aegis.gastown.local/ontology/> .
+# Same IRI as bobbin: above — spelled aegis: where the term is aegis's, so a reader
+# grepping core.shapes.ttl for sourceKind finds the same prefix on both sides.
+@prefix aegis:  <http://aegis.gastown.local/ontology/> .
 
 # ── CodeModule ─────────────────────────────────────────────────
 #
@@ -20,6 +23,35 @@
 
 bobbin:CodeModuleShape a sh:NodeShape ;
     sh:targetClass bobbin:CodeModule ;
+    # PROVENANCE TAG — value-constrained, deliberately NOT required yet.
+    #
+    # camayoc-42d: core.shapes.ttl makes aegis:sourceKind mandatory on every
+    # WorkItem and Decision ("the tag is the reader's only signal of trust"),
+    # and code entities carry no such tag — so seed writes land untagged and a
+    # reader cannot tell an observed fact from an inferred one.
+    #
+    # sh:minCount 1 is the obvious fix and it is the WRONG FIRST MOVE here, for
+    # the reason this file already states four times above: never require a
+    # predicate the emitter does not emit. Bobbin's promotion path has not been
+    # measured for sourceKind, and that measurement must be made on the DEPLOYED
+    # binary rather than its source — the same discipline that ordered the
+    # rdfs:label constraint AFTER the emitter shipped it, across 15,311 entities.
+    # Requiring it blind would refuse every promotion and leave the hourly
+    # ingest's marker unadvanced, which is precisely the failure those notes
+    # record having already avoided once.
+    #
+    # So this is the advise-before-enforce half: the vocabulary is CLOSED, so a
+    # write carrying a sourceKind camayoc does not recognise fails now, while a
+    # write carrying none still passes. That converts the open question from
+    # "are these tagged?" to "are the tags we get valid?", and it cannot stall
+    # anything. Tightening to minCount 1 is a second step, gated on counting
+    # sourceKind over a live sample the way the label constraint was.
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: sourceKind, when present, is one of observed|declared|inferred — the same closed vocabulary core.shapes.ttl requires (camayoc-42d)" ;
+    ] ;
     # rdfs:label is REQUIRED. Ordered AFTER the emitter shipped, not before, and
     # the order is measured rather than stylistic: the previous exporter emitted
     # these four classes with NO label at all, so this constraint would have
@@ -102,6 +134,35 @@ bobbin:CodeModuleShape a sh:NodeShape ;
 
 bobbin:CodeSymbolShape a sh:NodeShape ;
     sh:targetClass bobbin:CodeSymbol ;
+    # PROVENANCE TAG — value-constrained, deliberately NOT required yet.
+    #
+    # camayoc-42d: core.shapes.ttl makes aegis:sourceKind mandatory on every
+    # WorkItem and Decision ("the tag is the reader's only signal of trust"),
+    # and code entities carry no such tag — so seed writes land untagged and a
+    # reader cannot tell an observed fact from an inferred one.
+    #
+    # sh:minCount 1 is the obvious fix and it is the WRONG FIRST MOVE here, for
+    # the reason this file already states four times above: never require a
+    # predicate the emitter does not emit. Bobbin's promotion path has not been
+    # measured for sourceKind, and that measurement must be made on the DEPLOYED
+    # binary rather than its source — the same discipline that ordered the
+    # rdfs:label constraint AFTER the emitter shipped it, across 15,311 entities.
+    # Requiring it blind would refuse every promotion and leave the hourly
+    # ingest's marker unadvanced, which is precisely the failure those notes
+    # record having already avoided once.
+    #
+    # So this is the advise-before-enforce half: the vocabulary is CLOSED, so a
+    # write carrying a sourceKind camayoc does not recognise fails now, while a
+    # write carrying none still passes. That converts the open question from
+    # "are these tagged?" to "are the tags we get valid?", and it cannot stall
+    # anything. Tightening to minCount 1 is a second step, gated on counting
+    # sourceKind over a live sample the way the label constraint was.
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: sourceKind, when present, is one of observed|declared|inferred — the same closed vocabulary core.shapes.ttl requires (camayoc-42d)" ;
+    ] ;
     # rdfs:label is REQUIRED. Ordered AFTER the emitter shipped, not before, and
     # the order is measured rather than stylistic: the previous exporter emitted
     # these four classes with NO label at all, so this constraint would have
@@ -154,6 +215,35 @@ bobbin:CodeSymbolShape a sh:NodeShape ;
 
 bobbin:DocumentShape a sh:NodeShape ;
     sh:targetClass bobbin:Document ;
+    # PROVENANCE TAG — value-constrained, deliberately NOT required yet.
+    #
+    # camayoc-42d: core.shapes.ttl makes aegis:sourceKind mandatory on every
+    # WorkItem and Decision ("the tag is the reader's only signal of trust"),
+    # and code entities carry no such tag — so seed writes land untagged and a
+    # reader cannot tell an observed fact from an inferred one.
+    #
+    # sh:minCount 1 is the obvious fix and it is the WRONG FIRST MOVE here, for
+    # the reason this file already states four times above: never require a
+    # predicate the emitter does not emit. Bobbin's promotion path has not been
+    # measured for sourceKind, and that measurement must be made on the DEPLOYED
+    # binary rather than its source — the same discipline that ordered the
+    # rdfs:label constraint AFTER the emitter shipped it, across 15,311 entities.
+    # Requiring it blind would refuse every promotion and leave the hourly
+    # ingest's marker unadvanced, which is precisely the failure those notes
+    # record having already avoided once.
+    #
+    # So this is the advise-before-enforce half: the vocabulary is CLOSED, so a
+    # write carrying a sourceKind camayoc does not recognise fails now, while a
+    # write carrying none still passes. That converts the open question from
+    # "are these tagged?" to "are the tags we get valid?", and it cannot stall
+    # anything. Tightening to minCount 1 is a second step, gated on counting
+    # sourceKind over a live sample the way the label constraint was.
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: sourceKind, when present, is one of observed|declared|inferred — the same closed vocabulary core.shapes.ttl requires (camayoc-42d)" ;
+    ] ;
     # rdfs:label is REQUIRED. Ordered AFTER the emitter shipped, not before, and
     # the order is measured rather than stylistic: the previous exporter emitted
     # these four classes with NO label at all, so this constraint would have
@@ -191,6 +281,35 @@ bobbin:DocumentShape a sh:NodeShape ;
 
 bobbin:SectionShape a sh:NodeShape ;
     sh:targetClass bobbin:Section ;
+    # PROVENANCE TAG — value-constrained, deliberately NOT required yet.
+    #
+    # camayoc-42d: core.shapes.ttl makes aegis:sourceKind mandatory on every
+    # WorkItem and Decision ("the tag is the reader's only signal of trust"),
+    # and code entities carry no such tag — so seed writes land untagged and a
+    # reader cannot tell an observed fact from an inferred one.
+    #
+    # sh:minCount 1 is the obvious fix and it is the WRONG FIRST MOVE here, for
+    # the reason this file already states four times above: never require a
+    # predicate the emitter does not emit. Bobbin's promotion path has not been
+    # measured for sourceKind, and that measurement must be made on the DEPLOYED
+    # binary rather than its source — the same discipline that ordered the
+    # rdfs:label constraint AFTER the emitter shipped it, across 15,311 entities.
+    # Requiring it blind would refuse every promotion and leave the hourly
+    # ingest's marker unadvanced, which is precisely the failure those notes
+    # record having already avoided once.
+    #
+    # So this is the advise-before-enforce half: the vocabulary is CLOSED, so a
+    # write carrying a sourceKind camayoc does not recognise fails now, while a
+    # write carrying none still passes. That converts the open question from
+    # "are these tagged?" to "are the tags we get valid?", and it cannot stall
+    # anything. Tightening to minCount 1 is a second step, gated on counting
+    # sourceKind over a live sample the way the label constraint was.
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: sourceKind, when present, is one of observed|declared|inferred — the same closed vocabulary core.shapes.ttl requires (camayoc-42d)" ;
+    ] ;
     # rdfs:label is REQUIRED. Ordered AFTER the emitter shipped, not before, and
     # the order is measured rather than stylistic: the previous exporter emitted
     # these four classes with NO label at all, so this constraint would have
