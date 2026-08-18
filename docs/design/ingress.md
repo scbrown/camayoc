@@ -216,7 +216,23 @@ adapter is — but v1 claims only quarantine, not evaluation.
 - Never writes to a governed plane without the tags (SHACL enforces).
 - Never upgrades its own output: promotion out of `crew:inferred` is a
   governed graph move requiring authority over the target plane, not an
-  ingress feature.
+  ingress feature. **Implemented as `scripts/promote_plane.py`**
+  (camayoc-mip). Called *plane promotion* throughout, because
+  `shapes/code-entities.ttl` already uses "promotion" for an unrelated
+  bobbin-to-quipu ingest path and two governed operations sharing one word in
+  one repo confuses every reader after the one who wrote it.
+  Four gates, all refusing before anything is written: no authority over the
+  target plane; **self-promotion**, checked independently of authority so a
+  principal holding a grant still cannot launder its own output through it; a
+  sideways or downward move, which is a category error that would read in the
+  record as earned trust; and an unstated reason. Grants live in
+  `config/plane-authority.json`, are human-maintained, and **fail closed** — a
+  missing or malformed file grants nobody, because treating an unreadable
+  grant file as unrestricted is what makes an authority check worthless.
+  The promotion event is itself tagged `observed` and carries its own
+  falsifier: the move is an observed event even though the fact it moves was
+  inferred, and tagging it `inferred` would file the audit record in the plane
+  it is moving things out of.
 - Never stores a judgment that decays (§1.5).
 - Never models the tracker's message format — the record is evidence about
   the work, not the shape of the work.

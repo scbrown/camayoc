@@ -1,0 +1,4 @@
+{
+  "_comment": "Who may promote facts OUT of crew:inferred and into which plane (camayoc-mip). HUMAN-MAINTAINED — nothing an agent writes may alter this file, and an agent must never add itself. Fails closed: a principal absent here holds no authority, and a malformed file grants nobody. Self-promotion is refused separately, so listing a principal here does not let it promote its own output.",
+  "_format": "principal -> [plane keys], using the keys in scripts/planes.py PLANES"
+}
