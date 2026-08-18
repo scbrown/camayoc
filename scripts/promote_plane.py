@@ -31,13 +31,24 @@ later reader.
 - **Promotion of something not actually in the source plane.** Otherwise the
   record asserts a move that never happened.
 
-## What it preserves
+## What it does NOT yet do
 
-The original inferred assertion is **retracted, not deleted**. quipu is
-bitemporal: retraction closes the fact's valid interval and leaves it readable
-as of an earlier time. A promotion that erased its own history would destroy
-the evidence that the fact was ever low-trust, which is the one thing a reader
-assessing it later most needs.
+**It asserts into the target plane; it does not retract from the source.**
+`docs/design/ingress.md` calls promotion a graph *move*, and this is currently
+half of one. Saying so here rather than describing the intended behaviour is
+the point: a docstring that claims a retraction the code does not perform is
+the same defect as a check that cannot fail.
+
+The remaining half needs a decision that is not the implementer's to make.
+quipu is bitemporal, so retracting the inferred original closes its valid
+interval rather than deleting it — but *whether* to close it is a governance
+question with two defensible answers. Leaving it open means the fact is
+readable in two planes at different trust; closing it means the promotion
+record is the only surviving trace that it was ever low-trust. Filed on
+camayoc-mip for the keeper.
+
+Either way the promotion record itself is complete and auditable: it names
+where the fact came from, who moved it, and why.
 
 Usage:
     python3 scripts/promote_plane.py \\
@@ -61,6 +72,10 @@ def _load_planes():
     spec = importlib.util.spec_from_file_location("planes", ROOT / "planes.py")
     module = importlib.util.module_from_spec(spec)
     assert spec.loader
+    # Registered before exec: @dataclass resolves annotations through
+    # sys.modules, and a module absent from it fails with an opaque
+    # NoneType error rather than an import error.
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
