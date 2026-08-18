@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+"""Quarantine planes: register them, label them, and route writes by sourceKind.
+
+This is camayoc-s0h's implementation. Until now the planes in
+`docs/design/ingress.md` §2 were a table: an `inferred`-tagged node landed in
+exactly the same graph an `observed` one did, and quarantine was skill
+discipline plus a string.
+
+**The ordering here is the whole point and it is not a preference.** Registering
+the planes without labelling them produces separate graphs that every query
+still reads at equal trust — the *appearance* of quarantine without the
+substance, which is worse than none because it is unfalsifiable from the
+outside. So `ensure_planes` does both or neither, and `plane_for` refuses to
+route a write into a plane that has not been labelled.
+
+Requires the quipu routes added for this bead: `POST /graph/create` and
+`POST /graph/label`. Against an older quipu both 404 and this reports the plane
+as UNAVAILABLE rather than silently writing to ROOT — the failure mode being
+guarded against is precisely a routing layer that looks implemented and is not.
+
+Usage:
+    python3 scripts/planes.py ensure          # register + label all planes
+    python3 scripts/planes.py status          # what exists, what is labelled
+    python3 scripts/planes.py plane observed  # the graph IRI for a sourceKind
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
+
+SERVER = os.environ.get("QUIPU_SERVER", "http://localhost:3030").rstrip("/")
+AUTH = os.environ.get("QUIPU_AUTH_TOKEN")
+
+#: The namespace planes live under. A parameter, never a hardcoded hostname —
+#: camayoc's own convention (CLAUDE.md).
+PLANE_NS = os.environ.get("CAMAYOC_PLANE_NS", "https://camayoc.local/plane/")
+
+#: The trust chain these ranks are comparable within. A rank without its chain
+#: is not comparable, which is why quipu's label API demands both.
+TRUST_CHAIN = f"{PLANE_NS}chain/provenance"
+
+#: The planes, exactly as `docs/design/ingress.md` §2 defines them.
+#:
+#: `rank` orders them within TRUST_CHAIN: higher is more trusted. The gap
+#: between declared/records (30, 20) and inferred (0) is deliberate — a
+#: promotion out of quarantine should have to cross visible distance, not
+#: increment.
+PLANES: dict[str, dict] = {
+    "crew:records": {
+        "iri": f"{PLANE_NS}crew/records",
+        "contents": "task lifecycle, decisions, outcomes",
+        "source_kinds": ["observed"],
+        "rank": 20,
+        "trust_iri": f"{PLANE_NS}trust/high",
+    },
+    "crew:declared": {
+        "iri": f"{PLANE_NS}crew/declared",
+        "contents": "conventions, directives, standing human decisions",
+        "source_kinds": ["declared"],
+        "rank": 30,
+        "trust_iri": f"{PLANE_NS}trust/human-root",
+    },
+    "crew:inferred": {
+        "iri": f"{PLANE_NS}crew/inferred",
+        "contents": "model-written summaries, diagnoses, lessons",
+        "source_kinds": ["inferred"],
+        "rank": 0,
+        "trust_iri": f"{PLANE_NS}trust/low",
+    },
+}
+
+#: sourceKind -> plane key. The routing table, derived from PLANES so the two
+#: cannot disagree.
+ROUTES: dict[str, str] = {
+    kind: name for name, spec in PLANES.items() for kind in spec["source_kinds"]
+}
+
+
+class PlaneError(RuntimeError):
+    """A plane operation failed. Never swallowed into a silent ROOT write."""
+
+
+def _post(path: str, body: dict) -> dict:
+    req = urllib.request.Request(
+        f"{SERVER}{path}",
+        data=json.dumps(body).encode(),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    if AUTH:
+        req.add_header("Authorization", f"Bearer {AUTH}")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return json.loads(r.read() or b"{}")
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            raise PlaneError(
+                f"{path} returned 404 — this quipu has no plane routing. "
+                "Writes must NOT fall back to ROOT: an unlabelled plane is "
+                "quarantine's appearance without its substance."
+            ) from e
+        raise PlaneError(f"{path} failed: HTTP {e.code} {e.read()[:200]!r}") from e
+    except urllib.error.URLError as e:
+        # Distinguished from a refusal on purpose: "could not look" is not
+        # "the plane is absent".
+        raise PlaneError(f"{path} unreachable: {e.reason} — this is not evidence about the plane") from e
+
+
+def ensure_planes(timestamp: str) -> list[dict]:
+    """Register and label every plane. Both, or the plane is not usable.
+
+    Returns one record per plane describing what happened, so a caller can
+    tell a fresh registration from an existing one rather than inferring it
+    from a bare success.
+    """
+    results = []
+    for name, spec in PLANES.items():
+        created = _post("/graph/create", {"graph": spec["iri"]})
+        labelled = _post(
+            "/graph/label",
+            {
+                "graph": spec["iri"],
+                "timestamp": timestamp,
+                "trust": {
+                    "iri": spec["trust_iri"],
+                    "chain": TRUST_CHAIN,
+                    "rank": spec["rank"],
+                },
+                "actor": "camayoc-planes",
+            },
+        )
+        results.append(
+            {
+                "plane": name,
+                "iri": spec["iri"],
+                "g": created.get("g"),
+                "newly_created": created.get("created"),
+                "label_tx": labelled.get("tx_id"),
+                "rank": spec["rank"],
+            }
+        )
+    return results
+
+
+def plane_for(source_kind: str) -> str:
+    """The graph IRI an episode with this `sourceKind` must be written into.
+
+    Raises rather than defaulting. A `sourceKind` with no plane is a routing
+    gap, and routing it to ROOT would put model-written facts exactly where
+    observed ones live — the single thing this whole mechanism exists to stop.
+    """
+    name = ROUTES.get(source_kind)
+    if name is None:
+        raise PlaneError(
+            f"no plane for sourceKind '{source_kind}'. Known: {sorted(ROUTES)}. "
+            "Refusing to default to ROOT."
+        )
+    return PLANES[name]["iri"]
+
+
+def episode_body(name: str, turtle: str, source_kind: str, actor: str, source: str) -> dict:
+    """An `/episode` body routed to the plane its `sourceKind` earns.
+
+    `/episode` is used rather than `/knot` because `/knot` cannot target a
+    graph — it is hardcoded to ROOT and its free-form body silently DROPS a
+    `graph` key, so a knot write would look routed and land in ROOT.
+    """
+    return {
+        "name": name,
+        "graph": plane_for(source_kind),
+        "episode_body": turtle,
+        "source": source,
+        "nodes": [],
+        "edges": [],
+        "actor": actor,
+    }
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    e = sub.add_parser("ensure", help="register and label every plane")
+    e.add_argument("--timestamp", default="2026-01-01T00:00:00Z")
+    sub.add_parser("status", help="show the configured planes")
+    pf = sub.add_parser("plane", help="the graph IRI for a sourceKind")
+    pf.add_argument("source_kind")
+    args = ap.parse_args()
+
+    try:
+        if args.cmd == "ensure":
+            for r in ensure_planes(args.timestamp):
+                state = "created" if r["newly_created"] else "already registered"
+                print(f"{r['plane']:<16} {state:<18} rank={r['rank']:<3} tx={r['label_tx']}")
+            print("\nAll planes registered AND labelled. Routing without labels "
+                  "would be quarantine's appearance without its substance.")
+        elif args.cmd == "status":
+            for name, spec in PLANES.items():
+                kinds = ",".join(spec["source_kinds"])
+                print(f"{name:<16} rank={spec['rank']:<3} sourceKind={kinds:<10} {spec['iri']}")
+        else:
+            print(plane_for(args.source_kind))
+    except PlaneError as exc:
+        print(f"PLANE ERROR: {exc}", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

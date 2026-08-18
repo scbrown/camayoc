@@ -91,9 +91,31 @@ mapped onto quipu named graphs with lattice labels:
 | `crew:inferred` | model-written summaries, diagnoses, lessons | per-session | `inferred` | low, promotable |
 | `code:*` | hank-promoted structure (already governed upstream) | per-commit | `observed` | per hank tier |
 
-### 2.1 Implementation status: the table above is a design, not a deployment
+### 2.1 Implementation status: routed and labelled (camayoc-s0h)
 
-**Nothing routes yet.** No script names a graph, no shape targets one, no query
+> **Update 2026-08-18.** This section described a design. It now describes a
+> deployment: `scripts/planes.py` registers each plane and labels it in the
+> trust lattice, `scripts/bootstrap.sh` runs it, and writes are routed to the
+> plane their `sourceKind` earns. The two quipu gaps below were closed upstream
+> on the same branch — `POST /graph/create` and `POST /graph/label` expose
+> `Store::graph_create` and `Store::set_graph_label`, both of which already
+> existed with no way in from outside.
+>
+> **The ordering held.** Registration and labelling happen together or not at
+> all, and `plane_for` refuses an unknown `sourceKind` rather than defaulting to
+> ROOT. Against a quipu without the routes, bootstrap **fails** — it does not
+> quietly carry on writing everything into ROOT, which is the "looks
+> implemented, does nothing" state this section was written to warn about.
+> `tests/test_planes.py` pins that refusal, and pins that `inferred` never
+> shares a plane with `observed` and always ranks strictly below it.
+>
+> Writes go through `/episode`, not `/knot`, for the reason recorded below:
+> `/knot` is hardcoded to ROOT and silently drops a `graph` key.
+>
+> The historical analysis is kept below because its reasoning is why the
+> ordering is what it is.
+
+**Nothing routed at the time of writing.** No script names a graph, no shape targets one, no query
 carries a `GRAPH` clause. An `inferred`-tagged node lands in exactly the same
 place an `observed` one does, so quarantine is skill discipline and a `sourceKind`
 string — not an enforced boundary (camayoc-s0h).

@@ -146,6 +146,14 @@ R=$(python3 -c 'import json,sys; print(json.dumps({"turtle": open(sys.argv[1]).r
     | curl -sf -m 10 -X POST "$SERVER/knot" -H 'Content-Type: application/json' "${AUTH[@]}" -d @- 2>&1) \
   && say "ontology: loaded (core.ttl)" || { say "ontology load FAILED: $R"; exit 1; }
 
+# Quarantine planes (camayoc-s0h). Registered AND labelled, or neither: routing
+# without labels yields separate graphs every query still reads at equal trust,
+# which is the appearance of quarantine without its substance. A quipu without
+# the /graph routes fails here rather than silently writing everything to ROOT.
+R=$(python3 "$PLUGIN_ROOT/scripts/planes.py" ensure 2>&1) \
+  && say "planes: registered and labelled" \
+  || { say "plane setup FAILED: $R"; say "Refusing to proceed: unrouted writes would land in ROOT alongside observed facts."; exit 1; }
+
 R=$(python3 -c 'import json,sys; print(json.dumps({"action":"load","name":"camayoc-core","turtle":open(sys.argv[1]).read()}))' "$SHAPES" \
     | curl -sf -m 10 -X POST "$SERVER/shapes" -H 'Content-Type: application/json' "${AUTH[@]}" -d @- 2>&1) \
   && say "shapes: loaded (camayoc-core)" || { say "shapes load FAILED: $R"; exit 1; }
