@@ -8,11 +8,12 @@ below threshold reported as **NO COVERAGE** — an ontology gap surfaced as its 
 outcome, never silently answered from the nearest term. The bead names embeddings as
 the matcher.
 
-Embeddings are blocked here, measured rather than assumed: `models/all-MiniLM-L6-v2`
-in the sibling NeuralAmplifier repo holds `tokenizer.json` and `config.json` and no
-weights, because the xet CDN the weight download redirects to answers 403 on CONNECT
-(na-6td). That blocks *scoring*. It does not block anything else, and two things had
-to exist before any matcher could run at all:
+Embeddings are blocked here, measured rather than assumed, and re-measured on
+2026-08-18: the weight download redirects to a CDN the network policy denies
+(`us.aws.cdn.hf.co:443`, 403 on CONNECT — confirmed at the proxy itself, not
+just at curl). `models/all-MiniLM-L6-v2` holds a tokenizer and a config and no
+weights. That blocks *scoring*. It does not block anything else, and two things
+had to exist before any matcher could run at all:
 
 1. **The suite was not machine-readable.** It is prose in three markdown files.
    Nothing can be embedded, scored or reported against until it parses.
@@ -20,7 +21,14 @@ to exist before any matcher could run at all:
    threshold, a recorded method, and a way to tell whether the suite you scored
    against is the suite on disk.
 
-Both are here, plus a deterministic matcher so the discipline runs today.
+Both are here, plus a deterministic matcher so the discipline runs today —
+and, since 2026-08-18, the embedding path itself. `Scorer` selects between the
+two at construction and reports which one ran; when weights land, nothing about
+the discipline changes, only the label and the numbers. The label and the
+`semantic` flag derive from the same decision that picks the scoring function,
+so they cannot disagree — a verdict claiming `semantic: true` over a
+word-overlap number is precisely the masquerade this file exists to prevent,
+and holding them as independent constants is how that happens.
 
 ## The rule this file exists to obey
 
@@ -55,6 +63,7 @@ import argparse
 import hashlib
 import json
 import re
+import os
 import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -77,9 +86,102 @@ NOISE = frozenset(
     who whom whose why will with would""".split()
 )
 
-#: The method label. Changing the algorithm MUST change this string — a verdict
-#: whose method is a lie is worse than no verdict.
-METHOD = "lexical-jaccard-v1"
+#: The method label for the deterministic scorer. Changing the algorithm MUST
+#: change this string — a verdict whose method is a lie is worse than no verdict.
+LEXICAL_METHOD = "lexical-jaccard-v1"
+
+#: The method label for the embedding scorer, used only when weights load.
+EMBEDDING_METHOD = "embedding-minilm-l6-v2"
+
+#: Where model weights would live. Overridable so a caller with weights
+#: elsewhere can point at them without editing this file.
+MODEL_DIR = Path(
+    os.environ.get(
+        "CAMAYOC_MODEL_DIR",
+        Path(__file__).resolve().parents[1] / "models" / "all-MiniLM-L6-v2",
+    )
+)
+
+
+class Scorer:
+    """The active similarity method (camayoc-b6h).
+
+    Embeddings were always the bead's intent; the deterministic matcher shipped
+    because the weights are unreachable (403 on CONNECT from the CDN, re-tested
+    2026-08-18 and still blocked at the proxy). This class is the seam: it
+    selects a scorer at construction and **reports which one ran**, so the day
+    weights land nothing about the discipline changes — only the label and the
+    numbers.
+
+    The label and the `semantic` flag are derived from the SAME decision that
+    picks the scoring function. They cannot disagree, which is the point: a
+    verdict claiming `semantic: true` while word-overlap produced the number is
+    the exact masquerade this file exists to prevent, and keeping them as
+    independent constants is how that happens.
+    """
+
+    def __init__(self, model_dir: Path | None = None):
+        self._embedder = self._try_load(model_dir or MODEL_DIR)
+
+    @staticmethod
+    def _try_load(model_dir: Path):
+        """Load an embedding model, or return None.
+
+        Returns None on ANY failure — absent weights, absent runtime, a corrupt
+        file. Never raises: a missing model must degrade to the lexical scorer
+        with an honest label, not take down a coverage report. What it must
+        never do is silently keep the embedding label.
+        """
+        weights = model_dir / "onnx" / "model.onnx"
+        tokenizer = model_dir / "tokenizer.json"
+        if not (weights.is_file() and tokenizer.is_file()):
+            return None
+        try:  # pragma: no cover - requires weights that are unavailable here
+            import onnxruntime  # noqa: F401
+            from tokenizers import Tokenizer
+
+            return (onnxruntime.InferenceSession(str(weights)), Tokenizer.from_file(str(tokenizer)))
+        except Exception:  # pragma: no cover - defensive
+            return None
+
+    @property
+    def semantic(self) -> bool:
+        return self._embedder is not None
+
+    @property
+    def method(self) -> str:
+        return EMBEDDING_METHOD if self.semantic else LEXICAL_METHOD
+
+    def score(self, asked: str, question: "Question") -> float:
+        if self._embedder is None:
+            return lexical_score(asked, question)
+        return self._embedding_score(asked, question)  # pragma: no cover - no weights
+
+    def _embedding_score(self, asked: str, question: "Question") -> float:  # pragma: no cover
+        session, tokenizer = self._embedder
+        a = self._embed(session, tokenizer, asked)
+        b = self._embed(session, tokenizer, question.text)
+        dot = sum(x * y for x, y in zip(a, b))
+        na = sum(x * x for x in a) ** 0.5
+        nb = sum(x * x for x in b) ** 0.5
+        return 0.0 if na == 0 or nb == 0 else dot / (na * nb)
+
+    @staticmethod
+    def _embed(session, tokenizer, text: str) -> list[float]:  # pragma: no cover
+        enc = tokenizer.encode(text)
+        ids = [enc.ids]
+        mask = [enc.attention_mask]
+        feeds = {i.name: ids if "ids" in i.name else mask for i in session.get_inputs()}
+        out = session.run(None, feeds)[0][0]
+        # Mean-pool over tokens, masked.
+        kept = [tok for tok, m in zip(out, enc.attention_mask) if m]
+        if not kept:
+            return []
+        return [sum(vals) / len(kept) for vals in zip(*kept)]
+
+
+#: Back-compat: the module-level METHOD names the scorer that runs by default.
+METHOD = Scorer().method
 
 #: Defaults. **Uncalibrated, and that is a statement not an apology**: there is
 #: no held-out set of asked-questions-with-known-coverage to fit them against,
@@ -190,12 +292,16 @@ def watermark(suite: list[Question]) -> str:
     return f"sha256:{digest.hexdigest()[:16]}"
 
 
-def score(asked: str, question: Question) -> float:
+def lexical_score(asked: str, question: Question) -> float:
     """Jaccard overlap of meaning-bearing words. Not semantic. See METHOD."""
     left, right = tokenize(asked), question.tokens()
     if not left or not right:
         return 0.0
     return len(left & right) / len(left | right)
+
+
+#: Kept as the historical name; `Scorer` selects between this and embeddings.
+score = lexical_score
 
 
 def assess(
@@ -204,10 +310,17 @@ def assess(
     floor: float = FLOOR,
     full: float = FULL,
     top: int = 3,
+    scorer: "Scorer | None" = None,
 ) -> dict:
-    """Score one incoming question against the suite and classify its coverage."""
+    """Score one incoming question against the suite and classify its coverage.
+
+    The verdict's `method` and `semantic` fields come from the scorer that
+    actually ran, not from a module constant — so they cannot describe a
+    scorer other than the one that produced the number.
+    """
+    scorer = scorer or Scorer()
     ranked = sorted(
-        ((score(asked, q), q) for q in suite), key=lambda pair: (-pair[0], pair[1].id)
+        ((scorer.score(asked, q), q) for q in suite), key=lambda pair: (-pair[0], pair[1].id)
     )
     best = ranked[0][0] if ranked else 0.0
 
@@ -223,8 +336,8 @@ def assess(
         "coverage": coverage,
         "best_score": round(best, 4),
         # Everything needed to re-read this verdict later, or to distrust it.
-        "method": METHOD,
-        "semantic": False,
+        "method": scorer.method,
+        "semantic": scorer.semantic,
         "floor": floor,
         "full": full,
         "suite_size": len(suite),

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -232,3 +233,57 @@ class HonestyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ScorerSelectionTests(unittest.TestCase):
+    """The embedding seam (camayoc-b6h).
+
+    The embedding scorer cannot be exercised here — the weights are unreachable
+    (403 on CONNECT at the proxy, re-tested 2026-08-18). What CAN be tested,
+    and is the part that would silently lie, is that the reported method always
+    describes the scorer that actually ran.
+    """
+
+    def test_without_weights_the_scorer_is_lexical_and_says_so(self):
+        s = competency.Scorer(model_dir=Path("/nonexistent/model"))
+        self.assertFalse(s.semantic)
+        self.assertEqual(competency.LEXICAL_METHOD, s.method)
+
+    def test_the_method_label_and_the_semantic_flag_cannot_disagree(self):
+        """Both derive from the same decision that picks the scoring function.
+        Keeping them as independent constants is exactly how a verdict ends up
+        claiming `semantic: true` over a word-overlap number."""
+        for path in ("/nonexistent/a", "/nonexistent/b"):
+            s = competency.Scorer(model_dir=Path(path))
+            self.assertEqual(s.semantic, s.method == competency.EMBEDDING_METHOD)
+            self.assertEqual(not s.semantic, s.method == competency.LEXICAL_METHOD)
+
+    def test_an_incomplete_model_directory_degrades_rather_than_half_loading(self):
+        """A tokenizer with no weights is the state the sibling repo is
+        actually in. It must read as 'no embeddings', not as a partial one."""
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "tokenizer.json").write_text("{}")
+            s = competency.Scorer(model_dir=Path(d))
+            self.assertFalse(s.semantic, "weights absent — must not claim semantic")
+            self.assertEqual(competency.LEXICAL_METHOD, s.method)
+
+    def test_the_verdict_reports_the_scorer_that_actually_ran(self):
+        suite = competency.parse_suite(SUITE_DIR)
+        scorer = competency.Scorer(model_dir=Path("/nonexistent/model"))
+        verdict = competency.assess("who owns this metric", suite, scorer=scorer)
+        self.assertEqual(scorer.method, verdict["method"])
+        self.assertIs(scorer.semantic, verdict["semantic"])
+
+    def test_the_two_method_labels_are_distinct(self):
+        """Old verdicts must stay readable as what they were. If the labels
+        ever collided, a lexical verdict and an embedding verdict would be
+        indistinguishable in the record."""
+        self.assertNotEqual(competency.LEXICAL_METHOD, competency.EMBEDDING_METHOD)
+
+    def test_neither_label_is_a_bare_similarity_claim(self):
+        """Extends the existing honesty rule to the embedding label too: it
+        names the model, so a reader knows WHICH semantic scorer produced a
+        number rather than just that one did."""
+        self.assertIn("minilm", competency.EMBEDDING_METHOD.lower())
+        for label in (competency.LEXICAL_METHOD, competency.EMBEDDING_METHOD):
+            self.assertNotIn(label.lower(), ("similarity", "match", "score"))
