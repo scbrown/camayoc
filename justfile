@@ -11,6 +11,13 @@ check:
 test:
     python3 -m unittest discover -s tests -v
 
+# Emit the work-item provenance chain from git history (docs/design/ingress.md
+# §3.3). Deterministic and abstaining: a commit naming no recognised work item
+# emits nothing. Pass --project for every tracker prefix in play — an
+# undeclared one is silently unlinked, and the summary is where you see it.
+ingest-git *args:
+    @python3 scripts/ingest_git_provenance.py {{args}}
+
 # Assess a question against the competency suite. NO COVERAGE is an outcome:
 # an ontology gap is reported as itself, never answered from the nearest term.
 competency question:

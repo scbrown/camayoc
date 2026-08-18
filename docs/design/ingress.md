@@ -200,9 +200,37 @@ by a deterministic parser translating records → episodes tagged `observed`:
 
 ### 3.3 Git
 
-Commit history → work-item linkage (`aegis:implements`, `aegis:modifies` —
-the provenance chain quipu's co-occurrence shapes already define). Pure
-`observed`; hank already promotes the structural half.
+**Implemented: `scripts/ingest_git_provenance.py`.** Commit history →
+work-item linkage (`aegis:implements`, `aegis:modifies` — the provenance chain
+quipu's co-occurrence shapes already define). Pure `observed`; yupana promotes
+the structural half.
+
+```bash
+scripts/ingest_git_provenance.py ../quipu ../yupana --project aegis > /tmp/prov.ttl
+# then POST it to /knot like any other ingest — see scripts/bootstrap.sh
+```
+
+This chain is read by more consumers than any other thing this repo emits, and
+none of them owns it: yupana's `WORK_ITEM_SCOPE_QUERY` builds the **observed
+rung of its capability ladder** from it, its work-item briefing reads it for an
+item's ground, and quipu's `entity_work` / `cochanged_with` / `cooccurrence`
+traverse it. A repository this has never run against produces UNKNOWN scope for
+every agent working in it — correctly, and uselessly.
+
+**The project prefix must be declared** (`--project`, defaulting to the repo
+names). There is no pattern that separates `bobbin-052` from ordinary
+hyphenated English, and this was measured rather than reasoned: the first
+version used a loose regex and read `work-item`, `advise-mode`, `authored-by`,
+`pre-push` and `force-push` as work-item ids, writing paths into the ground of
+five items that do not exist. A digit test does not rescue it either —
+`bobbin-bbe` is a real id. So the ingest abstains unless somebody named the
+project, and `tests/test_ingest_git_provenance.py` holds it to that.
+
+**Coverage is reported, not assumed.** The runner prints how many commits
+carried a recognised id and how many did not. A ground built from a history
+where 80% of commits are unlinked is a *floor*, and whoever reads that scope
+needs to know it — a linked-only count would let an ingest matching 5% of
+commits look like one matching 95%.
 
 ### 3.4 Sessions (the inferred plane)
 
