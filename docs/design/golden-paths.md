@@ -152,7 +152,26 @@ generalized from **point exemplars** (one observed edit) to **trajectory
 exemplars** (one observed success): the same four-step gesture — point,
 draft, backtest, born-advisory — applied to a sequence instead of a hunk.
 
-## 7. What this slice refuses to do
+## 7. Related work
+
+The blessing ladder's nearest published relative is **ActiveGraph**
+(Nakajima, *The Log is the Agent: Event-Sourced Reactive Graphs for
+Auditable, Forkable Agentic Systems*,
+[arXiv:2605.21997](https://arxiv.org/abs/2605.21997)): an event-sourced
+agent runtime whose fork→test→promote loop is this design's promotion arc
+with the same auditability motive — every mutation traces to its events,
+runs replay deterministically, and hypotheses are cheap forks. The
+convergence is real and worth citing; the difference is the evidence bar.
+ActiveGraph's lineage records *what happened*; this design additionally
+demands what happened **earn** its standing — falsifier-gated verification
+before admissibility, cone-checked pruning, a backtest before a rule is
+born, and a recorded human act before anything enforces. Its
+fork-at-any-event ergonomics are worth adopting on quipu's speculate
+machinery (filed as quipu-gp5), with one constraint stated up front: a
+promoted fork re-enters through the write gates, so fork convenience never
+becomes a gate bypass.
+
+## 8. What this slice refuses to do
 
 - **No stored "still good".** A path's current fitness (Q16) is a read-time
   judgment over conformance evidence; only promotion *events* are stored.
