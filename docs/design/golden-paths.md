@@ -1,10 +1,13 @@
 # Design: Golden Paths — verified trajectories, blessed and enforced
 
-> **Implementation status (2026-08-20):** ⬜ **Founding design — nothing
-> built.** The competency suite
+> **Implementation status (2026-08-20, camayoc-gp1):** 🟡 **Terms minted,
+> gates armed; queries pending.** The competency suite
 > ([competency/golden-paths.md](../../competency/golden-paths.md)) is written;
-> no term is minted into `ontology/core.ttl` until a question demands it and
-> the slice decides. Mechanism designs live with their owners:
+> the slice decided (see the §3 note) and the vocabulary is minted in
+> `ontology/core.ttl` with shapes in `shapes/core.shapes.ttl` and three new
+> refusal arms in `scripts/gate_probe.sh` (proven able to fail by
+> `tests/test_gate_probe.py`). Named stored queries for Q1–Q13 are
+> camayoc-gp2. Mechanisms remain design-only in quipu and yupana. Mechanism designs live with their owners:
 > [quipu docs/design/golden-paths-blessing.md](https://github.com/scbrown/quipu/blob/main/docs/design/golden-paths-blessing.md)
 > (storage, pruning aid, backtest, promotion) and
 > [yupana docs/golden-path-guard.md](https://github.com/scbrown/yupana/blob/main/docs/golden-path-guard.md)
@@ -50,11 +53,22 @@ has.
 | `aegis:Policy`, `aegis:effect`, `aegis:OperatingPoint` | quipu governance | the constraint a blessed path eventually backs |
 | `prov:` activity/derivation | W3C PROV-O (quipu episodes) | step ordering and the provenance cone |
 
-## 3. Candidate terms (the slice decides; none minted yet)
+## 3. Candidate terms (the slice decides)
 
-Each candidate is owed to a competency question (cited). All would be minted
-in the store's base namespace per the core.ttl namespace note, `rdfs:range`
+Each candidate is owed to a competency question (cited). All are minted in
+the store's base namespace per the core.ttl namespace note, `rdfs:range`
 only, never `rdfs:domain`.
+
+> **Slice decisions at minting (camayoc-gp1):** omissions and promotions are
+> reified — `omitsStep` points at a **`PathOmission`** node (`omittedStep` +
+> mandatory `omissionAuthority` of `cone-analysis|human-decision`, optional
+> `omissionRuling` → Decision), and the promotion properties live on a
+> **`PathPromotion`** event node (`promotes`, `blessingLevel`, `promotedBy`,
+> `promotedAt`, `promotionEvidence`) — so each ruling carries its authority
+> without waiting for statement-level attachment. And the required
+> provenance of a GoldenPath is **`prunedFrom`** (an in-graph exemplar
+> Trajectory); `aegis:exemplar` stays available, optional, for exemplars
+> living outside the graph, matching quipu's governance use.
 
 | Candidate | Kind | Owed to | Meaning |
 |---|---|---|---|

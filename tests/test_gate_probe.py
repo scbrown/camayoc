@@ -124,7 +124,7 @@ class ProbeBehaviourTests(unittest.TestCase):
             }
         )
         self.assertEqual(REFUSED, result.returncode, result.stdout + result.stderr)
-        self.assertEqual(4, result.stdout.count("PROVEN"))
+        self.assertEqual(len(probes()), result.stdout.count("PROVEN"))
         self.assertNotIn("NOT PROVEN", result.stdout)
 
     def test_quipus_real_shacl_failure_body_proves_the_gate(self):
@@ -144,7 +144,7 @@ class ProbeBehaviourTests(unittest.TestCase):
             }
         )
         self.assertEqual(REFUSED, result.returncode, result.stdout + result.stderr)
-        self.assertEqual(4, result.stdout.count("PROVEN"))
+        self.assertEqual(len(probes()), result.stdout.count("PROVEN"))
         self.assertNotIn("NOT PROVEN", result.stdout)
 
     def test_a_violation_count_alone_is_a_refusal(self):
@@ -252,7 +252,15 @@ class ArmIndependenceTests(unittest.TestCase):
     notices. This drives each arm individually by trimming the ones before it.
     """
 
-    ARMS = ("untagged Decision", "no falsifier", "no repository source", "no evidence kind")
+    ARMS = (
+        "untagged Decision",
+        "no falsifier",
+        "no repository source",
+        "no evidence kind",
+        "no exemplar trajectory",
+        "no authority",
+        "no promoting principal",
+    )
 
     def test_every_arm_reports_acceptance_when_it_is_the_first_to_run(self):
         source = GATE_PROBE.read_text()
@@ -456,6 +464,9 @@ class GateSabotageTests(unittest.TestCase):
         ("Verification", "falsifier"),
         ("ExecutionPath", "repositorySource"),
         ("Blocker", "blockerEvidence"),
+        ("GoldenPath", "prunedFrom"),
+        ("PathOmission", "omissionAuthority"),
+        ("PathPromotion", "promotedBy"),
     )
 
     def setUp(self):

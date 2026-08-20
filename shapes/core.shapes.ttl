@@ -193,3 +193,139 @@ aegis:CamayocMetricDerivationShape a sh:NodeShape ;
     sh:property [ sh:path quipu:derivationSystem ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
     sh:property [ sh:path quipu:derivationQuery ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
     sh:property [ sh:path quipu:derivationParams ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] .
+
+# ---- Golden paths (slice: trajectories, blessing, conformance) ----------
+# Same posture: strict on the provenance tag and on the properties whose
+# absence makes the node a lie (a path without its exemplar, an omission
+# without its authority, a promotion without its promoter); permissive on
+# everything else, tightened deliberately.
+
+aegis:CamayocTrajectoryShape a sh:NodeShape ;
+    sh:targetClass aegis:Trajectory ;
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: every Trajectory carries exactly one sourceKind of observed|declared|inferred" ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a Trajectory needs exactly one rdfs:label" ;
+    ] .
+
+aegis:CamayocStepShape a sh:NodeShape ;
+    sh:targetClass aegis:Step ;
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: every Step carries exactly one sourceKind of observed|declared|inferred" ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a Step needs exactly one rdfs:label" ;
+    ] ;
+    sh:property [
+        sh:path aegis:stepOf ;
+        sh:minCount 1 ;
+        sh:message "camayoc: a Step must name its Trajectory — a step with no trajectory is an anecdote" ;
+    ] .
+
+aegis:CamayocGoldenPathShape a sh:NodeShape ;
+    sh:targetClass aegis:GoldenPath ;
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: every GoldenPath carries exactly one sourceKind of observed|declared|inferred" ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a GoldenPath needs exactly one rdfs:label" ;
+    ] ;
+    sh:property [
+        sh:path aegis:prunedFrom ;
+        sh:minCount 1 ;
+        sh:message "camayoc: a GoldenPath must cite the exemplar Trajectory it was pruned from — a path that cannot cite the concrete success justifying it is an opinion" ;
+    ] .
+
+aegis:CamayocPathOmissionShape a sh:NodeShape ;
+    sh:targetClass aegis:PathOmission ;
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: every PathOmission carries exactly one sourceKind of observed|declared|inferred" ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a PathOmission needs exactly one rdfs:label" ;
+    ] ;
+    sh:property [
+        sh:path aegis:omittedStep ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "camayoc: a PathOmission names exactly one omitted Step" ;
+    ] ;
+    sh:property [
+        sh:path aegis:omissionAuthority ;
+        sh:minCount 1 ;
+        sh:in ("cone-analysis" "human-decision") ;
+        sh:message "camayoc: an omission must carry its authority — cone-analysis or human-decision. An omission that cannot say who cut it is a silent edit of history" ;
+    ] .
+
+aegis:CamayocPathPromotionShape a sh:NodeShape ;
+    sh:targetClass aegis:PathPromotion ;
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: every PathPromotion carries exactly one sourceKind of observed|declared|inferred" ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a PathPromotion needs exactly one rdfs:label" ;
+    ] ;
+    sh:property [
+        sh:path aegis:promotes ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:message "camayoc: a PathPromotion names exactly one GoldenPath it promotes" ;
+    ] ;
+    sh:property [
+        sh:path aegis:blessingLevel ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("candidate" "advisory" "blessed" "constraint-backing") ;
+        sh:message "camayoc: a promotion's level is one of candidate|advisory|blessed|constraint-backing — recorded and verified are mechanical read-time states, not promotions" ;
+    ] ;
+    sh:property [
+        sh:path aegis:promotedBy ;
+        sh:minCount 1 ;
+        sh:message "camayoc: a promotion without its promoting principal is not a human act — nothing above verified happens without one" ;
+    ] ;
+    sh:property [
+        sh:path aegis:promotedAt ;
+        sh:minCount 1 ;
+        sh:message "camayoc: a promotion carries when it happened" ;
+    ] .

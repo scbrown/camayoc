@@ -200,3 +200,120 @@ aegis:about a rdf:Property ;
 aegis:supersededBy a rdf:Property ;
     rdfs:label "superseded by" ;
     rdfs:comment "A later decision that replaces this one. The old decision is never deleted — bitemporality keeps it; this edge says who won." .
+
+# ---- Golden paths (slice: trajectories, blessing, conformance) ----------
+#
+# Owed to competency/golden-paths.md; design in docs/design/golden-paths.md.
+# Slice decisions made at minting time (the design's section 3 listed
+# candidates and left the reified nodes open):
+#   * omissions are reified as PathOmission nodes so each omission can carry
+#     its authority — the statement-level attachment the vocabulary
+#     discipline anticipates, without waiting for it;
+#   * promotions are reified as PathPromotion events so blessingLevel is a
+#     fact of the event, never a decaying judgment on the path;
+#   * prunedFrom (an in-graph exemplar Trajectory) is the required provenance
+#     of a GoldenPath; aegis:exemplar stays available, and optional, for
+#     exemplars living outside this graph, matching quipu's governance use.
+
+aegis:Trajectory a rdfs:Class ;
+    rdfs:label "Trajectory" ;
+    rdfs:comment "The observed, immutable record of the steps a work item actually took. Never edited after the fact; pruning authors a new GoldenPath, it never touches this." .
+
+aegis:Step a rdfs:Class ;
+    rdfs:label "Step" ;
+    rdfs:comment "One action in a trajectory: actor, action, target, the Decision it enacts, the Verification it produced (if any), and its order. A step outside a trajectory is meaningless — stepOf is mandatory." .
+
+aegis:GoldenPath a rdfs:Class ;
+    rdfs:label "Golden path" ;
+    rdfs:comment "A pruned, promoted trajectory class: completed work with verified results, distilled into the blessed way similar work goes. Cites the concrete Trajectories it was distilled from; carries its promotion history as PathPromotion events." .
+
+aegis:PathOmission a rdfs:Class ;
+    rdfs:label "Path omission" ;
+    rdfs:comment "One pruning ruling: a step a GoldenPath deliberately excludes, carrying the authority for the cut — the deterministic cone analysis, or a human Decision. Pruning is curation, never erasure." .
+
+aegis:PathPromotion a rdfs:Class ;
+    rdfs:label "Path promotion" ;
+    rdfs:comment "A promotion event on the blessing ladder: who promoted the path, when, to which level, citing which evidence. The level is a fact of this event at write time; a path's current fitness is a read-time judgment, never stored." .
+
+# ---- Trajectory properties ----------------------------------------------
+
+aegis:stepOf a rdf:Property ;
+    rdfs:label "step of" ;
+    rdfs:comment "The Trajectory this step belongs to. Mandatory: a step with no trajectory is an anecdote." .
+
+aegis:stepOrder a rdf:Property ;
+    rdfs:label "step order" ;
+    rdfs:comment "The step's position in its trajectory's total order." ;
+    rdfs:range xsd:integer .
+
+aegis:enacts a rdf:Property ;
+    rdfs:label "enacts" ;
+    rdfs:comment "The Decision this step enacts, when one was recorded." .
+
+aegis:verifiedBy a rdf:Property ;
+    rdfs:label "verified by" ;
+    rdfs:comment "The Verification a step (or a trajectory's terminal claim) produced. Ranges over aegis:Verification, so the falsifier discipline applies unchanged — an unfalsifiable check never makes a trajectory admissible." .
+
+# ---- Golden-path provenance and pruning ---------------------------------
+
+aegis:prunedFrom a rdf:Property ;
+    rdfs:label "pruned from" ;
+    rdfs:comment "The exemplar Trajectory this GoldenPath was distilled from. Mandatory: a path that cannot cite the concrete success that justifies it is an opinion." .
+
+aegis:omitsStep a rdf:Property ;
+    rdfs:label "omits step" ;
+    rdfs:comment "A PathOmission node recording one pruning ruling this GoldenPath made." .
+
+aegis:omittedStep a rdf:Property ;
+    rdfs:label "omitted step" ;
+    rdfs:comment "The Step a PathOmission excludes." .
+
+aegis:omissionAuthority a rdf:Property ;
+    rdfs:label "omission authority" ;
+    rdfs:comment "What authorized the cut: cone-analysis (the step is outside the provenance cone of the verified result — mechanical) or human-decision (a human overruled or supplemented the cone; omissionRuling names the Decision). Mandatory — an omission that cannot say who cut it is a silent edit of history." ;
+    rdfs:range xsd:string .
+
+aegis:omissionRuling a rdf:Property ;
+    rdfs:label "omission ruling" ;
+    rdfs:comment "The human Decision behind a human-decision omission, with its rationale." .
+
+aegis:deadEnd a rdf:Property ;
+    rdfs:label "dead end" ;
+    rdfs:comment "The entry Step of an abandoned branch the exemplars explored, preserved as a hazard: a follower of this path should know what was tried that did not help. Negative knowledge, kept queryable." .
+
+# ---- Blessing (promotion events) ----------------------------------------
+
+aegis:promotes a rdf:Property ;
+    rdfs:label "promotes" ;
+    rdfs:comment "The GoldenPath this promotion event acts on." .
+
+aegis:blessingLevel a rdf:Property ;
+    rdfs:label "blessing level" ;
+    rdfs:comment "The level this event promoted the path to: candidate, advisory, blessed, or constraint-backing. Recorded levels below candidate do not exist — recorded and verified are mechanical states derived at read time, not promotions." ;
+    rdfs:range xsd:string .
+
+aegis:promotedBy a rdf:Property ;
+    rdfs:label "promoted by" ;
+    rdfs:comment "The principal whose act this promotion is. Mandatory, and a human: nothing above verified happens without a recorded human act." .
+
+aegis:promotedAt a rdf:Property ;
+    rdfs:label "promoted at" ;
+    rdfs:range xsd:string .
+
+aegis:promotionEvidence a rdf:Property ;
+    rdfs:label "promotion evidence" ;
+    rdfs:comment "What the promoter looked at: a backtest report, a Verification, an advisory-period conformance record. A promotion citing nothing is answerable to competency Q8 as exactly that." .
+
+# ---- Conformance ----------------------------------------------------------
+
+aegis:followsPath a rdf:Property ;
+    rdfs:label "follows path" ;
+    rdfs:comment "A trajectory's (or work item's) declared claim to be an instance of a GoldenPath. A claim, not a verdict — conformance is evaluated at read time and by the guard, never asserted by the follower." .
+
+aegis:deviatesAt a rdf:Property ;
+    rdfs:label "deviates at" ;
+    rdfs:comment "The Step at which an evaluated trajectory departed from the path it declared. Deviation is input to the record, not a judgment that the agent was wrong — demotion evidence only exists if deviations are recorded faithfully." .
+
+aegis:derivedConstraint a rdf:Property ;
+    rdfs:label "derived constraint" ;
+    rdfs:comment "The aegis:Policy this GoldenPath backs, closing the audit chain constraint <- path <- exemplars. Far-horizon: gated on verdict signing; until then the ladder honestly stops at blessed." .

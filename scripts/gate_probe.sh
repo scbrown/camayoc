@@ -241,6 +241,39 @@ run_gate_probes() {
              "description": "deliberately lacks its blocker evidence kind",
              "properties": {"sourceKind": "observed"}}]
 }' "Load the current camayoc core ontology and shapes, then enable write-time SHACL validation."
+
+  # A golden path that cannot cite the concrete success justifying it is an
+  # opinion wearing a blessing. Omit only prunedFrom so this discriminates the
+  # exemplar-provenance shape, not sourceKind.
+  gate_arm "a GoldenPath with no exemplar trajectory" "prunedFrom" '{
+  "name": "camayoc-gate-probe-unprovenance-path",
+  "nodes": [{"name": "camayoc-golden-path-probe", "type": "GoldenPath",
+             "description": "deliberately lacks the trajectory it was pruned from",
+             "properties": {"sourceKind": "declared"}}]
+}' "Load the current camayoc core ontology and shapes, then enable write-time SHACL validation."
+
+  # An omission that cannot say who cut it is a silent edit of history. Omit
+  # only omissionAuthority; the omitted step itself is supplied.
+  gate_arm "a PathOmission with no authority" "omissionAuthority" '{
+  "name": "camayoc-gate-probe-unauthorized-omission",
+  "nodes": [{"name": "camayoc-path-omission-probe", "type": "PathOmission",
+             "description": "deliberately lacks its omission authority",
+             "properties": {"sourceKind": "declared",
+                            "omittedStep": "step-probe"}}]
+}' "Load the current camayoc core ontology and shapes, then enable write-time SHACL validation."
+
+  # A promotion without its promoting principal is not a human act, and
+  # nothing above verified happens without one. Omit only promotedBy; level,
+  # target, and time are all supplied and valid.
+  gate_arm "a PathPromotion with no promoting principal" "promotedBy" '{
+  "name": "camayoc-gate-probe-unattributed-promotion",
+  "nodes": [{"name": "camayoc-path-promotion-probe", "type": "PathPromotion",
+             "description": "deliberately lacks its promoting principal",
+             "properties": {"sourceKind": "declared",
+                            "promotes": "path-probe",
+                            "blessingLevel": "advisory",
+                            "promotedAt": "2026-08-20T00:00:00Z"}}]
+}' "Load the current camayoc core ontology and shapes, then enable write-time SHACL validation."
 }
 
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
