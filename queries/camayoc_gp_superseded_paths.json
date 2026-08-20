@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_gp_superseded_paths",
+  "description": "golden-paths Q9: golden paths that were demoted by supersession, and what won. The old path is never deleted; this edge says who replaced it.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?path ?label ?winner WHERE { ?path a aegis:GoldenPath ; rdfs:label ?label ; aegis:supersededBy ?winner } ORDER BY ?label",
+  "params": []
+}

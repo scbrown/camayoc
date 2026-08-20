@@ -1,0 +1,9 @@
+{
+  "action": "load",
+  "name": "camayoc_gp_unverified_stretch",
+  "description": "golden-paths Q4: for one trajectory, which steps produced a Verification and which produced none. The unverified stretch of a successful trajectory is where blessing must lean on human judgment.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?step ?order ?label ?verification WHERE { ?step a aegis:Step ; aegis:stepOf <{trajectory}> ; aegis:stepOrder ?order ; rdfs:label ?label . OPTIONAL { ?step aegis:verifiedBy ?verification } } ORDER BY ?order",
+  "params": [
+    "trajectory"
+  ]
+}

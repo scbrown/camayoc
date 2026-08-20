@@ -6,8 +6,12 @@
 > the slice decided (see the §3 note) and the vocabulary is minted in
 > `ontology/core.ttl` with shapes in `shapes/core.shapes.ttl` and three new
 > refusal arms in `scripts/gate_probe.sh` (proven able to fail by
-> `tests/test_gate_probe.py`). Named stored queries for Q1–Q13 are
-> camayoc-gp2. Mechanisms remain design-only in quipu and yupana. Mechanism designs live with their owners:
+> `tests/test_gate_probe.py`). Q1–Q13 run as named stored queries
+> (`queries/camayoc_gp_*.json`) against a seeded fixture
+> (`tests/fixtures/golden-paths.ttl`, positive + control-negative arms in
+> `tests/test_golden_path_queries.py`; camayoc-gp2) — coverage is 12/16,
+> with Q5 waiting on quipu's cone command and Q14–Q16 deferred with the
+> later ladder levels. Mechanisms remain design-only in quipu and yupana. Mechanism designs live with their owners:
 > [quipu docs/design/golden-paths-blessing.md](https://github.com/scbrown/quipu/blob/main/docs/design/golden-paths-blessing.md)
 > (storage, pruning aid, backtest, promotion) and
 > [yupana docs/golden-path-guard.md](https://github.com/scbrown/yupana/blob/main/docs/golden-path-guard.md)

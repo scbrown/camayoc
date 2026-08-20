@@ -1,0 +1,9 @@
+{
+  "action": "load",
+  "name": "camayoc_gp_conformance",
+  "description": "golden-paths Q12: trajectories that declared they follow this path, and where each deviated if it did. followsPath is a claim, deviatesAt is the evaluated record; an empty deviation cell is conformance so far, not a verdict.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?trajectory ?label ?deviation ?deviationLabel WHERE { ?trajectory a aegis:Trajectory ; aegis:followsPath <{path}> ; rdfs:label ?label . OPTIONAL { ?trajectory aegis:deviatesAt ?deviation . ?deviation rdfs:label ?deviationLabel } } ORDER BY ?label",
+  "params": [
+    "path"
+  ]
+}

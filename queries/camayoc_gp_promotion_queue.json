@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_gp_promotion_queue",
+  "description": "golden-paths Q10: candidate paths awaiting human promotion - a candidate-level promotion exists, nothing higher does, and the path was not superseded. The queue is where 'we are involved in the process' is either true or quietly false.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?path ?label ?candidateAt WHERE { ?promo a aegis:PathPromotion ; aegis:promotes ?path ; aegis:blessingLevel \"candidate\" ; aegis:promotedAt ?candidateAt . ?path rdfs:label ?label . FILTER NOT EXISTS { ?p2 aegis:promotes ?path ; aegis:blessingLevel ?l2 . FILTER(?l2 IN (\"advisory\", \"blessed\", \"constraint-backing\")) } FILTER NOT EXISTS { ?path aegis:supersededBy ?w } } ORDER BY ?candidateAt",
+  "params": []
+}

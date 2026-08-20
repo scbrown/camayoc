@@ -1,0 +1,9 @@
+{
+  "action": "load",
+  "name": "camayoc_gp_blessing_history",
+  "description": "golden-paths Q8: the promotion history of one golden path - who promoted it, when, to which level, citing what. The current level is the latest event, judged at read time; no stored current-fitness verdict exists to return.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?promotion ?level ?by ?at ?evidence WHERE { ?promotion a aegis:PathPromotion ; aegis:promotes <{path}> ; aegis:blessingLevel ?level ; aegis:promotedBy ?by ; aegis:promotedAt ?at . OPTIONAL { ?promotion aegis:promotionEvidence ?evidence } } ORDER BY ?at",
+  "params": [
+    "path"
+  ]
+}

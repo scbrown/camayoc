@@ -43,9 +43,8 @@ ONTOLOGY = ROOT / "ontology" / "core.ttl"
 #: `camayoc_blockers_by_evidence_kind` answers Q10. What is NOT hand-maintained
 #: is whether the named file exists or whether the terms exist — both are
 #: checked below, so this table cannot quietly claim coverage it does not have.
-SLICE = "verification-and-liveness"
-
-COVERAGE: dict[int, dict] = {
+#: slice name -> {question number -> coverage entry}. report() takes the slice.
+COVERAGE_VL: dict[int, dict] = {
     1: {"query": "camayoc_verification_falsifier"},
     2: {"query": "camayoc_verifications_without_falsifier"},
     3: {
@@ -119,6 +118,62 @@ COVERAGE: dict[int, dict] = {
 }
 
 
+COVERAGE_GP: dict[int, dict] = {
+    1: {"query": "camayoc_gp_trajectory_replay"},
+    2: {"query": "camayoc_gp_trajectories_for_topic"},
+    3: {"query": "camayoc_gp_admissible_exemplars"},
+    4: {"query": "camayoc_gp_unverified_stretch"},
+    5: {
+        "query": None,
+        "gap": "Per-step provenance-cone membership is computed by `quipu path "
+               "cone` (quipu-gp2, design-only) and only its OMISSION verdicts "
+               "are modelled (PathOmission with authority cone-analysis). A "
+               "term for stored in-cone/out-of-cone status per step is "
+               "deferred until that command exists — its output shape decides, "
+               "and minting the term first would be modelling a mechanism's "
+               "internals before the mechanism.",
+        "needs": ["per-step cone-membership facts (shape decided by quipu path cone)"],
+    },
+    6: {"query": "camayoc_gp_omissions"},
+    7: {"query": "camayoc_gp_dead_ends"},
+    8: {"query": "camayoc_gp_blessing_history"},
+    9: {"query": "camayoc_gp_superseded_paths"},
+    10: {"query": "camayoc_gp_promotion_queue"},
+    11: {"query": "camayoc_gp_paths_for_similar_work"},
+    12: {"query": "camayoc_gp_conformance"},
+    13: {"query": "camayoc_gp_backtest_outcomes"},
+    14: {
+        "query": None,
+        "gap": "aegis:derivedConstraint is minted, but no Policy or capability-"
+               "grant records exist to join against — the audit chain "
+               "constraint <- path <- exemplars needs the L5 mechanisms "
+               "(gated on verdict signing). Deferred with the later ladder "
+               "levels, per the suite's acceptance note.",
+        "needs": ["aegis:Policy records reachable from this graph", "grant/act records"],
+    },
+    15: {
+        "query": None,
+        "gap": "No record of individual authorized ACTS exists, so 'which acts "
+               "were authorized by path-derived constraints' has nothing to "
+               "join against. Same L5 dependency as Q14.",
+        "needs": ["act records carrying their authorizing constraint"],
+    },
+    16: {
+        "query": None,
+        "gap": "Staleness is a read-time judgment over conformance evidence "
+               "accumulated by the guard (yupana FR-41, design-only). "
+               "deviatesAt is minted; the guard that writes conformance "
+               "records at scale does not exist yet.",
+        "needs": ["guard-written conformance records over time"],
+    },
+}
+
+SLICES: dict[str, dict[int, dict]] = {
+    "verification-and-liveness": COVERAGE_VL,
+    "golden-paths": COVERAGE_GP,
+}
+
+
 def ontology_terms() -> set[str]:
     """Local names of every property and class the ontology defines."""
     text = ONTOLOGY.read_text()
@@ -134,9 +189,10 @@ def load_queries() -> dict[str, dict]:
     return {p.stem: json.loads(p.read_text()) for p in sorted(QUERIES.glob("*.json"))}
 
 
-def report() -> dict:
+def report(slice_name: str = "verification-and-liveness") -> dict:
     terms = ontology_terms()
     stored = load_queries()
+    COVERAGE = SLICES[slice_name]
 
     rows = []
     for number in sorted(COVERAGE):
@@ -169,7 +225,7 @@ def report() -> dict:
     verdict = "Full" if covered == total else ("Empty" if covered == 0 else "Partial")
 
     return {
-        "slice": SLICE,
+        "slice": slice_name,
         "covered": covered,
         "total": total,
         "verdict": verdict,
@@ -183,11 +239,17 @@ def main() -> int:
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     args = parser.parse_args()
 
-    result = report()
+    results = [report(name) for name in SLICES]
     if args.json:
-        print(json.dumps(result, indent=2))
+        print(json.dumps(results, indent=2))
         return 0
 
+    for result in results:
+        print_slice(result)
+    return 0
+
+
+def print_slice(result: dict) -> None:
     print(f"competency slice: {result['slice']}")
     print(
         f"stored-query coverage: {result['covered']}/{result['total']} "
@@ -206,7 +268,6 @@ def main() -> int:
         "A question with no stored query is an ontology gap reported as itself, "
         "never answered from the nearest term."
     )
-    return 0
 
 
 if __name__ == "__main__":

@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_gp_admissible_exemplars",
+  "description": "golden-paths Q3: work items admissible as golden-path exemplars - closed done AND their trajectory produced a falsifier-gated Verification. A done work item whose checks cannot name their failing result is an anecdote and is excluded, which is the control this query is tested against.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT DISTINCT ?workitem ?trajectory ?verification WHERE { ?workitem a aegis:WorkItem ; aegis:outcome \"done\" . ?trajectory aegis:trajectoryOf ?workitem . ?step aegis:stepOf ?trajectory ; aegis:verifiedBy ?verification . ?verification aegis:falsifier ?f . } ORDER BY ?workitem",
+  "params": []
+}

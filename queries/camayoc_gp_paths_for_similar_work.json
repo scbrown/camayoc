@@ -1,0 +1,9 @@
+{
+  "action": "load",
+  "name": "camayoc_gp_paths_for_similar_work",
+  "description": "golden-paths Q11: golden paths for work items like this one - v1 similarity is the deterministic core only (a shared aegis:about topic with an exemplar's work item), never model-inferred; superseded paths are excluded.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT DISTINCT ?path ?label WHERE { <{workitem}> aegis:about ?topic . ?path a aegis:GoldenPath ; rdfs:label ?label ; aegis:prunedFrom ?exemplar . ?exemplar aegis:trajectoryOf ?exemplarWi . ?exemplarWi aegis:about ?topic . FILTER NOT EXISTS { ?path aegis:supersededBy ?w } } ORDER BY ?label",
+  "params": [
+    "workitem"
+  ]
+}

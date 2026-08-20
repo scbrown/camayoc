@@ -1,0 +1,9 @@
+{
+  "action": "load",
+  "name": "camayoc_gp_omissions",
+  "description": "golden-paths Q6: the pruning rulings of one golden path - each omitted step with its authority (cone-analysis or human-decision) and, for human cuts, the Decision and its rationale.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?omission ?stepLabel ?authority ?ruling ?rationale WHERE { <{path}> aegis:omitsStep ?omission . ?omission aegis:omittedStep ?step ; aegis:omissionAuthority ?authority . ?step rdfs:label ?stepLabel . OPTIONAL { ?omission aegis:omissionRuling ?ruling . OPTIONAL { ?ruling aegis:rationale ?rationale } } } ORDER BY ?stepLabel",
+  "params": [
+    "path"
+  ]
+}

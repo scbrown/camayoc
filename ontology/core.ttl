@@ -237,6 +237,10 @@ aegis:PathPromotion a rdfs:Class ;
 
 # ---- Trajectory properties ----------------------------------------------
 
+aegis:trajectoryOf a rdf:Property ;
+    rdfs:label "trajectory of" ;
+    rdfs:comment "The WorkItem this trajectory is the execution record of. Mandatory in spirit (Q1/Q2 join on it); permissive in the shape until the recording path settles." .
+
 aegis:stepOf a rdf:Property ;
     rdfs:label "step of" ;
     rdfs:comment "The Trajectory this step belongs to. Mandatory: a step with no trajectory is an anecdote." .
@@ -245,6 +249,19 @@ aegis:stepOrder a rdf:Property ;
     rdfs:label "step order" ;
     rdfs:comment "The step's position in its trajectory's total order." ;
     rdfs:range xsd:integer .
+
+aegis:actor a rdf:Property ;
+    rdfs:label "actor" ;
+    rdfs:comment "The principal that performed this step. Owed to competency golden-paths Q1; reuses whatever principal node the graph already holds." .
+
+aegis:actionKind a rdf:Property ;
+    rdfs:label "action kind" ;
+    rdfs:comment "What kind of action the step is (edit, run, mail, decide, verify, ...). One half of the conformance grammar's v1 step signature." ;
+    rdfs:range xsd:string .
+
+aegis:actionTarget a rdf:Property ;
+    rdfs:label "action target" ;
+    rdfs:comment "What the step acted on. The other half of the v1 step signature; an IRI when the target is in the graph, a string when it is not." .
 
 aegis:enacts a rdf:Property ;
     rdfs:label "enacts" ;

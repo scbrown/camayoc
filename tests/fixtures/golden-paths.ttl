@@ -1,0 +1,315 @@
+# Fixture graph for the golden-paths competency queries (camayoc-gp2).
+#
+# Same discipline as verification-liveness.ttl: every query gets BOTH a seeded
+# positive finding and a control negative, because an empty result without
+# those arms is not proof of anything. The story seeded here:
+#
+#   * wi-deploy closed done with a falsifier-gated verification — the
+#     admissible exemplar. Its trajectory contains a dead-end detour (a cache
+#     experiment that did not help) and a spec-reading step a human chose to
+#     prune despite the cone saying it was load-bearing.
+#   * wi-hotfix closed done but its only verification names no falsifier —
+#     a success that is an anecdote, and must NOT be admissible.
+#   * wi-abandoned did not close done — also inadmissible.
+#   * gp-deploy is the golden path pruned from wi-deploy's trajectory,
+#     promoted candidate then advisory by a human, citing a backtest.
+#   * gp-old was superseded by gp-deploy; gp-pending is candidate-only and
+#     awaits promotion — the queue.
+#   * traj-follow declared followsPath gp-deploy and conformed (its work item
+#     closed done); traj-stray declared it too, deviated, and failed.
+
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex:    <http://camayoc.test/fixture/> .
+
+# --- Principals (untyped: Principal is a known gap, slice 2 Q6) -------------
+
+ex:stiwi rdfs:label "stiwi" .
+ex:polecat-7 rdfs:label "polecat-7" .
+
+# --- The admissible exemplar: wi-deploy -------------------------------------
+
+ex:wi-deploy
+    a aegis:WorkItem ;
+    rdfs:label "deploy the verdict service" ;
+    aegis:sourceKind "observed" ;
+    aegis:about "service-deploy" ;
+    aegis:outcome "done" ;
+    aegis:closedAt "2026-08-01T12:00:00Z" .
+
+ex:traj-deploy
+    a aegis:Trajectory ;
+    rdfs:label "trajectory of wi-deploy" ;
+    aegis:sourceKind "observed" .
+
+ex:traj-deploy aegis:trajectoryOf ex:wi-deploy .
+
+ex:step-read-spec
+    a aegis:Step ;
+    rdfs:label "read the service spec" ;
+    aegis:sourceKind "observed" ;
+    aegis:stepOf ex:traj-deploy ;
+    aegis:stepOrder 1 ;
+    aegis:actionKind "read" ;
+    aegis:actionTarget "docs/service-spec.md" ;
+    aegis:actor ex:polecat-7 .
+
+ex:step-implement
+    a aegis:Step ;
+    rdfs:label "implement the health endpoint" ;
+    aegis:sourceKind "observed" ;
+    aegis:stepOf ex:traj-deploy ;
+    aegis:stepOrder 2 ;
+    aegis:actionKind "edit" ;
+    aegis:actionTarget "src/health.rs" ;
+    aegis:actor ex:polecat-7 ;
+    aegis:enacts ex:decision-impl .
+
+ex:step-detour-cache
+    a aegis:Step ;
+    rdfs:label "experiment with a response cache" ;
+    aegis:sourceKind "observed" ;
+    aegis:stepOf ex:traj-deploy ;
+    aegis:stepOrder 3 ;
+    aegis:actionKind "edit" ;
+    aegis:actionTarget "src/cache.rs" ;
+    aegis:actor ex:polecat-7 .
+
+ex:step-test
+    a aegis:Step ;
+    rdfs:label "run the suite" ;
+    aegis:sourceKind "observed" ;
+    aegis:stepOf ex:traj-deploy ;
+    aegis:stepOrder 4 ;
+    aegis:actionKind "run" ;
+    aegis:actionTarget "just test" ;
+    aegis:actor ex:polecat-7 .
+
+ex:step-deploy
+    a aegis:Step ;
+    rdfs:label "deploy the artifact" ;
+    aegis:sourceKind "observed" ;
+    aegis:stepOf ex:traj-deploy ;
+    aegis:stepOrder 5 ;
+    aegis:actionKind "run" ;
+    aegis:actionTarget "just deploy-server" ;
+    aegis:actor ex:polecat-7 .
+
+ex:step-verify
+    a aegis:Step ;
+    rdfs:label "verify the deploy" ;
+    aegis:sourceKind "observed" ;
+    aegis:stepOf ex:traj-deploy ;
+    aegis:stepOrder 6 ;
+    aegis:actionKind "verify" ;
+    aegis:actionTarget "health endpoint" ;
+    aegis:actor ex:polecat-7 ;
+    aegis:verifiedBy ex:verif-deploy-health .
+
+ex:decision-impl
+    a aegis:Decision ;
+    rdfs:label "expose health as its own endpoint" ;
+    aegis:sourceKind "observed" ;
+    aegis:chose "a dedicated /health route" ;
+    aegis:over "piggybacking on /status" ;
+    aegis:decidedBy ex:polecat-7 .
+
+ex:verif-deploy-health
+    a aegis:Verification ;
+    rdfs:label "post-deploy health check" ;
+    aegis:sourceKind "observed" ;
+    aegis:falsifier "a non-200 from /health, or a served version differing from the pushed sha" .
+
+# --- The inadmissible successes (controls for Q3) ----------------------------
+
+ex:wi-hotfix
+    a aegis:WorkItem ;
+    rdfs:label "hotfix the retry loop" ;
+    aegis:sourceKind "observed" ;
+    aegis:about "retry-loop" ;
+    aegis:outcome "done" ;
+    aegis:closedAt "2026-08-02T09:00:00Z" .
+
+ex:traj-hotfix
+    a aegis:Trajectory ;
+    rdfs:label "trajectory of wi-hotfix" ;
+    aegis:sourceKind "observed" ;
+    aegis:trajectoryOf ex:wi-hotfix .
+
+ex:step-hotfix-verify
+    a aegis:Step ;
+    rdfs:label "eyeball the logs" ;
+    aegis:sourceKind "observed" ;
+    aegis:stepOf ex:traj-hotfix ;
+    aegis:stepOrder 1 ;
+    aegis:actionKind "verify" ;
+    aegis:actor ex:polecat-7 ;
+    aegis:verifiedBy ex:verif-hotfix-eyeball .
+
+# Pre-gate legacy: a verification with no falsifier. wi-hotfix closed done,
+# but this is an assertion in a verification's clothes — Q3 must exclude it.
+ex:verif-hotfix-eyeball
+    a aegis:Verification ;
+    rdfs:label "looked at the logs and they seemed fine" ;
+    aegis:sourceKind "observed" .
+
+ex:wi-abandoned
+    a aegis:WorkItem ;
+    rdfs:label "abandoned migration attempt" ;
+    aegis:sourceKind "observed" ;
+    aegis:about "service-deploy" ;
+    aegis:outcome "abandoned" ;
+    aegis:closedAt "2026-08-03T10:00:00Z" .
+
+ex:traj-abandoned
+    a aegis:Trajectory ;
+    rdfs:label "trajectory of wi-abandoned" ;
+    aegis:sourceKind "observed" ;
+    aegis:trajectoryOf ex:wi-abandoned .
+
+# --- The golden path pruned from traj-deploy --------------------------------
+
+ex:gp-deploy
+    a aegis:GoldenPath ;
+    rdfs:label "golden path: service deploy" ;
+    aegis:sourceKind "declared" ;
+    aegis:prunedFrom ex:traj-deploy ;
+    aegis:omitsStep ex:omission-cache ;
+    aegis:omitsStep ex:omission-read-spec ;
+    aegis:deadEnd ex:step-detour-cache .
+
+# Mechanically prunable: the cache detour is outside the provenance cone of
+# the verified result.
+ex:omission-cache
+    a aegis:PathOmission ;
+    rdfs:label "omit the cache experiment" ;
+    aegis:sourceKind "declared" ;
+    aegis:omittedStep ex:step-detour-cache ;
+    aegis:omissionAuthority "cone-analysis" .
+
+# A human overruled the cone: reading the spec WAS load-bearing, but the path
+# assumes a reader who already knows it.
+ex:omission-read-spec
+    a aegis:PathOmission ;
+    rdfs:label "omit the spec reading" ;
+    aegis:sourceKind "declared" ;
+    aegis:omittedStep ex:step-read-spec ;
+    aegis:omissionAuthority "human-decision" ;
+    aegis:omissionRuling ex:decision-prune-read .
+
+ex:decision-prune-read
+    a aegis:Decision ;
+    rdfs:label "prune the spec-reading step from the deploy path" ;
+    aegis:sourceKind "declared" ;
+    aegis:chose "assume path followers already hold the spec" ;
+    aegis:over "keeping a mandatory reading step" ;
+    aegis:rationale "the spec is injected as context at dispatch; a mandatory read step double-counts it" ;
+    aegis:decidedBy ex:stiwi .
+
+# --- Blessing history ---------------------------------------------------------
+
+ex:promo-deploy-candidate
+    a aegis:PathPromotion ;
+    rdfs:label "gp-deploy promoted to candidate" ;
+    aegis:sourceKind "declared" ;
+    aegis:promotes ex:gp-deploy ;
+    aegis:blessingLevel "candidate" ;
+    aegis:promotedBy ex:stiwi ;
+    aegis:promotedAt "2026-08-05T08:00:00Z" ;
+    aegis:promotionEvidence "backtest run 2026-08-04: 3 matches, conformers 2/2 done, non-conformer 0/1" .
+
+ex:promo-deploy-advisory
+    a aegis:PathPromotion ;
+    rdfs:label "gp-deploy promoted to advisory" ;
+    aegis:sourceKind "declared" ;
+    aegis:promotes ex:gp-deploy ;
+    aegis:blessingLevel "advisory" ;
+    aegis:promotedBy ex:stiwi ;
+    aegis:promotedAt "2026-08-10T08:00:00Z" ;
+    aegis:promotionEvidence "backtest run 2026-08-04, unchanged after five advisory-free days" .
+
+# Superseded: the old deploy path lost to gp-deploy. Candidate-only, but the
+# supersession removes it from the promotion queue.
+ex:gp-old
+    a aegis:GoldenPath ;
+    rdfs:label "golden path: legacy deploy (superseded)" ;
+    aegis:sourceKind "declared" ;
+    aegis:prunedFrom ex:traj-hotfix ;
+    aegis:supersededBy ex:gp-deploy .
+
+ex:promo-old-candidate
+    a aegis:PathPromotion ;
+    rdfs:label "gp-old promoted to candidate" ;
+    aegis:sourceKind "declared" ;
+    aegis:promotes ex:gp-old ;
+    aegis:blessingLevel "candidate" ;
+    aegis:promotedBy ex:stiwi ;
+    aegis:promotedAt "2026-07-01T08:00:00Z" .
+
+# The promotion queue's positive: candidate-only, not superseded, waiting.
+ex:gp-pending
+    a aegis:GoldenPath ;
+    rdfs:label "golden path: retry-loop hotfix (pending)" ;
+    aegis:sourceKind "declared" ;
+    aegis:prunedFrom ex:traj-hotfix .
+
+ex:promo-pending-candidate
+    a aegis:PathPromotion ;
+    rdfs:label "gp-pending promoted to candidate" ;
+    aegis:sourceKind "declared" ;
+    aegis:promotes ex:gp-pending ;
+    aegis:blessingLevel "candidate" ;
+    aegis:promotedBy ex:stiwi ;
+    aegis:promotedAt "2026-08-12T08:00:00Z" ;
+    aegis:promotionEvidence "backtest run 2026-08-11: 2 matches, both done" .
+
+# --- Followers: one conformer, one deviator ----------------------------------
+
+ex:wi-follow
+    a aegis:WorkItem ;
+    rdfs:label "deploy the metrics service" ;
+    aegis:sourceKind "observed" ;
+    aegis:about "service-deploy" ;
+    aegis:outcome "done" ;
+    aegis:closedAt "2026-08-15T12:00:00Z" .
+
+ex:traj-follow
+    a aegis:Trajectory ;
+    rdfs:label "trajectory of wi-follow" ;
+    aegis:sourceKind "observed" ;
+    aegis:trajectoryOf ex:wi-follow ;
+    aegis:followsPath ex:gp-deploy .
+
+ex:wi-stray
+    a aegis:WorkItem ;
+    rdfs:label "deploy the ingest service" ;
+    aegis:sourceKind "observed" ;
+    aegis:about "service-deploy" ;
+    aegis:outcome "failed" ;
+    aegis:closedAt "2026-08-16T12:00:00Z" .
+
+ex:traj-stray
+    a aegis:Trajectory ;
+    rdfs:label "trajectory of wi-stray" ;
+    aegis:sourceKind "observed" ;
+    aegis:trajectoryOf ex:wi-stray ;
+    aegis:followsPath ex:gp-deploy ;
+    aegis:deviatesAt ex:step-stray-skip-test .
+
+ex:step-stray-skip-test
+    a aegis:Step ;
+    rdfs:label "deployed without running the suite" ;
+    aegis:sourceKind "observed" ;
+    aegis:stepOf ex:traj-stray ;
+    aegis:stepOrder 1 ;
+    aegis:actionKind "run" ;
+    aegis:actionTarget "just deploy-server" ;
+    aegis:actor ex:polecat-7 .
+
+# A work item looking for a path (Q11's parameter): same topic as the
+# exemplar's work item, no trajectory yet.
+ex:wi-new
+    a aegis:WorkItem ;
+    rdfs:label "deploy the search service" ;
+    aegis:sourceKind "observed" ;
+    aegis:about "service-deploy" .
