@@ -419,3 +419,64 @@ bobbin:CommitShape a sh:NodeShape ;
         sh:path bobbin:references ;
         sh:nodeKind sh:IRI ;
     ] .
+
+# ── Chunk ──────────────────────────────────────────────────────
+#
+# A retrievable piece of a Document or CodeModule — the unit bobbin's
+# index stores and its structural-edge graph relates (adjacency,
+# containment). Owed to competency/document-structure-and-chunks.md
+# questions 1-9; the emitter is bobbin's /knot snapshot lane
+# (bobbin docs/plans/bobbin-roadmap.md W2.P4).
+#
+# EVERY property here is advisory — value-constrained, nothing required.
+# This is one step earlier on the advise-before-enforce ladder than the
+# shapes above: Section's minCounts were ordered AFTER its emitter shipped
+# and was measured across 15,311 live entities; the Chunk emitter has not
+# shipped at all, so there is no live output to measure yet. Requiring any
+# predicate now would refuse the first promotion the emitter ever attempts.
+# Tightening comes after counting the deployed emitter's output, exactly
+# as rdfs:label was tightened above.
+#
+# Relationship vocabulary notes:
+#   - bobbin:inDocument (not aegis:contains) links a Chunk to its Document
+#     or CodeModule — the same dodge SectionShape's emitter uses, because
+#     aegis:contains is bound to sh:class aegis:Bead in provenance shapes
+#     via sh:targetSubjectsOf and would fire on any subject.
+#   - bobbin:nextChunk is set-semantics adjacency: each chunk has at most
+#     one successor in document order.
+#   - bobbin:chunkOrder is the aegis:stepOrder idiom (xsd:integer) applied
+#     to document position.
+
+bobbin:ChunkShape a sh:NodeShape ;
+    sh:targetClass bobbin:Chunk ;
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:maxCount 1 ;
+        sh:in ("observed" "declared" "inferred") ;
+        sh:message "camayoc: sourceKind, when present, is one of observed|declared|inferred — the same closed vocabulary core.shapes.ttl requires (camayoc-42d)" ;
+    ] ;
+    sh:property [
+        sh:path bobbin:inDocument ;
+        sh:nodeKind sh:IRI ;
+    ] ;
+    sh:property [
+        sh:path bobbin:nextChunk ;
+        sh:nodeKind sh:IRI ;
+        sh:maxCount 1 ;
+        sh:message "camayoc: nextChunk is document-order adjacency — at most one successor per chunk" ;
+    ] ;
+    sh:property [
+        sh:path bobbin:chunkOrder ;
+        sh:datatype xsd:integer ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path bobbin:filePath ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1 ;
+    ] .
