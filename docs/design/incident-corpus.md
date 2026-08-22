@@ -1,11 +1,18 @@
 # The 2026-08-06/07 incident corpus
 
-> **Implementation status (2026-08-17):** 🟡 **Labelled, denominator
+> **Implementation status (2026-08-22):** 🟡 **Labelled, denominator
 > incomplete.** The instances and their taxonomy are recorded
 > contemporaneously and are solid. The **rate** the paper needs is *not*
 > computable from the record as it was kept, and §4 says so explicitly rather
-> than estimating one. §5 specifies the instrumentation that would fix this for
-> the next window.
+> than estimating one. §5 specifies the instrumentation that would fix this
+> for the next window — audited 2026-08-22, none of it is buildable in
+> camayoc alone: items 1–2 need the refusal side recorded somewhere queryable,
+> and a refused write never enters the graph, so that count lives with quipu's
+> refusal path; item 3 depends on the cost-accounting vocabulary
+> (`camayoc-e29`). Tracked as `camayoc-0d3` rather than left as prose.
+> (§4.2's own lesson bit this repo once more meanwhile: the coverage tool's
+> verification denominator was itself undercounted until 2026-08-22 — six §D
+> questions were missing from it.)
 
 Source of record: [`../../competency/verification-and-liveness.md`](../../competency/verification-and-liveness.md),
 written during and immediately after the night of **2026-08-06/07** on a live
@@ -205,7 +212,10 @@ design, and overselling it would be its own unfalsifiable claim.
   does not, and this paper in particular cannot argue that claims must be
   falsifiable while making an unfalsifiable one about its own evidence.
 - **State that the corpus motivates the mechanism rather than validating it.**
-  The competency queries that would let the system answer these questions do not
-  yet exist (4 of 47 — see [`implemented-set.md`](implemented-set.md) §2). The
-  corpus is the *problem statement*, and the evaluation is separate and
-  currently thin.
+  The competency queries that would let the system answer *these particular*
+  questions still do not exist: the liveness-join family (verification slice
+  #6–#9) and the cost/denominator family (§D) are all GAP rows in
+  `just query-coverage` (5/19 on that slice as of 2026-08-22; the "4 of 47"
+  this bullet cited on 2026-08-17 predates the golden-paths slice's 12/16 —
+  see [`implemented-set.md`](implemented-set.md) §2). The corpus is the
+  *problem statement*, and the evaluation is separate and currently thin.
