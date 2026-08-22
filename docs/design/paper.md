@@ -265,11 +265,14 @@ From [`implemented-set.md`](implemented-set.md), which is authoritative:
 3. ~~Write up the incident corpus with denominator and rate~~ — done, [`incident-corpus.md`](incident-corpus.md).
 4. ~~Prove the gate probes adversarially~~ — done (`camayoc-104`); C4 is claimable.
 5. ~~Close the competency-query gap for the verification slice~~ — done
-   (`camayoc-102`), reaching 5/13 and converting the other 8 into named
-   ontology gaps.
-6. **Decide whether to close any of the eight gaps before drafting.** Q6/Q8
+   (`camayoc-102`), reaching 5/13 at the time and converting the other 8 into
+   named ontology gaps. (Recounted as 5/19 on 2026-08-22 when the slice's §D
+   entered the denominator — six more named gaps, no lost queries.)
+6. **Decide whether to close any of the named gaps before drafting.** Q6/Q8
    (liveness) is the one that changes what §4 can claim; the rest can ship as
-   future work. This is now the only open build decision, and it is ian's.
+   future work (the five single-edge mints are `camayoc-89e`, the §D cost
+   vocabulary `camayoc-e29`). This is now the only open build decision, and
+   it is ian's.
 7. Draft §§1–5 from the mechanism docs; they are stable.
 8. Draft §7 last, against whatever coverage step 6 settles on.
 
