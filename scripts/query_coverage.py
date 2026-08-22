@@ -47,32 +47,9 @@ ONTOLOGY = ROOT / "ontology" / "core.ttl"
 COVERAGE_VL: dict[int, dict] = {
     1: {"query": "camayoc_verification_falsifier"},
     2: {"query": "camayoc_verifications_without_falsifier"},
-    3: {
-        "query": None,
-        "gap": "No term records WHEN a falsifier was last re-run. Q3 asks which "
-               "'X is fixed' claims have a falsifier never re-run after a change; "
-               "aegis:Verification has no verifiedAt, and there is no relation "
-               "from a Verification to the change it followed.",
-        "needs": ["verifiedAt", "verifies (Verification -> change)"],
-    },
-    4: {
-        "query": None,
-        "gap": "No term distinguishes a check PROVEN adversarial from one merely "
-               "asserted to work. aegis:demonstratedBy exists but is defined on "
-               "Blocker, not Verification. This is the same non-vacuity property "
-               "camayoc-104 just established for the gate probes — the ontology "
-               "cannot yet record it about anything else.",
-        "needs": ["adversariallyProvenBy (Verification -> Verification)"],
-    },
-    5: {
-        "query": None,
-        "gap": "No term relates a check to the variable under test, so 'does the "
-               "mechanism depend on what changed' cannot be asked. This question "
-               "exists to protect valid adjacent-setting evidence from being "
-               "discarded (incident forms A2 and A6), so the gap has a cost in "
-               "both directions.",
-        "needs": ["dependsOnVariable"],
-    },
+    3: {"query": "camayoc_falsifiers_not_rerun"},
+    4: {"query": "camayoc_adversarially_proven_checks"},
+    5: {"query": "camayoc_check_variable_dependence"},
     6: {
         "query": None,
         "gap": "No Principal class and no session/heartbeat record, so 'is this "
@@ -83,14 +60,7 @@ COVERAGE_VL: dict[int, dict] = {
                "it blocks the four-beads-one-cause family the paper leads with.",
         "needs": ["Principal", "Session", "observed stop record (frm/item/item_status/ts)"],
     },
-    7: {
-        "query": None,
-        "gap": "aegis:Blocker exists but no predicate relates a WorkItem to the "
-               "WorkItem it is blocked on, so 'blocked on a dependency already "
-               "closed' cannot be expressed. aegis:closedAt exists, so only the "
-               "edge is missing.",
-        "needs": ["blockedOn (WorkItem -> WorkItem)"],
-    },
+    7: {"query": "camayoc_blocked_on_closed_dependency"},
     8: {
         "query": None,
         "gap": "No Alert or Escalation class. Same missing liveness join as Q6, "
@@ -106,14 +76,7 @@ COVERAGE_VL: dict[int, dict] = {
     },
     10: {"query": "camayoc_blockers_by_evidence_kind"},
     11: {"query": "camayoc_execution_path_for_mechanism"},
-    12: {
-        "query": None,
-        "gap": "ExecutionPath carries executesArtifact and repositorySource as "
-               "strings, but no digest on either, so 'differs between source and "
-               "installed artifact' cannot be evaluated in the store. "
-               "aegis:contentHash exists but is defined for Metric.",
-        "needs": ["contentHash on ExecutionPath (both sides)"],
-    },
+    12: {"query": "camayoc_drifted_execution_paths"},
     13: {"query": "camayoc_single_owner_execution_paths"},
     # Section D (cost and effort accounting) numbers itself 16-21 — there is
     # no Q14/Q15 in the suite file. These rows were absent from this table

@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_blocked_on_closed_dependency",
+  "description": "verification-and-liveness Q7: work items blocked on a dependency that is already closed — the measured 14-day failure. The blockedOn edge is the stated dependency; whether it still holds is exactly this read-time join, never a stored judgment.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?item ?label ?dependency ?dependencyLabel ?closedAt WHERE { ?item a aegis:WorkItem ; rdfs:label ?label ; aegis:blockedOn ?dependency . ?dependency rdfs:label ?dependencyLabel ; aegis:closedAt ?closedAt . FILTER NOT EXISTS { ?item aegis:closedAt ?itemClosed } } ORDER BY ?label",
+  "params": []
+}

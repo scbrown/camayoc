@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_adversarially_proven_checks",
+  "description": "verification-and-liveness Q4: which checks were PROVEN adversarial — a deliberate sabotage shown to flip them — and which were only asserted to work. An unbound proof column is the assertion-only population; the query never fills one in.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?verification ?label ?provenBy WHERE { ?verification a aegis:Verification ; rdfs:label ?label . OPTIONAL { ?verification aegis:adversariallyProvenBy ?provenBy } } ORDER BY ?label",
+  "params": []
+}

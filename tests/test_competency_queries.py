@@ -130,6 +130,81 @@ class CompetencyQueryExecutionTests(unittest.TestCase):
         self.assertNotIn("byte-identity", labels)
         self.assertNotIn("schema comparison", labels)
 
+    # -- Q3 ----------------------------------------------------------------
+    def test_q3_finds_the_claim_whose_falsifier_predates_the_change(self):
+        """The config rewrite is dated 2026-08-10; the stale verification ran
+        2026-08-01 and was never re-run after."""
+        rows = run(
+            self.graph,
+            "camayoc_falsifiers_not_rerun",
+            changedAt="2026-08-10T00:00:00Z",
+        )
+        labels = [r[1] for r in rows]
+        self.assertTrue(any("verified once" in label for label in labels), rows)
+
+    def test_q3_excludes_the_verification_rerun_after_the_change(self):
+        """The discriminating arm: a re-run falsifier is current, and a query
+        returning every dated verification would report diligence as staleness."""
+        rows = run(
+            self.graph,
+            "camayoc_falsifiers_not_rerun",
+            changedAt="2026-08-10T00:00:00Z",
+        )
+        labels = " ".join(r[1] for r in rows)
+        self.assertNotIn("re-verified", labels)
+
+    # -- Q4 ----------------------------------------------------------------
+    def test_q4_reports_the_sabotage_proven_check_with_its_proof(self):
+        rows = run(self.graph, "camayoc_adversarially_proven_checks")
+        proven = [r for r in rows if "sabotage-proven" in r[1]]
+        self.assertEqual(1, len(proven), rows)
+        self.assertIn("verification-sabotage-run", proven[0][2])
+
+    def test_q4_leaves_an_asserted_check_without_a_proof(self):
+        """A check nobody sabotaged must come back with the proof column
+        unbound — filling one in would erase the distinction Q4 exists for."""
+        rows = run(self.graph, "camayoc_adversarially_proven_checks")
+        asserted = [r for r in rows if "asserted to work" in r[1]]
+        self.assertEqual(1, len(asserted), rows)
+        self.assertEqual("", asserted[0][2])
+
+    # -- Q5 ----------------------------------------------------------------
+    def test_q5_returns_the_variables_a_check_depends_on(self):
+        rows = run(
+            self.graph,
+            "camayoc_check_variable_dependence",
+            check=f"{EX}check-adjacent-setting",
+        )
+        variables = [r[2] for r in rows]
+        self.assertEqual(
+            ["shacl-validate-on-write", "store-base-namespace"], sorted(variables)
+        )
+
+    def test_q5_returns_nothing_for_a_check_with_no_recorded_dependence(self):
+        """UNKNOWN, not 'independent': an empty result means no dependence is
+        recorded, and the query must not manufacture a verdict from absence."""
+        rows = run(
+            self.graph,
+            "camayoc_check_variable_dependence",
+            check=f"{EX}verification-byte-identity",
+        )
+        self.assertEqual([], rows)
+
+    # -- Q7 ----------------------------------------------------------------
+    def test_q7_finds_the_item_blocked_on_a_closed_dependency(self):
+        rows = run(self.graph, "camayoc_blocked_on_closed_dependency")
+        self.assertEqual(1, len(rows), rows)
+        self.assertIn("P1 waiting on the schema migration", rows[0][1])
+        self.assertIn("2026-08-05", rows[0][4])
+
+    def test_q7_excludes_live_blocks_and_stale_edges_on_closed_items(self):
+        """Two controls: a dependency still open is a real block, and a closed
+        item's leftover blockedOn edge blocks nothing."""
+        rows = run(self.graph, "camayoc_blocked_on_closed_dependency")
+        labels = " ".join(r[1] for r in rows)
+        self.assertNotIn("quipu refusal log", labels)
+        self.assertNotIn("already-shipped", labels)
+
     # -- Q10 ---------------------------------------------------------------
     def test_q10_separates_stated_from_built_blockers(self):
         rows = run(self.graph, "camayoc_blockers_by_evidence_kind")
@@ -159,6 +234,22 @@ class CompetencyQueryExecutionTests(unittest.TestCase):
         self.assertIn("/home/strider/", artifact)
         self.assertIn("scbrown/camayoc", source)
         self.assertIn("git pull", refreshed)
+
+    # -- Q12 ---------------------------------------------------------------
+    def test_q12_finds_the_path_whose_digests_differ(self):
+        rows = run(self.graph, "camayoc_drifted_execution_paths")
+        self.assertEqual(1, len(rows), rows)
+        self.assertIn("six weeks stale", rows[0][1])
+        self.assertNotEqual(rows[0][2], rows[0][3])
+
+    def test_q12_excludes_matching_digests_and_undigested_paths(self):
+        """Two controls: equal digests are observed agreement, and a path with
+        no digest is UNKNOWN — neither may be reported as drift."""
+        rows = run(self.graph, "camayoc_drifted_execution_paths")
+        labels = " ".join(r[1] for r in rows)
+        self.assertNotIn("matching source", labels)
+        self.assertNotIn("shared read-only checkout", labels)
+        self.assertNotIn("individual working tree", labels)
 
     # -- Q13 ---------------------------------------------------------------
     def test_q13_finds_the_single_principal_owned_path(self):
@@ -197,10 +288,12 @@ class CoverageReportTests(unittest.TestCase):
 
         19, not 13: the suite's §D (cost accounting, Q16-21 — there is no
         Q14/Q15) was uncounted until 2026-08-22, which understated the
-        denominator exactly the way incident-corpus.md §4.2 warns about."""
+        denominator exactly the way incident-corpus.md §4.2 warns about.
+        10 covered since camayoc-89e landed the five single-edge mints
+        (Q3/Q4/Q5/Q7/Q12) on 2026-08-22."""
         result = coverage.report()
         self.assertEqual("Partial", result["verdict"])
-        self.assertEqual(5, result["covered"])
+        self.assertEqual(10, result["covered"])
         self.assertEqual(19, result["total"])
 
     def test_every_gap_names_what_the_ontology_would_need(self):

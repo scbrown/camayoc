@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_drifted_execution_paths",
+  "description": "verification-and-liveness Q12: mechanisms whose installed artifact and repository source digests DIFFER — armed-not-running drift observed in the store. A path missing either digest is UNKNOWN and deliberately not returned: absence of measurement is never evidence of drift, nor of sync.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?path ?label ?artifactDigest ?sourceDigest WHERE { ?path a aegis:ExecutionPath ; rdfs:label ?label ; aegis:artifactDigest ?artifactDigest ; aegis:sourceDigest ?sourceDigest . FILTER(?artifactDigest != ?sourceDigest) } ORDER BY ?label",
+  "params": []
+}

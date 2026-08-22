@@ -63,6 +63,31 @@ aegis:falsifier a rdf:Property ;
     rdfs:comment "The observable result that would have disproved a Verification. Mandatory: a check that cannot name its failing result is an assertion, not verification." ;
     rdfs:range xsd:string .
 
+# ---- Verification integrity (camayoc-89e: single-edge mints) -----------
+# Owed to competency/verification-and-liveness.md Q3, Q4, Q5. Each is one
+# edge on the existing Verification class; the liveness modelling (Q6/Q8/Q9)
+# is deliberately NOT here — Principal/Session-stop/StateTransition is a
+# bigger design and these mints do not pre-empt it.
+
+aegis:verifiedAt a rdf:Property ;
+    rdfs:label "verified at" ;
+    rdfs:comment "The observed time this Verification's check was last run. Owed to Q3: a falsifier run once and never re-run after a change is a stale proof wearing a current one's clothes. A fact of the run, never a stored 'still current' verdict." ;
+    rdfs:range xsd:string .
+
+aegis:verifies a rdf:Property ;
+    rdfs:label "verifies" ;
+    rdfs:comment "The claim or change this Verification's check bears on — the 'X is fixed/landed/deployed' whose falsifier it ran. Owed to Q3, which joins a verification's time against the change that followed it. No range constraint: the subject may be a work item, a commit, or a deploy record." .
+
+aegis:adversariallyProvenBy a rdf:Property ;
+    rdfs:label "adversarially proven by" ;
+    rdfs:comment "The Verification that deliberately sabotaged the mechanism under test and observed this check flip. Owed to Q4: a check proven able to fail is a different evidence class from one asserted to work — the property camayoc-104 established for the gate probes, now recordable about anything else." ;
+    rdfs:range aegis:Verification .
+
+aegis:dependsOnVariable a rdf:Property ;
+    rdfs:label "depends on variable" ;
+    rdfs:comment "A variable the mechanism under test depends on, named by the check that established the dependence. Owed to Q5: a test in an adjacent setting is valid exactly when the mechanism does not depend on what differs — this edge is what lets that be asked instead of assumed, protecting good evidence from being discarded (incident forms A2, A6)." ;
+    rdfs:range xsd:string .
+
 # ---- Execution provenance (M3) ----------------------------------------
 
 aegis:executesArtifact a rdf:Property ;
@@ -80,6 +105,16 @@ aegis:refreshedBy a rdf:Property ;
 aegis:lastRefreshedAt a rdf:Property ;
     rdfs:label "last refreshed at" ;
     rdfs:comment "The observed time the execution path was last refreshed. It is evidence for a read-time currency query, never a stored current/correct verdict." ;
+    rdfs:range xsd:string .
+
+aegis:artifactDigest a rdf:Property ;
+    rdfs:label "artifact digest" ;
+    rdfs:comment "A deterministic digest of the installed artifact an ExecutionPath actually executes. Owed to Q12, which compares the two sides of a path in the store. Not aegis:contentHash reused: Q12 needs the two sides distinguishable on one node, and contentHash is a single reconciler identity (one value, Metric shape)." ;
+    rdfs:range xsd:string .
+
+aegis:sourceDigest a rdf:Property ;
+    rdfs:label "source digest" ;
+    rdfs:comment "A deterministic digest of an ExecutionPath's repository source, computed the same way as artifactDigest so the two compare. Owed to Q12: equal digests are observed agreement, differing digests are observed drift, and absence is UNKNOWN — never a verdict either way." ;
     rdfs:range xsd:string .
 
 aegis:ownedBy a rdf:Property ;
@@ -169,6 +204,11 @@ aegis:outcome a rdf:Property ;
 aegis:assignedTo a rdf:Property ;
     rdfs:label "assigned to" ;
     rdfs:comment "The principal a work item is assigned to. Agents are aegis:Principal, exactly as the graph already holds them." .
+
+aegis:blockedOn a rdf:Property ;
+    rdfs:label "blocked on" ;
+    rdfs:comment "The WorkItem this work item cannot proceed past. Owed to Q7: with aegis:closedAt already modelled, this one edge makes 'blocked on a dependency that already cleared' a read-time join — the measured 14-day-blocked-on-a-cleared-dependency failure. The edge is the stated dependency; whether it still holds is a query, never a stored judgment." ;
+    rdfs:range aegis:WorkItem .
 
 # ---- Decision properties ----------------------------------------------
 

@@ -41,6 +41,109 @@ ex:verification-legacy-grep-count
     rdfs:label "grep -c over the test payload (pre-gate, A5)" ;
     aegis:sourceKind "observed" .
 
+# --- Q3: falsifiers not re-run after a change (camayoc-89e) ---------------
+# Both nodes verify the same landed claim; the change under test in the query
+# arms is dated 2026-08-10T00:00:00Z. The stale one ran before it, the re-run
+# one after. Every Verification here carries a falsifier: these entered
+# through the gate, and they must not leak into Q2's pre-gate population.
+ex:verification-fix-stale
+    a aegis:Verification ;
+    rdfs:label "guard fix verified once, before the config rewrite" ;
+    aegis:sourceKind "observed" ;
+    aegis:falsifier "the guard admitting an untagged write in the staging replay" ;
+    aegis:verifies ex:claim-guard-fix-landed ;
+    aegis:verifiedAt "2026-08-01T14:00:00Z" .
+
+ex:verification-fix-rerun
+    a aegis:Verification ;
+    rdfs:label "guard fix re-verified after the config rewrite" ;
+    aegis:sourceKind "observed" ;
+    aegis:falsifier "the guard admitting an untagged write in the staging replay" ;
+    aegis:verifies ex:claim-guard-fix-landed ;
+    aegis:verifiedAt "2026-08-12T09:00:00Z" .
+
+ex:claim-guard-fix-landed
+    rdfs:label "claim: the ingress guard fix is landed and deployed" .
+
+# --- Q4: proven adversarial vs only asserted (camayoc-89e) ----------------
+# The proof node is itself a falsifier-gated Verification — sabotage that
+# cannot name what flipping looks like proves nothing.
+ex:check-proven-adversarial
+    a aegis:Verification ;
+    rdfs:label "schema gate check, sabotage-proven" ;
+    aegis:sourceKind "observed" ;
+    aegis:falsifier "an ADD COLUMN passing the gate unreported" ;
+    aegis:adversariallyProvenBy ex:verification-sabotage-run .
+
+ex:verification-sabotage-run
+    a aegis:Verification ;
+    rdfs:label "deliberate ADD COLUMN flipped the schema gate check" ;
+    aegis:sourceKind "observed" ;
+    aegis:falsifier "the gate staying green with the sabotage column in place" .
+
+# Q4 control negative: a well-formed check nobody has sabotaged. The query
+# must leave its proof column unbound, never fill one in.
+ex:check-only-asserted
+    a aegis:Verification ;
+    rdfs:label "binding-condition check, asserted to work" ;
+    aegis:sourceKind "observed" ;
+    aegis:falsifier "the two branches evaluating differently under the probe input" .
+
+# --- Q5: variable dependence of a check (camayoc-89e) ---------------------
+# An adjacent-setting check whose mechanism's recorded dependences are what
+# a reader compares against the changed variable. verification-byte-identity
+# above records none — the control arm, which must read UNKNOWN, not
+# 'independent'.
+ex:check-adjacent-setting
+    a aegis:Verification ;
+    rdfs:label "gate check run in the staging tenant" ;
+    aegis:sourceKind "observed" ;
+    aegis:falsifier "the gate admitting the probe write in staging" ;
+    aegis:dependsOnVariable "shacl-validate-on-write" ;
+    aegis:dependsOnVariable "store-base-namespace" .
+
+# --- Q7: blocked on a dependency already closed (camayoc-89e) -------------
+# The measured failure: a P1 blocked 14 days on a dependency that had
+# already cleared.
+ex:item-blocked-on-closed
+    a aegis:WorkItem ;
+    rdfs:label "P1 waiting on the schema migration" ;
+    aegis:sourceKind "declared" ;
+    aegis:createdAt "2026-08-01T08:00:00Z" ;
+    aegis:blockedOn ex:item-dependency-closed .
+
+ex:item-dependency-closed
+    a aegis:WorkItem ;
+    rdfs:label "schema migration" ;
+    aegis:sourceKind "declared" ;
+    aegis:createdAt "2026-07-20T08:00:00Z" ;
+    aegis:closedAt "2026-08-05T16:00:00Z" ;
+    aegis:outcome "done" .
+
+# Q7 control negatives: a block that still holds, and a closed item whose
+# stale edge no longer blocks anything.
+ex:item-blocked-on-open
+    a aegis:WorkItem ;
+    rdfs:label "waiting on the quipu refusal log" ;
+    aegis:sourceKind "declared" ;
+    aegis:createdAt "2026-08-10T08:00:00Z" ;
+    aegis:blockedOn ex:item-dependency-open .
+
+ex:item-dependency-open
+    a aegis:WorkItem ;
+    rdfs:label "quipu refusal log" ;
+    aegis:sourceKind "declared" ;
+    aegis:createdAt "2026-08-09T08:00:00Z" .
+
+ex:item-closed-was-blocked
+    a aegis:WorkItem ;
+    rdfs:label "already-shipped item with a stale blocked edge" ;
+    aegis:sourceKind "declared" ;
+    aegis:createdAt "2026-07-01T08:00:00Z" ;
+    aegis:closedAt "2026-07-15T12:00:00Z" ;
+    aegis:outcome "done" ;
+    aegis:blockedOn ex:item-dependency-closed .
+
 # --- Blockers -------------------------------------------------------------
 # Q10 needs both arms populated or it cannot show the distinction it exists for.
 ex:blocker-stated
@@ -90,3 +193,31 @@ ex:path-service-owned
     aegis:refreshedBy "deploy pipeline" ;
     aegis:ownedBy ex:principal-shared-service ;
     aegis:lastRefreshedAt "2026-08-17T09:00:00Z" .
+
+# --- Q12: source/artifact drift (camayoc-89e) -----------------------------
+# Q12 positive: the digests differ — the rules-file-six-weeks-stale incident
+# shape, observed in the store rather than judged.
+ex:path-drifted
+    a aegis:ExecutionPath ;
+    rdfs:label "agent rules file, installed copy six weeks stale" ;
+    aegis:sourceKind "observed" ;
+    aegis:executesArtifact "/etc/aegis/rules.yml" ;
+    aegis:repositorySource "scbrown/camayoc:config/rules.yml" ;
+    aegis:refreshedBy "manual copy" ;
+    aegis:artifactDigest "sha256:1f6c0f2a" ;
+    aegis:sourceDigest "sha256:9b41d7e3" .
+
+# Q12 control negative: both digests present and EQUAL. A query returning
+# every digest-carrying path would report agreement as drift.
+ex:path-in-sync
+    a aegis:ExecutionPath ;
+    rdfs:label "policy guard, installed copy matching source" ;
+    aegis:sourceKind "observed" ;
+    aegis:executesArtifact "/opt/aegis/current/policy.ttl" ;
+    aegis:repositorySource "scbrown/camayoc:shapes/policies/edit-grounding.ttl" ;
+    aegis:refreshedBy "deploy pipeline" ;
+    aegis:artifactDigest "sha256:5d2e8c11" ;
+    aegis:sourceDigest "sha256:5d2e8c11" .
+
+# The undigested paths above (path-shared-checkout etc.) are Q12's second
+# control: no digest is UNKNOWN, and UNKNOWN is never returned as drift.

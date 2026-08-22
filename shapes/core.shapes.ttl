@@ -36,6 +36,11 @@ aegis:CamayocWorkItemShape a sh:NodeShape ;
         sh:maxCount 1 ;
         sh:in ("done" "abandoned" "superseded" "failed") ;
         sh:message "camayoc: outcome, when set, is one of done|abandoned|superseded|failed — absence means open; never store a decaying 'in progress'" ;
+    ] ;
+    sh:property [
+        sh:path aegis:blockedOn ;
+        sh:class aegis:WorkItem ;
+        sh:message "camayoc: blockedOn must point at a WorkItem — Q7's already-closed join needs a dependency the graph actually holds" ;
     ] .
 
 aegis:CamayocDecisionShape a sh:NodeShape ;
@@ -87,6 +92,11 @@ aegis:CamayocVerificationShape a sh:NodeShape ;
         sh:maxCount 1 ;
         sh:datatype xsd:string ;
         sh:message "camayoc: a Verification without a falsifier is an assertion, not verification — record the result that would have proved it wrong" ;
+    ] ;
+    sh:property [
+        sh:path aegis:adversariallyProvenBy ;
+        sh:class aegis:Verification ;
+        sh:message "camayoc: an adversarial proof must itself be a Verification — sabotage that cannot name what flipping looks like proves nothing" ;
     ] .
 
 # An execution path makes the running artifact and refresh chain queryable.

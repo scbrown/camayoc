@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_check_variable_dependence",
+  "description": "verification-and-liveness Q5: the variables the mechanism under a check depends on. The reader compares against what was changed; an empty result means no dependence is RECORDED, which is UNKNOWN — never 'independent'.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?check ?label ?variable WHERE { BIND(<{check}> AS ?check) ?check a aegis:Verification ; rdfs:label ?label ; aegis:dependsOnVariable ?variable . } ORDER BY ?variable",
+  "params": [
+    {
+      "name": "check",
+      "type": "iri",
+      "required": true,
+      "description": "Verification IRI of the check."
+    }
+  ]
+}
