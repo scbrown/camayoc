@@ -1,0 +1,10 @@
+{
+  "action": "load",
+  "name": "camayoc_provider_burn_window",
+  "description": "verification-and-liveness Q20: consumption per provider over a half-open window [from, to) — the numerator of a burn rate, whose denominator is the window the caller chose. Answerable without ever knowing the ceiling: rate needs consumption alone, which is why this survives a provider that publishes no quota.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?provider (SUM(?tokens) AS ?totalTokens) WHERE { ?record a aegis:UsageRecord ; aegis:provider ?provider ; aegis:observedAt ?at ; aegis:tokensConsumed ?tokens . FILTER(?at >= \"{from}\" && ?at < \"{to}\") } GROUP BY ?provider ORDER BY ?provider",
+  "params": [
+    "from",
+    "to"
+  ]
+}

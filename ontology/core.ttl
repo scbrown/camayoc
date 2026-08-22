@@ -374,3 +374,51 @@ aegis:deviatesAt a rdf:Property ;
 aegis:derivedConstraint a rdf:Property ;
     rdfs:label "derived constraint" ;
     rdfs:comment "The aegis:Policy this GoldenPath backs, closing the audit chain constraint <- path <- exemplars. Far-horizon: gated on verdict signing; until then the ladder honestly stops at blessed." .
+
+# ---- Cost and effort accounting (slice: verification-and-liveness §D) ----
+#
+# Owed to competency/verification-and-liveness.md Q16-Q21 (camayoc-e29).
+# These are deterministic-parser facts — both harnesses write per-session
+# token accounting to local disk, so ingress rule 3 applies: a parser
+# produces them, they enter as `observed`, no model in the loop.
+#
+# Minting decisions, stated because reuse-before-minting is the rule:
+#   * the record timestamp REUSES aegis:observedAt — a usage record is an
+#     observed record, and its time is when the consumption it parses
+#     happened, which is exactly what observedAt already means;
+#   * the session's principal REUSES aegis:actor — "the principal that
+#     performed this", ranging over whatever principal node the graph
+#     already holds, unchanged from the golden-paths use;
+#   * tokensConsumed is ONE quantity, not the per-harness breakdown
+#     (input/cached/output/...). No §D question needs the breakdown, and
+#     competency-before-classes says the finer terms wait for a question
+#     that does. Consumption is ours; the ceiling is the provider's, and
+#     no quota term exists here on purpose (Q20's point).
+
+aegis:Session a rdfs:Class ;
+    rdfs:label "Session" ;
+    rdfs:comment "One harness session of a principal, parsed from the harness's own on-disk record. It is the denominator Q19 needs: a session with no usage record must read UNKNOWN, never zero — which requires the session to be stored independently of its records." .
+
+aegis:UsageRecord a rdfs:Class ;
+    rdfs:label "Usage record" ;
+    rdfs:comment "Parsed token consumption: what a session actually consumed from a provider over a stated moment. A fact true at write time — aggregation into windows, rates, and per-work costs is a read-time judgment over these records." .
+
+aegis:provider a rdf:Property ;
+    rdfs:label "provider" ;
+    rdfs:comment "The provider whose tokens a UsageRecord counts. On the record, not the session: one session may consume from more than one provider, and Q17/Q20 group by exactly this." ;
+    rdfs:range xsd:string .
+
+aegis:tokensConsumed a rdf:Property ;
+    rdfs:label "tokens consumed" ;
+    rdfs:comment "The total tokens this record accounts for, as parsed from the harness's own accounting. One quantity by design: consumption, never remaining quota — the two come from different sources and conflating them cost a closed investigation." ;
+    rdfs:range xsd:integer .
+
+aegis:inSession a rdf:Property ;
+    rdfs:label "in session" ;
+    rdfs:comment "The Session a UsageRecord was parsed from. Mandatory in the shape: an unattached record can join against nothing, and Q19's absence test needs every present record anchored." ;
+    rdfs:range aegis:Session .
+
+aegis:attributedTo a rdf:Property ;
+    rdfs:label "attributed to" ;
+    rdfs:comment "The WorkItem this consumption was spent on. Optional and honest: unattributable consumption stays a session fact rather than being forced onto the nearest item. This edge is what turns cost into a property of WORK (Q16, Q18, Q21) instead of a property of a time-window." ;
+    rdfs:range aegis:WorkItem .

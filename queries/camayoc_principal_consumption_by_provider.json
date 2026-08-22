@@ -1,0 +1,16 @@
+{
+  "action": "load",
+  "name": "camayoc_principal_consumption_by_provider",
+  "description": "verification-and-liveness Q17: what a principal consumed in a half-open time window [from, to), grouped by provider. The window aggregation is a read-time judgment over observed records; nothing decaying is stored.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?provider (SUM(?tokens) AS ?totalTokens) WHERE { ?record a aegis:UsageRecord ; aegis:inSession ?session ; aegis:provider ?provider ; aegis:observedAt ?at ; aegis:tokensConsumed ?tokens . ?session aegis:actor <{principal}> . FILTER(?at >= \"{from}\" && ?at < \"{to}\") } GROUP BY ?provider ORDER BY ?provider",
+  "params": [
+    {
+      "name": "principal",
+      "type": "iri",
+      "required": true,
+      "description": "Principal IRI."
+    },
+    "from",
+    "to"
+  ]
+}

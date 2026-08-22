@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_sessions_without_usage",
+  "description": "verification-and-liveness Q19: sessions carrying NO usage record. These must read as UNKNOWN, never as zero — a missing measurement that aggregates as 0 is wrong in the flattering direction, and three of seven local sessions had none. Returning the sessions themselves is what keeps absence visible instead of summed away.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?session ?label WHERE { ?session a aegis:Session ; rdfs:label ?label . FILTER NOT EXISTS { ?record a aegis:UsageRecord ; aegis:inSession ?session } } ORDER BY ?label",
+  "params": []
+}

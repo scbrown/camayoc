@@ -52,13 +52,16 @@ COVERAGE_VL: dict[int, dict] = {
     5: {"query": "camayoc_check_variable_dependence"},
     6: {
         "query": None,
-        "gap": "No Principal class and no session/heartbeat record, so 'is this "
-               "principal running' has nothing to join against. Correctly NOT a "
-               "stored fact — ingress rule 5 forbids storing judgments that decay "
-               "— but the read-time join needs an observed liveness record to "
-               "join TO, and none is modelled. This is the single largest gap and "
-               "it blocks the four-beads-one-cause family the paper leads with.",
-        "needs": ["Principal", "Session", "observed stop record (frm/item/item_status/ts)"],
+        "gap": "No Principal class and no observed stop/heartbeat record, so 'is "
+               "this principal running' has nothing to join against. Correctly "
+               "NOT a stored fact — ingress rule 5 forbids storing judgments that "
+               "decay — but the read-time join needs an observed liveness record "
+               "to join TO, and none is modelled. aegis:Session now exists (§D, "
+               "camayoc-e29) and carries its principal via aegis:actor, but a "
+               "session is not a liveness record: nothing says the session is "
+               "still running. This remains the largest gap and it blocks the "
+               "four-beads-one-cause family the paper leads with.",
+        "needs": ["Principal", "observed stop record (frm/item/item_status/ts)"],
     },
     7: {"query": "camayoc_blocked_on_closed_dependency"},
     8: {
@@ -83,52 +86,15 @@ COVERAGE_VL: dict[int, dict] = {
     # until 2026-08-22, which silently understated the slice's denominator —
     # the exact defect incident-corpus.md §4.2 documents. A gap uncounted is
     # a gap unreported.
-    16: {
-        "query": None,
-        "gap": "No usage vocabulary at all. Token consumption is a "
-               "deterministic-parser fact (suite §D: both harnesses write "
-               "per-session accounting to disk), but no UsageRecord class and "
-               "no attribution edge to WorkItem exist, so per-work-item cost "
-               "has nothing to join against.",
-        "needs": ["UsageRecord", "attribution edge (UsageRecord -> WorkItem)"],
-    },
-    17: {
-        "query": None,
-        "gap": "Same missing UsageRecord as Q16, plus the provider identity on "
-               "the record. The per-window aggregation is a read-time judgment "
-               "and needs only the observed records to exist.",
-        "needs": ["UsageRecord", "provider", "recordedAt"],
-    },
-    18: {
-        "query": None,
-        "gap": "Work-per-token joins consumption against closes and decisions. "
-               "Work items and decisions are modelled; usage is not, so the "
-               "join has one leg.",
-        "needs": ["UsageRecord + attribution edges"],
-    },
-    19: {
-        "query": None,
-        "gap": "A session with NO usage record must read UNKNOWN, never zero — "
-               "which requires the session denominator itself to be stored. No "
-               "Session class exists (the same missing term as Q6's liveness "
-               "join), so absence-of-record is inexpressible.",
-        "needs": ["Session", "UsageRecord"],
-    },
-    20: {
-        "query": None,
-        "gap": "Burn rate is a read-time judgment over timestamped "
-               "UsageRecords — nothing decaying needs storing, and no quota "
-               "ceiling is needed (consumption is ours; the ceiling is "
-               "theirs). But the records are not modelled.",
-        "needs": ["UsageRecord", "recordedAt"],
-    },
-    21: {
-        "query": None,
-        "gap": "Decision cost is a join from Decision through decidedIn to "
-               "work-item-attributed usage. decidedIn exists; the usage leg "
-               "is the same missing UsageRecord as Q16.",
-        "needs": ["UsageRecord + attribution edges"],
-    },
+    # §D became expressible with camayoc-e29 (2026-08-22): Session +
+    # UsageRecord + provider/tokensConsumed/inSession/attributedTo, with
+    # observedAt and actor REUSED rather than re-minted.
+    16: {"query": "camayoc_work_item_token_cost"},
+    17: {"query": "camayoc_principal_consumption_by_provider"},
+    18: {"query": "camayoc_work_per_token"},
+    19: {"query": "camayoc_sessions_without_usage"},
+    20: {"query": "camayoc_provider_burn_window"},
+    21: {"query": "camayoc_decision_cost"},
 }
 
 

@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_decision_cost",
+  "description": "verification-and-liveness Q21: what a decision cost to reach — consumption attributed to the work items it was decided in, joined Decision -> decidedIn -> WorkItem <- attributedTo <- UsageRecord. A decision whose work carries no attributed usage returns NO row: UNKNOWN, never a free decision.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?decision (SUM(?tokens) AS ?totalTokens) WHERE { BIND(<{decision}> AS ?decision) ?decision aegis:decidedIn ?item . ?record a aegis:UsageRecord ; aegis:attributedTo ?item ; aegis:tokensConsumed ?tokens . } GROUP BY ?decision",
+  "params": [
+    {
+      "name": "decision",
+      "type": "iri",
+      "required": true,
+      "description": "Decision IRI."
+    }
+  ]
+}

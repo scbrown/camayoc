@@ -265,6 +265,108 @@ class CompetencyQueryExecutionTests(unittest.TestCase):
         labels = " ".join(r[1] for r in rows)
         self.assertNotIn("shared read-only checkout", labels)
 
+    # -- §D (Q16-Q21): cost accounting -------------------------------------
+    # The suite's own acceptance: Q16 and Q18 run against a fixture whose
+    # expected answer is known INDEPENDENTLY — the totals the harness files
+    # print are stated in the fixture header, and these tests assert the
+    # parsed sums reproduce exactly those numbers. A usage reader checkable
+    # only against itself is the section-A defect in an accountant's hat.
+
+    def test_q16_sums_a_work_items_cost_across_principals(self):
+        """The guard fix was touched by two principals in two sessions;
+        the rollout files print 41000 and 9000 — the query must say 50000."""
+        rows = run(
+            self.graph,
+            "camayoc_work_item_token_cost",
+            workitem=f"{EX}item-guard-fix",
+        )
+        self.assertEqual(1, len(rows), rows)
+        self.assertEqual("50000", rows[0][1])
+
+    def test_q16_returns_no_row_for_an_item_with_no_attributed_usage(self):
+        """UNKNOWN, never zero: an unmeasured item must not read as free."""
+        rows = run(
+            self.graph,
+            "camayoc_work_item_token_cost",
+            workitem=f"{EX}item-blocked-on-open",
+        )
+        self.assertEqual([], rows)
+
+    def test_q17_windows_a_principals_consumption_by_provider(self):
+        """strider on 2026-08-14: the codex 41000 only. The 08-16 record is
+        outside the window, and gonzo's codex leg belongs to gonzo."""
+        rows = run(
+            self.graph,
+            "camayoc_principal_consumption_by_provider",
+            principal=f"{EX}principal-strider",
+            **{"from": "2026-08-14T00:00:00Z", "to": "2026-08-15T00:00:00Z"},
+        )
+        self.assertEqual([("codex", "41000")], rows)
+
+    def test_q18_returns_both_legs_of_work_per_token(self):
+        """strider closed 2 items and the rollouts print 41000 + 3000 = 44000.
+        The ratio is the reader's — the query hands over the two measured legs."""
+        rows = run(
+            self.graph,
+            "camayoc_work_per_token",
+            principal=f"{EX}principal-strider",
+        )
+        self.assertEqual([("2", "44000")], rows)
+
+    def test_q18_does_not_credit_a_principal_with_anothers_closes(self):
+        """gonzo consumed 21000 and closed nothing — the count must be 0 with
+        the consumption still visible, not a row borrowed from strider."""
+        rows = run(
+            self.graph,
+            "camayoc_work_per_token",
+            principal=f"{EX}principal-gonzo",
+        )
+        self.assertEqual([("0", "21000")], rows)
+
+    def test_q19_finds_the_session_with_no_usage_record(self):
+        rows = run(self.graph, "camayoc_sessions_without_usage")
+        self.assertEqual(1, len(rows), rows)
+        self.assertIn("no accounting written", rows[0][1])
+
+    def test_q19_excludes_sessions_that_do_carry_records(self):
+        """A query returning every Session would report the measured ones as
+        unmeasured — the same defect as returning zero, inverted."""
+        rows = run(self.graph, "camayoc_sessions_without_usage")
+        labels = " ".join(r[1] for r in rows)
+        self.assertNotIn("codex rollout", labels)
+        self.assertNotIn("gonzo", labels)
+
+    def test_q20_sums_the_window_per_provider_with_no_ceiling_involved(self):
+        """The 08-14 day: claude 9000; codex 41000 + 7000 = 48000. The 08-15
+        boundary record and the 08-16 record are outside the half-open window.
+        No quota term exists to consult — rate needs consumption alone."""
+        rows = run(
+            self.graph,
+            "camayoc_provider_burn_window",
+            **{"from": "2026-08-14T00:00:00Z", "to": "2026-08-15T00:00:00Z"},
+        )
+        self.assertEqual([("claude", "9000"), ("codex", "48000")], rows)
+
+    def test_q21_costs_a_decision_through_its_work_item(self):
+        """The rollback was decided in the guard fix, whose attributed usage
+        is 50000 — the same independent expectation Q16 pins."""
+        rows = run(
+            self.graph,
+            "camayoc_decision_cost",
+            decision=f"{EX}decision-rollback",
+        )
+        self.assertEqual(1, len(rows), rows)
+        self.assertEqual("50000", rows[0][1])
+
+    def test_q21_returns_no_row_for_a_decision_with_unmeasured_work(self):
+        """UNKNOWN, never zero: no attributed usage means no cost claim."""
+        rows = run(
+            self.graph,
+            "camayoc_decision_cost",
+            decision=f"{EX}decision-unmeasured",
+        )
+        self.assertEqual([], rows)
+
 
 class CoverageReportTests(unittest.TestCase):
     """The coverage report is itself checked, since it is the paper's number."""
@@ -289,11 +391,13 @@ class CoverageReportTests(unittest.TestCase):
         19, not 13: the suite's §D (cost accounting, Q16-21 — there is no
         Q14/Q15) was uncounted until 2026-08-22, which understated the
         denominator exactly the way incident-corpus.md §4.2 warns about.
-        10 covered since camayoc-89e landed the five single-edge mints
-        (Q3/Q4/Q5/Q7/Q12) on 2026-08-22."""
+        16 covered since 2026-08-22: camayoc-89e landed the five single-edge
+        mints (Q3/Q4/Q5/Q7/Q12) and camayoc-e29 the §D cost vocabulary
+        (Q16-Q21). The three that remain — Q6, Q8, Q9 — all need the
+        Principal/liveness modelling, which is a design, not an edge."""
         result = coverage.report()
         self.assertEqual("Partial", result["verdict"])
-        self.assertEqual(10, result["covered"])
+        self.assertEqual(16, result["covered"])
         self.assertEqual(19, result["total"])
 
     def test_every_gap_names_what_the_ontology_would_need(self):

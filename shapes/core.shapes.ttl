@@ -339,3 +339,83 @@ aegis:CamayocPathPromotionShape a sh:NodeShape ;
         sh:minCount 1 ;
         sh:message "camayoc: a promotion carries when it happened" ;
     ] .
+
+# ---- Cost and effort accounting (verification-and-liveness §D) -----------
+# Deterministic-parser facts, so the posture is the Observation shape's:
+# sourceKind is pinned to "observed" — a declared or inferred usage number
+# is not an account of consumption, it is an estimate wearing one's clothes.
+# No gate-probe arm: like the metrics-slice shapes (Metric, Observation),
+# these carry no suite-stated proof obligation; the probe arms stay the
+# M1/M3/M4 + golden-paths set the suite itself demands.
+
+aegis:CamayocSessionShape a sh:NodeShape ;
+    sh:targetClass aegis:Session ;
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("observed") ;
+        sh:message "camayoc: a Session is parsed from the harness's own record and enters as observed — Q19's denominator cannot be hand-declared" ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a Session needs exactly one rdfs:label" ;
+    ] ;
+    sh:property [
+        sh:path aegis:actor ;
+        sh:minCount 1 ;
+        sh:message "camayoc: a Session names the principal that ran it — per-principal consumption (Q17, Q18) joins on this" ;
+    ] .
+
+aegis:CamayocUsageRecordShape a sh:NodeShape ;
+    sh:targetClass aegis:UsageRecord ;
+    sh:property [
+        sh:path aegis:sourceKind ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ("observed") ;
+        sh:message "camayoc: a UsageRecord is a deterministic-parser fact and enters as observed — never declared, never inferred" ;
+    ] ;
+    sh:property [
+        sh:path rdfs:label ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a UsageRecord needs exactly one rdfs:label" ;
+    ] ;
+    sh:property [
+        sh:path aegis:inSession ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class aegis:Session ;
+        sh:message "camayoc: a UsageRecord is anchored to exactly one Session — an unattached record can join against nothing" ;
+    ] ;
+    sh:property [
+        sh:path aegis:provider ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a UsageRecord names its provider — Q17 and Q20 group by it" ;
+    ] ;
+    sh:property [
+        sh:path aegis:tokensConsumed ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:integer ;
+        sh:message "camayoc: a UsageRecord carries exactly one consumption count — a record without its measurement is nothing, and a missing measurement must stay missing, never aggregate as zero" ;
+    ] ;
+    sh:property [
+        sh:path aegis:observedAt ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a UsageRecord carries when the consumption happened — burn rate (Q20) is a read-time judgment over these timestamps" ;
+    ] ;
+    sh:property [
+        sh:path aegis:attributedTo ;
+        sh:class aegis:WorkItem ;
+        sh:message "camayoc: usage attribution, when present, points at a WorkItem — cost as a property of work, not of a window" ;
+    ] .

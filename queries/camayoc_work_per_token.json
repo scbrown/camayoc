@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_work_per_token",
+  "description": "verification-and-liveness Q18: the two legs of work-per-token for a principal — items closed, and total tokens consumed. The ratio is left to the reader: dividing here would hide a zero denominator. Caveat, stated because it is SPARQL's doing: SUM over no records is 0, and 0-consumption and unmeasured are different claims — run Q19 (camayoc_sessions_without_usage) before believing a zero here.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?itemsClosed ?tokensConsumed WHERE { { SELECT (COUNT(DISTINCT ?item) AS ?itemsClosed) WHERE { ?item a aegis:WorkItem ; aegis:assignedTo <{principal}> ; aegis:closedAt ?closedAt . } } { SELECT (SUM(?tokens) AS ?tokensConsumed) WHERE { ?record a aegis:UsageRecord ; aegis:inSession ?session ; aegis:tokensConsumed ?tokens . ?session aegis:actor <{principal}> . } } }",
+  "params": [
+    {
+      "name": "principal",
+      "type": "iri",
+      "required": true,
+      "description": "Principal IRI."
+    }
+  ]
+}

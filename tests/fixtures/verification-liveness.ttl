@@ -221,3 +221,127 @@ ex:path-in-sync
 
 # The undigested paths above (path-shared-checkout etc.) are Q12's second
 # control: no digest is UNKNOWN, and UNKNOWN is never returned as drift.
+
+# --- §D: cost and effort accounting (camayoc-e29, Q16-Q21) ----------------
+# The suite's acceptance for this section: Q16 and Q18 must run against a
+# fixture whose expected answer is known INDEPENDENTLY of the reader — a
+# printed token count compared against the parsed one. So the totals below
+# are stated here, as the numbers the harness rollout files print, and the
+# tests assert the queries reproduce exactly these:
+#
+#   session-codex-a1   (strider, codex)  prints  41000 + 3000
+#   session-claude-b2  (gonzo)           prints   9000 + 5000 (claude), 7000 (codex)
+#   session-untracked  (strider)         prints NOTHING — the Q19 positive;
+#                                        it must surface as UNKNOWN, never as 0
+#
+#   Q16 item-guard-fix     = 41000 + 9000          = 50000 (two principals)
+#   Q18 strider            = 2 items closed, 41000 + 3000 = 44000 tokens
+#   Q20 window [08-14,08-15) = claude 9000, codex 41000 + 7000 = 48000
+
+ex:session-codex-a1
+    a aegis:Session ;
+    rdfs:label "codex rollout 2026-08-14, strider" ;
+    aegis:sourceKind "observed" ;
+    aegis:actor ex:principal-strider .
+
+ex:session-claude-b2
+    a aegis:Session ;
+    rdfs:label "claude session 2026-08-14, gonzo" ;
+    aegis:sourceKind "observed" ;
+    aegis:actor ex:principal-gonzo .
+
+# Q19 positive: parsed from the session log, but no usage record exists.
+ex:session-untracked
+    a aegis:Session ;
+    rdfs:label "claude session 2026-08-13, strider, no accounting written" ;
+    aegis:sourceKind "observed" ;
+    aegis:actor ex:principal-strider .
+
+ex:usage-codex-a1
+    a aegis:UsageRecord ;
+    rdfs:label "codex a1: 41000 tokens on the guard fix" ;
+    aegis:sourceKind "observed" ;
+    aegis:inSession ex:session-codex-a1 ;
+    aegis:provider "codex" ;
+    aegis:observedAt "2026-08-14T10:00:00Z" ;
+    aegis:tokensConsumed 41000 ;
+    aegis:attributedTo ex:item-guard-fix .
+
+# Outside the [08-14, 08-15) window arms, and deliberately unattributed:
+# consumption that belongs to no work item stays a session fact.
+ex:usage-codex-late
+    a aegis:UsageRecord ;
+    rdfs:label "codex a1: 3000 tokens, unattributed, 08-16" ;
+    aegis:sourceKind "observed" ;
+    aegis:inSession ex:session-codex-a1 ;
+    aegis:provider "codex" ;
+    aegis:observedAt "2026-08-16T10:00:00Z" ;
+    aegis:tokensConsumed 3000 .
+
+ex:usage-claude-b2-1
+    a aegis:UsageRecord ;
+    rdfs:label "claude b2: 9000 tokens on the guard fix" ;
+    aegis:sourceKind "observed" ;
+    aegis:inSession ex:session-claude-b2 ;
+    aegis:provider "claude" ;
+    aegis:observedAt "2026-08-14T11:00:00Z" ;
+    aegis:tokensConsumed 9000 ;
+    aegis:attributedTo ex:item-guard-fix .
+
+# On the 08-15 boundary: the window is half-open, so this is OUT of the
+# 08-14 day and a boundary control for Q17/Q20.
+ex:usage-claude-b2-2
+    a aegis:UsageRecord ;
+    rdfs:label "claude b2: 5000 tokens on the metrics doc" ;
+    aegis:sourceKind "observed" ;
+    aegis:inSession ex:session-claude-b2 ;
+    aegis:provider "claude" ;
+    aegis:observedAt "2026-08-15T09:00:00Z" ;
+    aegis:tokensConsumed 5000 ;
+    aegis:attributedTo ex:item-metrics-doc .
+
+# One session, second provider: provider lives on the record, not the
+# session, and Q17/Q20 group by exactly this.
+ex:usage-gonzo-codex
+    a aegis:UsageRecord ;
+    rdfs:label "claude b2 session, codex leg: 7000 tokens, unattributed" ;
+    aegis:sourceKind "observed" ;
+    aegis:inSession ex:session-claude-b2 ;
+    aegis:provider "codex" ;
+    aegis:observedAt "2026-08-14T12:00:00Z" ;
+    aegis:tokensConsumed 7000 .
+
+# Work the consumption is attributed to, and the decisions made in it.
+ex:item-guard-fix
+    a aegis:WorkItem ;
+    rdfs:label "fix the ingress guard bypass" ;
+    aegis:sourceKind "declared" ;
+    aegis:assignedTo ex:principal-strider ;
+    aegis:createdAt "2026-08-13T08:00:00Z" ;
+    aegis:closedAt "2026-08-14T18:00:00Z" ;
+    aegis:outcome "done" .
+
+ex:item-metrics-doc
+    a aegis:WorkItem ;
+    rdfs:label "write up the metrics reconciliation" ;
+    aegis:sourceKind "declared" ;
+    aegis:assignedTo ex:principal-strider ;
+    aegis:createdAt "2026-08-14T08:00:00Z" ;
+    aegis:closedAt "2026-08-15T12:00:00Z" ;
+    aegis:outcome "done" .
+
+ex:decision-rollback
+    a aegis:Decision ;
+    rdfs:label "roll the guard back rather than patch forward" ;
+    aegis:sourceKind "declared" ;
+    aegis:chose "rollback to the last verified guard" ;
+    aegis:decidedIn ex:item-guard-fix .
+
+# Q21 control: a decision whose work item carries no attributed usage.
+# Its cost is UNKNOWN and the query must return no row — never 0.
+ex:decision-unmeasured
+    a aegis:Decision ;
+    rdfs:label "wait for the quipu refusal log rather than poll" ;
+    aegis:sourceKind "declared" ;
+    aegis:chose "wait for the log" ;
+    aegis:decidedIn ex:item-blocked-on-open .

@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_work_item_token_cost",
+  "description": "verification-and-liveness Q16: what a work item cost, in tokens, summed over every usage record attributed to it — across every principal and session that touched it. An item with no attributed usage returns NO row: UNKNOWN, never zero.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?workItem (SUM(?tokens) AS ?totalTokens) WHERE { BIND(<{workitem}> AS ?workItem) ?record a aegis:UsageRecord ; aegis:attributedTo ?workItem ; aegis:tokensConsumed ?tokens . } GROUP BY ?workItem",
+  "params": [
+    {
+      "name": "workitem",
+      "type": "iri",
+      "required": true,
+      "description": "WorkItem IRI."
+    }
+  ]
+}
