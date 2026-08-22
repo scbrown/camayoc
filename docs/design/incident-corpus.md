@@ -8,8 +8,10 @@
 > for the next window — audited 2026-08-22, none of it is buildable in
 > camayoc alone: items 1–2 need the refusal side recorded somewhere queryable,
 > and a refused write never enters the graph, so that count lives with quipu's
-> refusal path; item 3 depends on the cost-accounting vocabulary
-> (`camayoc-e29`). Tracked as `camayoc-0d3` rather than left as prose.
+> refusal path; item 3 depended on the cost-accounting vocabulary, which
+> landed later on 2026-08-22 (`camayoc-e29` — the terms and stored queries
+> exist; the parser that fills them for a live window is still to build).
+> Tracked as `camayoc-0d3` rather than left as prose.
 > (§4.2's own lesson bit this repo once more meanwhile: the coverage tool's
 > verification denominator was itself undercounted until 2026-08-22 — six §D
 > questions were missing from it.)
@@ -211,11 +213,14 @@ design, and overselling it would be its own unfalsifiable claim.
   selection bias and its own missing denominator is more credible than one that
   does not, and this paper in particular cannot argue that claims must be
   falsifiable while making an unfalsifiable one about its own evidence.
-- **State that the corpus motivates the mechanism rather than validating it.**
-  The competency queries that would let the system answer *these particular*
-  questions still do not exist: the liveness-join family (verification slice
-  #6–#9) and the cost/denominator family (§D) are all GAP rows in
-  `just query-coverage` (5/19 on that slice as of 2026-08-22; the "4 of 47"
-  this bullet cited on 2026-08-17 predates the golden-paths slice's 12/16 —
-  see [`implemented-set.md`](implemented-set.md) §2). The corpus is the
-  *problem statement*, and the evaluation is separate and currently thin.
+- **State that the LIVENESS corpus motivates the mechanism rather than
+  validating it.** As of later on 2026-08-22 the scope of that sentence
+  narrowed: the cost/denominator family (§D, Q16–21) and the section-A
+  single-edge questions (Q3/Q4/Q5/Q7/Q12) run as stored queries
+  (`camayoc-89e`, `camayoc-e29`; 16/19 on that slice, up from 5/19 that
+  morning — the "4 of 47" this bullet cited on 2026-08-17 predates the
+  golden-paths slice's 12/16). What still does not exist is the
+  liveness-join family (#6, #8, #9) — the four-beads-one-cause questions
+  themselves — which remain GAP rows in `just query-coverage`; see
+  [`implemented-set.md`](implemented-set.md) §2. For section B the corpus
+  is still the *problem statement*, with the evaluation to follow.

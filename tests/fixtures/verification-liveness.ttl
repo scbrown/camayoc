@@ -27,7 +27,7 @@ ex:verification-schema-columns
 # Positive finding for Q2, and the reason Q2 exists at all.
 #
 # A Verification with no falsifier CANNOT be written through a gated ingress —
-# the M1 shape refuses it (shapes/core.shapes.ttl:85). So this node models data
+# the M1 shape refuses it (shapes/core.shapes.ttl:90). So this node models data
 # that entered BEFORE the shape existed, or through a path that bypassed it.
 # That is precisely the population Q2 is meant to find: the store's own legacy,
 # not new writes. See tests/test_competency_queries.py for why this matters.

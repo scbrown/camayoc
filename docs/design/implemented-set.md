@@ -24,8 +24,8 @@ who finds one unbuilt claim stops believing the built ones.
 | 1 | Provenance-refusing ingress | ✅ **Built** | `shapes/core.shapes.ttl` makes `aegis:sourceKind` mandatory; `shapes/code-entities.ttl:50` constrains it to the closed `observed\|declared\|inferred` vocabulary. Refusal proven, not asserted — `tests/test_knot_provenance.py` (216 lines). |
 | 2 | Quarantined inference | ✅ **Built** (camayoc-s0h, 2026-08-18) | `scripts/planes.py` registers the planes as quipu named graphs and labels them in the trust lattice — both or neither, and `plane_for` refuses an unknown `sourceKind` rather than defaulting to ROOT. Refusals pinned by `tests/test_planes.py` (13 tests): `inferred` never shares a plane with `observed` and always ranks strictly below it. Runtime caveat to state: it requires quipu's `POST /graph/create` + `/graph/label` routes (added upstream for the bead); against an older quipu it reports UNAVAILABLE and bootstrap *fails* rather than writing to ROOT. See `docs/design/ingress.md` §2.1. |
 | 3 | Governed promotion | 🟡 **Partial — the assertion half** (camayoc-mip, 2026-08-18) | `scripts/promote_plane.py`: authority-gated (fails closed on a missing `config/plane-authority.json`), refuses self-promotion, refuses non-upward moves, refuses promoting what is not in the source plane; records `camayoc:planePromotion` with full provenance. 15 tests, almost all refusals, plus the happy-path control. **Not yet a graph *move***: it asserts into the target and does not retract from `crew:inferred` — whether the bitemporal original's valid interval should be closed is a governance call left for the keeper (tracked, see camayoc-913). Claim the mechanism with the half stated. |
-| 4 | Falsifier-gated verification | ✅ **Built** | `shapes/core.shapes.ttl:85-89` — `aegis:falsifier`, `sh:minCount 1` on `Verification`, with the refusal message. Probed by `scripts/gate_probe.sh`; the probe's own discrimination is `camayoc-104`. |
-| 5 | Liveness by deliberate absence | 🟡 **Partial — and the partiality is the point** | The *vocabulary* exists (`ontology/core.ttl:34, :85` — `aegis:ExecutionPath`, `aegis:ownedBy`; the 2026-08-17 row cited two term names that do not appear in the file), and the deliberate absence is explicit at `shapes/core.shapes.ttl:130`: liveness "belongs with hank/quipu, not a made-up write-time liveness rule". What does **not** exist is the read-time side: the liveness-join questions (verification-and-liveness #6–#9) have **no stored queries** — #10 gained one (`camayoc_blockers_by_evidence_kind`) with `camayoc-102`. See §2. |
+| 4 | Falsifier-gated verification | ✅ **Built** | `shapes/core.shapes.ttl:89-95` — `aegis:falsifier`, `sh:minCount 1` on `Verification`, with the refusal message. Probed by `scripts/gate_probe.sh`; the probe's own discrimination is `camayoc-104`. |
+| 5 | Liveness by deliberate absence | 🟡 **Partial — and the partiality is the point** | The *vocabulary* exists (`ontology/core.ttl:34, :120` — `aegis:ExecutionPath`, `aegis:ownedBy`; the 2026-08-17 row cited two term names that do not appear in the file), and the deliberate absence is explicit at `shapes/core.shapes.ttl:130`: liveness "belongs with hank/quipu, not a made-up write-time liveness rule". What does **not** exist is the read-time side: the liveness-join questions (verification-and-liveness #6, #8, #9) have **no stored queries** — #10 gained one (`camayoc_blockers_by_evidence_kind`) with `camayoc-102`, and #7 gained `camayoc_blocked_on_closed_dependency` with `camayoc-89e` (2026-08-22; not a liveness join — it needs only `blockedOn` and the already-modelled `closedAt`). See §2. |
 | 6 | Installation-time gate proof | ✅ **Built, and now independence-proven** | `scripts/gate_probe.sh` with `tests/test_gate_probe.py` holding the probes to being able to fail. `camayoc-104` closed the remaining gap: each probe is shown to omit exactly one required property (parsed from the shapes, not hardcoded), and a store enforcing one shape at a time proves only its own arm. Claimable as stated. |
 | 7 | Tier-honest serving | 🟡 **Partial** | `aegis:tier` is carried on policies (`shapes/policies/edit-grounding.ttl:49, :71, :78`) and the tier vocabulary is in `ontology/core.ttl:54`. But camayoc does not *serve* facts — yupana does. What camayoc owns is the tag's definition and its mandatory-ness, not the serving. **Claim the vocabulary; do not claim the serving.** |
 | 8 | Typed non-answers | 🟡 **Partial, one instance** | Fully realised in exactly one place: `scripts/competency.py` returns `Empty \| Partial \| Full` with a `NO COVERAGE` verdict, method/threshold/watermark carried, 18 tests. That is a real instance of the discipline. It is **one** instance, on the ontology's own coverage, not a general non-answer taxonomy across camayoc's surfaces. |
@@ -48,7 +48,7 @@ enforced.
   with a vocabulary, not as a mechanism. The position is defensible and
   interesting — refusing to synthesise a write-time liveness predicate, because
   liveness is a read-time join against a store that actually knows — and
-  `shapes/core.shapes.ttl:130` shows the refusal was deliberate rather than
+  `shapes/core.shapes.ttl:140` shows the refusal was deliberate rather than
   an omission. But the paper must not imply the liveness questions are
   answerable today. They are not; see §2.
 - *Tier-honest serving* is yupana's, not camayoc's. Camayoc defines and mandates
@@ -125,13 +125,27 @@ That was a coverage figure of **4/47 ≈ 9%** when this audit was written.
 > verification gaps are unchanged: nothing minted since covers them, and the
 > five that are single-edge mints are tracked as `camayoc-89e`; the §D six as
 > `camayoc-e29`.
+>
+> **Update 2026-08-22, later the same day:** both beads landed. `camayoc-89e`
+> minted the five single edges (`verifiedAt`/`verifies`,
+> `adversariallyProvenBy`, `dependsOnVariable`, `blockedOn`,
+> `artifactDigest`/`sourceDigest`) and `camayoc-e29` the §D cost vocabulary
+> (`Session`, `UsageRecord`, `provider`, `tokensConsumed`, `inSession`,
+> `attributedTo`, with `observedAt` and `actor` reused). `queries/` now holds
+> **32** stored queries and verification-and-liveness stands at **16/19**,
+> pinned by test. The three that remain — Q6, Q8, Q9 — are all the
+> Principal/liveness modelling: `Session` gives them a principal-bearing
+> node but no observed stop/heartbeat record, so aspect 5's read-time gap
+> above is now the WHOLE remaining gap of the slice.
 
-The consequence for drafting order is unchanged and concrete: `camayoc-101`
+The consequence for drafting order is narrowed and concrete: `camayoc-101`
 writes up the incident night as a labelled corpus, and the natural reviewer
 question is "could your system have *answered* these questions at the time?".
-The answer is still no — but it is now a measured and attributable no, with
-eight named missing terms rather than a vague shortfall. The paper states that
-the corpus motivates a capability rather than demonstrating one.
+For section A (verification integrity) and §D (cost) the answer is now yes,
+against fixtures with both arms; for section B (held-work liveness) it is
+still no — a measured and attributable no, three questions blocked on the
+Principal/liveness modelling. The paper states that the liveness corpus
+motivates a capability rather than demonstrating one.
 
 ## 3. Method
 

@@ -1,23 +1,23 @@
 # Design: Camayoc paper plan — how knowledge earns its way into the graph
 
-> **Implementation status (2026-08-22):** 🟡 **Planned.** Nothing drafted. The
-> evidence is unusually asymmetric: the *corpus* is strong and already
-> taxonomized, the *evaluation* is thin — 5 of the verification slice's 19
-> competency questions run as stored queries (`just query-coverage`), and the
-> other 14 are ontology gaps rather than unwritten queries. (The figure was
-> reported as 5/13 until 2026-08-22, when the coverage tool was found to be
-> omitting the slice's own §D — cost accounting, Q16–21 — from its
-> denominator; the six now appear as counted gaps. None of the earlier eight
-> gaps has become closable from vocabulary minted since: the golden-paths
-> slice minted trajectory terms, not `verifiedAt`, `blockedOn`, or the
-> liveness join.) A newer slice, golden paths, stands at 12/16 stored. Read
+> **Implementation status (2026-08-22, second revision):** 🟡 **Planned.**
+> Nothing drafted. The evaluation is no longer thin: **16 of the verification
+> slice's 19** competency questions run as stored queries
+> (`just query-coverage`), after `camayoc-89e` landed the five single-edge
+> mints (Q3/Q4/Q5/Q7/Q12) and `camayoc-e29` the §D cost-accounting vocabulary
+> (Q16–21), both on 2026-08-22. The figure's history matters for §5: it was
+> reported as 5/13 until earlier the same day, when the coverage tool was
+> found to be omitting §D from its denominator (5/19 once counted). The
+> three gaps that remain — Q6, Q8, Q9 — are all the Principal/liveness
+> modelling, which is a design decision, not an edge. A newer slice, golden
+> paths, stands at 12/16 stored. Read
 > [`implemented-set.md`](implemented-set.md) before drafting a single sentence;
 > it is the gate on what this paper may claim.
 
 ## Status
 
-- **Date:** 2026-08-17 (rev 1)
-- **Status:** Planning. Boundary agreed; implemented set measured; evaluation gap known and quantified.
+- **Date:** 2026-08-22 (rev 2; rev 1 2026-08-17)
+- **Status:** Planning. Boundary agreed; implemented set measured; evaluation gap narrowed to the liveness family (Q6/Q8/Q9) and quantified.
 - **Related:** [`implemented-set.md`](implemented-set.md) (what may be claimed),
   [`thesis-boundary.md`](thesis-boundary.md) (the camayoc/yupana split),
   [`incident-corpus.md`](incident-corpus.md) (the empirical core),
@@ -171,40 +171,47 @@ The suite is 47 questions across three slices, machine-readable and watermarked
 (`sha256:7a0cc4abad386885`, `scripts/competency.py`). The suite sets its own bar:
 *every question must eventually run as a named stored query.*
 
-**Coverage of the verification-and-liveness slice: 5 of 13 (`Partial`).**
+**Coverage of the verification-and-liveness slice: 16 of 19 (`Partial`).**
 Reported per question by `scripts/query_coverage.py` (`just query-coverage`),
 and the figure is pinned by a test so it cannot drift silently.
 
-Working `camayoc-102` turned the evaluation gap into the evaluation's most
-interesting result. **Only five of the slice's thirteen questions can be
-expressed at all with today's vocabulary.** The other eight name things the
-ontology does not carry — and a question that cannot be expressed as a query is
-an ontology gap, which is a finding rather than a backlog item
-(`camayoc-b6h`).
+The figure's history is itself evaluation material. `camayoc-102` measured
+5/13; the 2026-08-22 audit found the coverage tool omitting the slice's own
+§D (cost accounting, Q16–21) from its denominator — 5/19 once counted, an
+uncounted question being a gap unreported. Later the same day `camayoc-89e`
+landed the five single-edge mints (Q3/Q4/Q5/Q7/Q12) and `camayoc-e29` the §D
+vocabulary (Q16–21), each term owed to its question: 16/19.
 
 | | Questions | State |
 |---|---|---|
-| Stored and executing | Q1, Q2, Q10, Q11, Q13 | falsifier retrieval, unfalsifiable verifications, blockers by evidence kind, execution paths, single-owner paths |
-| **Competency gaps** | Q3, Q4, Q5, Q6, Q7, Q8, Q9, Q12 | each reported with the terms it would need |
+| Stored and executing | Q1–Q5, Q7, Q10–Q13, Q16–Q21 | falsifier retrieval and staleness, adversarial proof, variable dependence, closed-dependency blocks, blockers by evidence kind, execution paths and drift, cost accounting |
+| **Competency gaps** | Q6, Q8, Q9 | all the Principal/liveness modelling, each reported with the terms it would need |
 
-The gaps are the paper's real evaluation finding, and three of them are
-pointed:
+The remaining gaps are one family, and it is the pointed one:
 
-- **Q6 and Q8 (liveness) are the largest gap, and they block the family §4
-  leads with.** There is no `Principal` and no observed liveness record. This is
-  *correctly* not a stored fact — ingress rule 5 forbids storing judgments that
-  decay — but a read-time join still needs something to join *to*, and nothing
-  is modelled. **The paper must say this plainly: the four-beads-one-cause
+- **Q6, Q8 and Q9 (liveness) block the family §4 leads with.** There is no
+  `Principal` and no observed stop/heartbeat record. This is *correctly* not a
+  stored fact — ingress rule 5 forbids storing judgments that decay — but a
+  read-time join still needs something to join *to*, and nothing is modelled
+  (`aegis:Session`, minted for §D, carries a principal but says nothing about
+  running). **The paper must say this plainly: the four-beads-one-cause
   corpus motivates a capability the ontology cannot yet express.**
-- **Q4 asks which checks were proven adversarial rather than asserted to work.**
-  The ontology cannot record that property — even though `camayoc-104` just
-  established exactly that property for the gate probes. The system practises a
-  discipline it cannot yet describe. That is a good, honest paragraph.
+- **Q4 is now a closed loop worth a paragraph.** `camayoc-104` established
+  proven-able-to-fail for the gate probes; `aegis:adversariallyProvenBy` now
+  records the same property about any check, and the proof node is itself a
+  falsifier-gated `Verification`. The system practises the discipline *and*
+  can describe it — and the date each half landed is in the history.
 - **Q2 has a subtlety worth a footnote.** A `Verification` without a falsifier
   cannot be written through a gated ingress, so Q2's population is precisely the
   store's *pre-gate legacy*, and against a store that was always gated it
   correctly returns nothing. The fixture seeds pre-gate rows so the query is
   proven able to find them.
+- **§D's acceptance is self-application again.** Q16 and Q18 run against a
+  fixture whose totals are stated independently (what the harness files
+  print) and reproduced by the queries — a usage reader checkable only
+  against itself being the section-A defect in an accountant's hat. The
+  UNKNOWN-never-zero rule is tested from both sides: unmeasured items and
+  decisions return no row, and Q19 returns the unmeasured session itself.
 
 Every stored query executes against a fixture with **both arms** — a seeded
 positive finding and a control negative — per the suite's own acceptance
@@ -212,10 +219,11 @@ criterion: *a query that cannot return findings has the same defect as the
 checks in section A, one level up.* That self-application is the sentence to
 put in §7.
 
-**What this means for the claim.** The corpus in §4 still **motivates** a
-capability rather than demonstrating one, and the paper must say so. But the
-shape of the shortfall is now measured and attributable rather than vague:
-five questions answerable, eight blocked on eight named terms.
+**What this means for the claim.** The liveness corpus in §4 still
+**motivates** a capability rather than demonstrating one, and the paper must
+say so — but the shortfall is now three questions, one named family. The
+verification-integrity and cost-accounting halves of the slice are
+demonstrable, not merely motivated.
 
 ## 6. Scope boundaries (honest)
 
@@ -233,9 +241,9 @@ From [`implemented-set.md`](implemented-set.md), which is authoritative:
 - **Typed non-answers: one instance, not a taxonomy.** `NO COVERAGE` on the
   ontology's own coverage. The systematic taxonomy is yupana's.
 - **Liveness: a position and a vocabulary, not a mechanism.** The terms exist
-  (`ontology/core.ttl:74, :87`) and the refusal to synthesise a write-time
+  (`ontology/core.ttl:93, :120`) and the refusal to synthesise a write-time
   liveness predicate is explicit and deliberate
-  (`shapes/core.shapes.ttl:130`). The read-time queries do not exist.
+  (`shapes/core.shapes.ttl:140`). The read-time queries do not exist.
 
 ## 7. Paper outline
 
@@ -267,12 +275,13 @@ From [`implemented-set.md`](implemented-set.md), which is authoritative:
 5. ~~Close the competency-query gap for the verification slice~~ — done
    (`camayoc-102`), reaching 5/13 at the time and converting the other 8 into
    named ontology gaps. (Recounted as 5/19 on 2026-08-22 when the slice's §D
-   entered the denominator — six more named gaps, no lost queries.)
-6. **Decide whether to close any of the named gaps before drafting.** Q6/Q8
-   (liveness) is the one that changes what §4 can claim; the rest can ship as
-   future work (the five single-edge mints are `camayoc-89e`, the §D cost
-   vocabulary `camayoc-e29`). This is now the only open build decision, and
-   it is ian's.
+   entered the denominator — six more named gaps, no lost queries. The five
+   single-edge mints landed as `camayoc-89e` and the §D cost vocabulary as
+   `camayoc-e29`, both 2026-08-22: 16/19.)
+6. **Decide whether to close the liveness gap before drafting.** Q6/Q8/Q9
+   (the Principal/liveness modelling) is all that remains, and it is the one
+   that changes what §4 can claim; it can also ship as future work with the
+   blocker named. This is now the only open build decision, and it is ian's.
 7. Draft §§1–5 from the mechanism docs; they are stable.
 8. Draft §7 last, against whatever coverage step 6 settles on.
 
