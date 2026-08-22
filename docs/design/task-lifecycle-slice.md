@@ -1,14 +1,23 @@
 # Design: First Slice — task lifecycle + decisions
 
-> **Implementation status (2026-08-06):** 🟡 **The spine is built and proven
+> **Implementation status (2026-08-22):** 🟡 **The spine is built and proven
 > end-to-end**: `ontology/core.ttl` + `shapes/core.shapes.ttl` ship (v1,
-> deliverables 1–2), the skill and plugin ship, and the loop was verified
+> deliverable 1), the skill and plugin ship, and the loop was verified
 > against a live quipu with `validate_on_write` — bare store → bootstrap →
 > untagged probe **refused** → tagged Decision accepted → competency-style
-> query answers → session hook reports ACTIVE. Remaining: the crew-domain
-> vocabulary beyond core, the eval gate (deliverable 5), and the optional
-> enrichment parser (deliverable 6). No term is minted until a mapping row
-> or competency question needs it.
+> query answers → session hook reports ACTIVE. Since the 2026-08-06 banner,
+> deliverable 5's substance landed in `just test` rather than `just check`:
+> the stored queries execute against seeded fixture graphs with positive and
+> control-negative arms (`tests/test_competency_queries.py`,
+> `tests/test_golden_path_queries.py`), and `just query-coverage` reports
+> per-question coverage with gaps named. Deliverable 4's camayoc half is the
+> 21 definitions in `queries/`, still awaiting quipu #79 to serve them.
+> Remaining: the crew-domain vocabulary beyond core (deliverable 2 — no
+> `ontology/crew.ttl` exists; later slices minted into core instead) and the
+> optional shantytown-records enrichment parser (deliverable 6 — unbuilt; the
+> deterministic parser that does exist, `scripts/ingest_git_provenance.py`,
+> covers git provenance, a different record source). No term is minted until
+> a mapping row or competency question needs it.
 
 ## 1. Why this slice
 

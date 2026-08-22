@@ -1,9 +1,15 @@
 # Design: The Skill Is the Interface
 
-> **Implementation status (2026-08-06):** 🟡 **The skill ships in this repo
-> (`skills/camayoc/SKILL.md`); the quipu substrate it leans on is in flight.**
-> Where a pillar's machinery is unbuilt (stored queries #79, labels #65), the
-> skill says so and gives the raw-SPARQL fallback — it never pretends.
+> **Implementation status (2026-08-22):** 🟡 **The skill ships in this repo
+> (`skills/camayoc/SKILL.md`); the quipu substrate it leans on is partly
+> landed.** Labels (#65) are no longer the gap they were: quipu's
+> `/graph/create` + `/graph/label` routes exist and `scripts/planes.py` uses
+> them to label the quarantine planes (camayoc-s0h). Server-side stored
+> queries (#79) remain pending as far as this repo can verify — camayoc's
+> half is done ahead of them: `queries/` ships 21 named query definitions,
+> executed against fixture graphs in tests, ready to load when #79 lands.
+> Where machinery is unbuilt the skill still says so and gives the raw-SPARQL
+> fallback — it never pretends.
 
 ## 1. The usage model
 

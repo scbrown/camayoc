@@ -14,6 +14,11 @@
 > episode-shaped ingress; every real ingest is and always was a `/knot` write, so
 > the rule now states the boundary it actually governs and `tests/test_knot_provenance.py`
 > enforces the `actor` + `source` floor it narrowed to (camayoc-99t).
+> **Planes update (2026-08-18, noted here 2026-08-22):** the §2 quarantine
+> planes are no longer a table — `scripts/planes.py` registers and labels
+> them (camayoc-s0h, see §2.1) and `scripts/promote_plane.py` implements the
+> authority-gated plane promotion of §3.4/§4 (camayoc-mip) — assertion into
+> the target only; the retraction half awaits a keeper ruling, `camayoc-913`.
 
 ## 1. The discipline, in five rules
 
