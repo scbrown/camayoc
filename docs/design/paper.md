@@ -1,10 +1,16 @@
 # Design: Camayoc paper plan — how knowledge earns its way into the graph
 
-> **Implementation status (2026-08-17):** 🟡 **Planned.** Nothing drafted. The
+> **Implementation status (2026-08-22):** 🟡 **Planned.** Nothing drafted. The
 > evidence is unusually asymmetric: the *corpus* is strong and already
-> taxonomized, the *evaluation* is thin — 5 of the verification slice's 13
+> taxonomized, the *evaluation* is thin — 5 of the verification slice's 19
 > competency questions run as stored queries (`just query-coverage`), and the
-> other 8 are ontology gaps rather than unwritten queries. Read
+> other 14 are ontology gaps rather than unwritten queries. (The figure was
+> reported as 5/13 until 2026-08-22, when the coverage tool was found to be
+> omitting the slice's own §D — cost accounting, Q16–21 — from its
+> denominator; the six now appear as counted gaps. None of the earlier eight
+> gaps has become closable from vocabulary minted since: the golden-paths
+> slice minted trajectory terms, not `verifiedAt`, `blockedOn`, or the
+> liveness join.) A newer slice, golden paths, stands at 12/16 stored. Read
 > [`implemented-set.md`](implemented-set.md) before drafting a single sentence;
 > it is the gate on what this paper may claim.
 

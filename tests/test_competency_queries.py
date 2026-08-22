@@ -193,11 +193,15 @@ class CoverageReportTests(unittest.TestCase):
 
     def test_coverage_is_partial_and_the_number_is_reported_honestly(self):
         """Pins the figure the paper cites. If coverage changes — up or down —
-        this fails and the paper's number gets revisited deliberately."""
+        this fails and the paper's number gets revisited deliberately.
+
+        19, not 13: the suite's §D (cost accounting, Q16-21 — there is no
+        Q14/Q15) was uncounted until 2026-08-22, which understated the
+        denominator exactly the way incident-corpus.md §4.2 warns about."""
         result = coverage.report()
         self.assertEqual("Partial", result["verdict"])
         self.assertEqual(5, result["covered"])
-        self.assertEqual(13, result["total"])
+        self.assertEqual(19, result["total"])
 
     def test_every_gap_names_what_the_ontology_would_need(self):
         """A gap reported without the missing terms is a complaint, not a
