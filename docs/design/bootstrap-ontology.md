@@ -1,9 +1,19 @@
 # Design: The Bootstrap Ontology — the upper vocabulary every domain imports
 
-> **Implementation status (2026-08-06):** ⬜ **Founding design — nothing built.**
-> Blocked on nothing; the first slice
-> ([task-lifecycle-slice.md](task-lifecycle-slice.md)) drives which terms are
-> actually minted first.
+> **Implementation status (2026-08-22):** ✅ **Built, the way this document
+> asked to be built — slice by slice, question first.** `ontology/core.ttl` +
+> `shapes/core.shapes.ttl` now carry the candidate set and three slices
+> beyond it: `WorkItem` and `Decision` landed as classes, `Outcome` landed as
+> the `aegis:outcome` property (what happened is a fact of the work item, not
+> a node), and `sourceKind` is minted and SHACL-mandatory exactly as §2
+> specified. One deliberate departure from §1's letter, recorded in
+> `ontology/core.ttl`'s namespace note: terms are declared in the store's
+> configured base namespace (`aegis:` by default) so that quipu `/episode`
+> writes and the declarations agree out of the box — the namespace is still a
+> parameter, set in that file's prefix, never a hardcoded hostname. Every
+> term remains owed to a question in [competency/](../../competency/), now
+> five suites; per-question coverage is measured by `just query-coverage`
+> rather than asserted here.
 
 ## 1. Principle: reuse before minting
 

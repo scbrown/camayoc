@@ -1,17 +1,26 @@
 # Design: Golden Paths — verified trajectories, blessed and enforced
 
-> **Implementation status (2026-08-20, camayoc-gp1):** 🟡 **Terms minted,
-> gates armed; queries pending.** The competency suite
+> **Implementation status (2026-08-22, camayoc-gp1 + gp2):** 🟡 **Camayoc's
+> slice is done to its deferral line: terms minted, gates armed, queries
+> stored at 12/16.** The competency suite
 > ([competency/golden-paths.md](../../competency/golden-paths.md)) is written;
 > the slice decided (see the §3 note) and the vocabulary is minted in
-> `ontology/core.ttl` with shapes in `shapes/core.shapes.ttl` and three new
+> `ontology/core.ttl` with shapes in `shapes/core.shapes.ttl` and three
 > refusal arms in `scripts/gate_probe.sh` (proven able to fail by
-> `tests/test_gate_probe.py`). Q1–Q13 run as named stored queries
+> `tests/test_gate_probe.py`). Q1–Q13 minus Q5 run as named stored queries
 > (`queries/camayoc_gp_*.json`) against a seeded fixture
 > (`tests/fixtures/golden-paths.ttl`, positive + control-negative arms in
-> `tests/test_golden_path_queries.py`; camayoc-gp2) — coverage is 12/16,
-> with Q5 waiting on quipu's cone command and Q14–Q16 deferred with the
-> later ladder levels. Mechanisms remain design-only in quipu and yupana. Mechanism designs live with their owners:
+> `tests/test_golden_path_queries.py`; camayoc-gp2). The four gaps are
+> blocked outside this repo, still, as of this date: **Q5** waits on quipu's
+> `path cone` command (quipu-gp2, design-only — the term for per-step cone
+> membership is deliberately unminted until that command's output shape
+> decides it); **Q14–Q15** are deferred with the L5 ladder levels per the
+> suite's acceptance note — `aegis:derivedConstraint` is minted but the
+> Policy/grant/act records to join against only exist once quipu's
+> verdict-signing-gated constraint derivation does; **Q16** waits on
+> guard-written conformance records at scale (yupana FR-41, design-only —
+> `aegis:deviatesAt` is minted and ready). Mechanisms remain design-only in
+> quipu and yupana. Mechanism designs live with their owners:
 > [quipu docs/design/golden-paths-blessing.md](https://github.com/scbrown/quipu/blob/main/docs/design/golden-paths-blessing.md)
 > (storage, pruning aid, backtest, promotion) and
 > [yupana docs/golden-path-guard.md](https://github.com/scbrown/yupana/blob/main/docs/golden-path-guard.md)
