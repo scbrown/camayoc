@@ -61,8 +61,10 @@ shantytown / git / hank / sessions          (activity: raw fiber)
    (quipu #81): graph + shapes + competency queries + labels + manifest, one
    attachable file.
 4. **The competency-question suites** — the questions agents actually ask,
-   maintained as the test harness for every ontology change.
-   [competency/](competency/)
+   maintained as the test harness for every ontology change. Six slices now:
+   task lifecycle, metrics, verification-and-liveness (with its §D cost
+   accounting), golden paths, document structure and chunks, and
+   workflow-and-archive. [competency/](competency/)
 
 ### Metrics and nonfunctional requirements
 
@@ -84,6 +86,75 @@ method returned by the `camayoc_metric_retrieval_method` named query and prints
 the returned sample. Authenticated Prometheus deployments are read from
 `PROMETHEUS_BASIC_AUTH_USER` and `PROMETHEUS_BASIC_AUTH_PASSWORD`; credentials
 are never stored in the graph method.
+
+## What runs today
+
+The ingress discipline stopped being a table in a design doc. The pieces below
+are implemented, and — the part this repo cares most about — their *refusals*
+are tested, not just their acceptances.
+[docs/design/implemented-set.md](docs/design/implemented-set.md) keeps the
+measured, claim-by-claim ledger.
+
+- **Quarantine planes** (`scripts/planes.py`) — writes route by `sourceKind`
+  into named graphs labelled in quipu's trust lattice: `inferred` never shares
+  a plane with `observed` and always ranks strictly below it. Registration and
+  labelling happen together or not at all; an unknown `sourceKind` refuses
+  instead of defaulting to ROOT; and against a quipu without the
+  `/graph/create` + `/graph/label` routes, bootstrap **fails** rather than
+  quietly writing everything into ROOT.
+- **Two-dimensional routing** — `plane_for(source_kind, data_kind)`.
+  `knowledge` goes to the static planes; `operational` data (workflow runs,
+  shuttle's export) goes to time-windowed graphs (`scripts/windows.py`,
+  `{WINDOW_NS}{family}/{YYYY-MM}`) so a completed window can be deep-frozen
+  whole. Unknown pairs refuse; nothing defaults to ROOT.
+- **Plane promotion** (`scripts/promote_plane.py`) — how a fact earns its way
+  out of quarantine. Authority-gated and failing closed (a missing or
+  unreadable grant file means *nobody* may promote, not everybody),
+  self-promotion refused independently of authority, upward moves only, and
+  the move rule in full: assert in the target, **close** the source episode (a
+  bitemporal close, never a delete), record the move — with
+  `camayoc:sourceLeftOpen true` said out loud when the source stays open.
+- **The workflow slice** — `WorkflowDefinition`, `WorkflowStep`,
+  `WorkflowRun`, and append-only `TransitionEvent`s; `currentState` is
+  re-asserted per transition, never mutated. Every term is owed to a question
+  in [competency/workflow-and-archive.md](competency/workflow-and-archive.md).
+  [docs/design/workflow-and-archive.md](docs/design/workflow-and-archive.md)
+- **Golden paths** — verified trajectories, blessed and enforced:
+  `Trajectory`, `GoldenPath`, `PathOmission`, `PathPromotion`, with SHACL
+  refusals where absence would make the node a lie (a `GoldenPath` without
+  its exemplar trajectory is refused) and a gate-probe arm proving each
+  refusal. [docs/design/golden-paths.md](docs/design/golden-paths.md)
+- **Stored queries, honest coverage** — 32 named stored queries in
+  [queries/](queries/), each tested against a seeded fixture with a positive
+  *and* a control-negative arm. `just query-coverage` reports the living
+  figure per slice (verification-and-liveness 16/19, golden paths 12/16 at
+  this writing); a question with no stored query is an ontology gap reported
+  as itself, never answered from the nearest term.
+- **Cost accounting** — `Session` and `UsageRecord`, with six §D queries:
+  token cost per work item, per-provider burn windows, sessions with no usage
+  records, what a decision cost. No quota term exists on purpose — the
+  consumption is ours to record; the ceiling is the provider's.
+- **git → work-item provenance** (`just ingest-git`) — walks commit history
+  and emits the `WorkItem ←implements— GitCommit —modifies→ CodeModule` chain
+  as Turtle. Deterministic, byte-identical on re-run, and pure `observed`. It
+  abstains unless you declare the tracker prefix (`--project`), because no
+  pattern separates a work-item id from ordinary hyphenated English, and a
+  false match silently widens an item's scope.
+- **Competency assessment** (`just competency "<question>"`) — scores a
+  question against the suite and returns `Empty | Partial | Full`, with
+  **NO COVERAGE** as a first-class verdict. Every verdict carries its method,
+  thresholds, and suite watermark; the embedding scorer is wired and selects
+  itself only when weights are actually present, so a verdict can never claim
+  `semantic: true` over a word-overlap number.
+- **Settled-decision collision check** (`scripts/settled_decisions.py`) —
+  scores a proposed decision against the standing human decisions and
+  surfaces likely re-litigation *before* the write. Advisory, lexical and
+  says so; its own recorded verdict routes to the inferred plane, because a
+  machine's opinion about a human's decision must not sit beside it looking
+  like one.
+- **Advisory chunk shapes** — vocabulary for bobbin's chunk graph
+  (`bobbin:Chunk`, `nextChunk`, `chunkOrder`) in `shapes/code-entities.ttl`,
+  value constraints only until the emitter ships and is measured.
 
 ## Install: one plugin, governed memory
 
@@ -107,9 +178,12 @@ That gets you, immediately:
   [quipu release](https://github.com/scbrown/quipu/releases) binary —
   sha256-checked — or cargo-installs it, starts it against
   `.quipu/store.db`, gitignores `.quipu/`), loads the core ontology +
-  SHACL shapes, and then **proves the gate**: it sends a deliberately
-  untagged probe and requires the store to refuse it. A store that accepts
-  the probe is reported, loudly, not ingested into.
+  SHACL shapes, registers and labels the quarantine planes (both or
+  neither — see "What runs today" above), and then **proves the gate**: it sends a
+  deliberately untagged probe and requires the store to refuse it — one
+  probe per refusal arm, each omitting exactly one required property, so a
+  passing probe proves its own shape and nothing else. A store that accepts
+  a probe is reported, loudly, not ingested into.
 - **The ontology and shapes themselves** (`ontology/core.ttl`,
   `shapes/core.shapes.ttl`) — work items, decisions, outcomes, and the
   mandatory `sourceKind` provenance tag.
@@ -202,5 +276,10 @@ the loose thread coming in and the knotted record going out.
 
 ## Status
 
-Pre-alpha: founding design documents. Nothing ships yet. The quipu substrate
-this builds on is itself in flight (quipu #65–#82).
+Working ingress, honestly bounded. Of the eight aspects in the provisional
+disclosure, four are built, four are partial, and none are design-only —
+[docs/design/implemented-set.md](docs/design/implemented-set.md) is the
+measured ledger, re-run per row rather than carried forward on trust. The
+competency suite spans six slices; 32 stored queries answer it where the
+vocabulary exists, and `just query-coverage` reports the remaining gaps as
+gaps. The quipu substrate this builds on is itself still in flight.
