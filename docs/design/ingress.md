@@ -19,6 +19,7 @@
 > them (camayoc-s0h, see §2.1) and `scripts/promote_plane.py` implements the
 > authority-gated plane promotion of §3.4/§4 (camayoc-mip) — assertion into
 > the target only; the retraction half awaits a keeper ruling, `camayoc-913`.
+> **Routing update (2026-08-24):** routing is now **2-D** — `plane_for(source_kind, data_kind="knowledge")`; `operational` data is window-addressed via `scripts/windows.py` so completed windows can be deep-frozen whole, and §4's promotion now CLOSES the source episode (the camayoc-913 move rule). Existing plane IRIs untouched. See [workflow-and-archive.md](workflow-and-archive.md).
 
 ## 1. The discipline, in five rules
 

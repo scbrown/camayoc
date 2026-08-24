@@ -57,6 +57,7 @@ PLANES: dict[str, dict] = {
         "source_kinds": ["observed"],
         "rank": 20,
         "trust_iri": f"{PLANE_NS}trust/high",
+        "data_kind": "knowledge",
     },
     "crew:declared": {
         "iri": f"{PLANE_NS}crew/declared",
@@ -64,6 +65,7 @@ PLANES: dict[str, dict] = {
         "source_kinds": ["declared"],
         "rank": 30,
         "trust_iri": f"{PLANE_NS}trust/human-root",
+        "data_kind": "knowledge",
     },
     "crew:inferred": {
         "iri": f"{PLANE_NS}crew/inferred",
@@ -71,6 +73,7 @@ PLANES: dict[str, dict] = {
         "source_kinds": ["inferred"],
         "rank": 0,
         "trust_iri": f"{PLANE_NS}trust/low",
+        "data_kind": "knowledge",
     },
 }
 
@@ -131,6 +134,12 @@ def ensure_planes(timestamp: str) -> list[dict]:
                     "chain": TRUST_CHAIN,
                     "rank": spec["rank"],
                 },
+                # The dataKind axis (quipu graph-kinds-and-deep-freeze).
+                # Ignored by an older quipu's strict parser? No — an older
+                # /graph/label predates the key and DROPS unknown fields, and
+                # a newer one parses it strictly. Either way the plane label
+                # is written; `status` against a kind-aware store shows it.
+                "kind": spec["data_kind"],
                 "actor": "camayoc-planes",
             },
         )
@@ -147,13 +156,33 @@ def ensure_planes(timestamp: str) -> list[dict]:
     return results
 
 
-def plane_for(source_kind: str) -> str:
-    """The graph IRI an episode with this `sourceKind` must be written into.
+def plane_for(source_kind: str, data_kind: str = "knowledge") -> str:
+    """The graph IRI an episode with this `sourceKind` and `data_kind` earns.
 
-    Raises rather than defaulting. A `sourceKind` with no plane is a routing
-    gap, and routing it to ROOT would put model-written facts exactly where
-    observed ones live — the single thing this whole mechanism exists to stop.
+    Routing is now 2-D (source_kind x data_kind), and the default is
+    `"knowledge"` because every static plane above IS a knowledge plane —
+    a documented fact about the table, not a silent fallback. Raises rather
+    than defaulting on any pair with no plane: routing to ROOT would put
+    model-written facts exactly where observed ones live — the single thing
+    this whole mechanism exists to stop.
+
+    `operational` data is deliberately NOT static-plane-addressed: it goes
+    into time-windowed graphs so completed windows can be deep-frozen whole
+    (`scripts/windows.py`, quipu graph-kinds-and-deep-freeze).
     """
+    if data_kind == "operational":
+        raise PlaneError(
+            "operational data is window-addressed, not plane-addressed: use "
+            "scripts/windows.py ensure_window(family, yyyymm) and write into "
+            "the returned window graph. Static planes hold knowledge."
+        )
+    if data_kind != "knowledge":
+        known = sorted({spec["data_kind"] for spec in PLANES.values()})
+        raise PlaneError(
+            f"no plane for dataKind '{data_kind}' (known plane kinds: {known}; "
+            "'operational' routes via scripts/windows.py). Refusing to default "
+            "to ROOT."
+        )
     name = ROUTES.get(source_kind)
     if name is None:
         raise PlaneError(

@@ -80,6 +80,14 @@ uncertain knowledge exist at all without contaminating what is certain
 
 ## 4b. DURABILITY IS THE ADDRESSABLE FORM OF REPRODUCIBILITY — declare it, do not infer it
 
+> **Minted upstream (2026-08-24):** the lattice this section proposed now
+> ships in quipu (`src/lattice.rs`: `soleRecord < reproducible < backed`,
+> composed by meet), and deep freeze is its first mover: freezing a window
+> graph relocates the rows into a hash-verified archive pack and declares
+> `backed` — durability-declared relocation, exactly this section's framing,
+> and never §5's write-time filter. See quipu
+> `docs/design/graph-kinds-and-deep-freeze.md`.
+
 Sections 2 and 3 leave "is the graph the only copy?" as something a reader
 *infers* from whether a derivation method is present. That is too weak to act on.
 An inferred property can only be queried by ABSENCE — "show me facts missing a

@@ -31,24 +31,24 @@ later reader.
 - **Promotion of something not actually in the source plane.** Otherwise the
   record asserts a move that never happened.
 
-## What it does NOT yet do
+## The move rule (camayoc-913, resolved with quipu deep freeze)
 
-**It asserts into the target plane; it does not retract from the source.**
-`docs/design/ingress.md` calls promotion a graph *move*, and this is currently
-half of one. Saying so here rather than describing the intended behaviour is
-the point: a docstring that claims a retraction the code does not perform is
-the same defect as a check that cannot fail.
+**Assert in the target, CLOSE in the source, record the move.** The close is
+a bitemporal retraction — quipu closes the valid interval, never deletes —
+so the original stays visible as-of its write time in the inferred plane
+(competency/workflow-and-archive.md Q13). The same rule governs deep freeze,
+where the "close" is whole-graph relocation with the full-history pack as
+the surviving record. The worry that closing erases the low-trust past was
+the reason this stayed open; bitemporality answers it: valid-time replay
+still shows the fact where and when it lived.
 
-The remaining half needs a decision that is not the implementer's to make.
-quipu is bitemporal, so retracting the inferred original closes its valid
-interval rather than deleting it — but *whether* to close it is a governance
-question with two defensible answers. Leaving it open means the fact is
-readable in two planes at different trust; closing it means the promotion
-record is the only surviving trace that it was ever low-trust. Filed on
-camayoc-mip for the keeper.
-
-Either way the promotion record itself is complete and auditable: it names
-where the fact came from, who moved it, and why.
+The close operates on the SOURCE EPISODE (`--source-episode`), because the
+episode is the unit ingress actually writes into the plane and quipu's
+`POST /episode/retract` is the graph-honest retraction surface (triple-level
+`/retract` is ROOT-scoped). When the caller cannot name the source episode
+the promotion still proceeds, the source interval stays open, and the
+promotion record says so out loud (`camayoc:sourceLeftOpen true`) — an open
+interval on the record beats a close that silently never happened.
 
 Usage:
     python3 scripts/promote_plane.py \\
@@ -157,6 +157,7 @@ def promotion_episode(
     authored_by: str,
     reason: str,
     timestamp: str,
+    source_left_open: bool = True,
 ) -> dict:
     """The episode asserting the promoted fact into its new plane.
 
@@ -167,6 +168,7 @@ def promotion_episode(
     """
     turtle = f"""@prefix camayoc: <https://camayoc.local/ontology/> .
 @prefix aegis:   <http://aegis.gastown.local/ontology/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
 
 <{subject}> camayoc:planePromotion [
     camayoc:promotedFrom  <{planes.plane_for("inferred")}> ;
@@ -176,6 +178,8 @@ def promotion_episode(
     camayoc:promotedAt    "{timestamp}" ;
     aegis:sourceKind      "observed" ;
     aegis:falsifier       "the subject is absent from the target plane after this transaction" ;
+    prov:wasDerivedFrom   <{subject}> ;
+    camayoc:sourceLeftOpen {"true" if source_left_open else "false"} ;
     camayoc:reason        "{reason}"
 ] .
 """
@@ -198,12 +202,20 @@ def promote(
     reason: str,
     timestamp: str,
     grants: dict[str, list[str]] | None = None,
-) -> dict:
-    """Run every gate, then produce the promotion episode.
+    source_episode: str | None = None,
+) -> tuple[dict, dict | None]:
+    """Run every gate, then produce the promotion episode and the source close.
 
     Gates run BEFORE anything is written, and in the order that fails cheapest
-    first. The episode is returned rather than posted so the caller decides
-    when to commit — and so the gates are testable without a live store.
+    first. Returns `(promotion_episode, close_request)`; the close is a
+    `POST /episode/retract` body for `source_episode` (the bitemporal close of
+    the source interval — the move rule), or None when the caller could not
+    name the source episode, in which case the promotion record carries
+    `camayoc:sourceLeftOpen true`. Returned rather than posted so the caller
+    decides when to commit — and so the gates are testable without a live
+    store. Commit order is assert-then-close: a failed close leaves the fact
+    readable in two planes at different trust (recoverable, visible), while
+    close-then-failed-assert would lose the promoted fact entirely.
     """
     if not reason.strip():
         raise PromotionRefused(
@@ -213,7 +225,22 @@ def promote(
     check_outranks(target_plane)
     check_not_self_promotion(promoted_by, authored_by)
     check_authority(promoted_by, target_plane, grants if grants is not None else load_authority())
-    return promotion_episode(subject, target_plane, promoted_by, authored_by, reason, timestamp)
+    episode = promotion_episode(
+        subject, target_plane, promoted_by, authored_by, reason, timestamp,
+        source_left_open=source_episode is None,
+    )
+    close = None
+    if source_episode is not None:
+        close = {
+            "episode": source_episode,
+            "timestamp": timestamp,
+            "actor": promoted_by,
+            # Entities the promoted fact still references must survive the
+            # close: retraction of the carrier episode is an interval close,
+            # not an identity purge.
+            "on_orphan": "preserve",
+        }
+    return episode, close
 
 
 def main() -> int:
@@ -224,19 +251,25 @@ def main() -> int:
     ap.add_argument("--authored-by", required=True, help="principal that wrote the fact")
     ap.add_argument("--reason", required=True, help="why this has earned promotion")
     ap.add_argument("--timestamp", default="2026-01-01T00:00:00Z")
+    ap.add_argument(
+        "--source-episode",
+        help="name of the episode that carried the fact into crew:inferred; "
+        "when given, its interval is CLOSED after the assert (the move rule)",
+    )
     ap.add_argument("--emit", action="store_true", help="print the episode instead of posting")
     args = ap.parse_args()
 
     try:
-        episode = promote(
-            args.subject, args.target, args.by, args.authored_by, args.reason, args.timestamp
+        episode, close = promote(
+            args.subject, args.target, args.by, args.authored_by, args.reason, args.timestamp,
+            source_episode=args.source_episode,
         )
     except (PromotionRefused, planes.PlaneError) as exc:
         print(f"PROMOTION REFUSED: {exc}", file=sys.stderr)
         return 2
 
     if args.emit:
-        print(json.dumps(episode, indent=2))
+        print(json.dumps({"promotion": episode, "close": close}, indent=2))
         return 0
 
     try:
@@ -244,7 +277,25 @@ def main() -> int:
     except planes.PlaneError as exc:
         print(f"PROMOTION FAILED: {exc}", file=sys.stderr)
         return 3
-    print(f"promoted {args.subject} into {args.target} by {args.by}")
+    if close is not None:
+        try:
+            planes._post("/episode/retract", close)
+        except planes.PlaneError as exc:
+            # Assert landed, close did not: readable in two planes, at
+            # different trust — visible and recoverable, and said out loud.
+            print(
+                f"PROMOTED but source close FAILED: {exc}. The fact is now "
+                "readable in both planes; re-run the close with "
+                f"POST /episode/retract {json.dumps(close)}",
+                file=sys.stderr,
+            )
+            return 4
+        print(f"promoted {args.subject} into {args.target} by {args.by}; source episode closed")
+    else:
+        print(
+            f"promoted {args.subject} into {args.target} by {args.by}; "
+            "source interval LEFT OPEN (no --source-episode)"
+        )
     return 0
 
 

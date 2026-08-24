@@ -422,3 +422,69 @@ aegis:attributedTo a rdf:Property ;
     rdfs:label "attributed to" ;
     rdfs:comment "The WorkItem this consumption was spent on. Optional and honest: unattributable consumption stays a session fact rather than being forced onto the nearest item. This edge is what turns cost into a property of WORK (Q16, Q18, Q21) instead of a property of a time-window." ;
     rdfs:range aegis:WorkItem .
+
+# ---- Workflow slice (competency/workflow-and-archive.md) ----------------
+#
+# The export target for shuttle, the workflow engine
+# (github.com/scbrown/shuttle). State is APPEND-ONLY TransitionEvents —
+# the measured rule that triple-level retract deletes nothing, applied at
+# the producer; aegis:currentState is re-asserted per transition and read
+# by latest valid_from, never mutated in place. Signatures ride as ordinary
+# facts on the event so they survive a deep freeze; the keys that verify
+# them live in a dataKind=identity graph that is never frozen.
+
+aegis:WorkflowDefinition a rdfs:Class ;
+    rdfs:label "Workflow definition" ;
+    rdfs:comment "A named workflow: the steps and transitions runs of it may take. The definition is durable knowledge; its runs are operational, window-graphed data. (Q1, Q5)" .
+
+aegis:WorkflowStep a rdfs:Class ;
+    rdfs:label "Workflow step" ;
+    rdfs:comment "One declared step of a WorkflowDefinition. Distinct from the golden-path trajectory step (aegis:stepOf): this is prescriptive structure, that is an observed walk. (Q5)" .
+
+aegis:WorkflowRun a rdfs:Class ;
+    rdfs:label "Workflow run" ;
+    rdfs:comment "One execution of a WorkflowDefinition. Lives in the time-windowed operational graph of the month it started; freezing the window archives the run without unbinding its IRI. (Q1-Q4, Q8)" .
+
+aegis:TransitionEvent a rdfs:Class ;
+    rdfs:label "Transition event" ;
+    rdfs:comment "One append-only state transition of a run: which step, from what state to what state, when, performed and signed by which agent. The truth of run state; currentState is derived convenience. (Q3, Q6, Q7)" .
+
+aegis:hasStep a rdf:Property ;
+    rdfs:label "has step" ;
+    rdfs:comment "A WorkflowDefinition's declared step. (Q5)" ;
+    rdfs:range aegis:WorkflowStep .
+
+aegis:runOf a rdf:Property ;
+    rdfs:label "run of" ;
+    rdfs:comment "The WorkflowDefinition a run executes. (Q1)" ;
+    rdfs:range aegis:WorkflowDefinition .
+
+aegis:currentState a rdf:Property ;
+    rdfs:label "current state" ;
+    rdfs:comment "A run's state, re-asserted per transition and read by latest valid_from. Derived from TransitionEvents, which remain the truth; never updated in place (append-only rule). (Q1, Q2, Q4)" ;
+    rdfs:range xsd:string .
+
+aegis:inRun a rdf:Property ;
+    rdfs:label "in run" ;
+    rdfs:comment "The WorkflowRun a TransitionEvent belongs to. (Q3)" ;
+    rdfs:range aegis:WorkflowRun .
+
+aegis:fromState a rdf:Property ;
+    rdfs:label "from state" ;
+    rdfs:comment "The state a transition left. Carried on the event so history needs no reconstruction. (Q3)" ;
+    rdfs:range xsd:string .
+
+aegis:toState a rdf:Property ;
+    rdfs:label "to state" ;
+    rdfs:comment "The state a transition entered. (Q3)" ;
+    rdfs:range xsd:string .
+
+aegis:atStep a rdf:Property ;
+    rdfs:label "at step" ;
+    rdfs:comment "The WorkflowStep a transition happened at. (Q3)" ;
+    rdfs:range aegis:WorkflowStep .
+
+aegis:performedBy a rdf:Property ;
+    rdfs:label "performed by" ;
+    rdfs:comment "The agent (an aegis:Principal or crew-member IRI) that performed and signed a transition. Paired with aegis:signature — the hex ed25519 signature over the canonical shuttle-transition-v1 message — verifiable against the agent's aegis:VerifierRegistration in the identity graph. signature/publicKey/verifier/VerifierRegistration are quipu-owned aegis terms, reused not re-minted. (Q6, Q7, Q8)" ;
+    rdfs:range rdfs:Resource .

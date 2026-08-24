@@ -51,7 +51,8 @@ class PromotionGateTests(unittest.TestCase):
     def test_a_fully_authorised_promotion_succeeds(self):
         """The control. Without this, every refusal below could be passing
         because the function refuses everything."""
-        episode = promote_plane.promote(**ok())
+        episode, close = promote_plane.promote(**ok())
+        self.assertIsNone(close)  # no --source-episode: interval left open, said out loud
         self.assertEqual(
             promote_plane.planes.PLANES["crew:records"]["iri"], episode["graph"]
         )
@@ -139,7 +140,8 @@ class PromotionRecordTests(unittest.TestCase):
     def test_the_record_names_where_the_fact_came_from(self):
         """A promoted fact must be distinguishable from a directly-observed
         one, or promotion launders provenance instead of recording it."""
-        episode = promote_plane.promote(**ok())
+        episode, close = promote_plane.promote(**ok())
+        self.assertIsNone(close)  # no --source-episode: interval left open, said out loud
         body = episode["episode_body"]
         self.assertIn("promotedFrom", body)
         self.assertIn("promotedInto", body)
@@ -150,17 +152,17 @@ class PromotionRecordTests(unittest.TestCase):
         """camayoc's own shape rule applied to camayoc's own mechanism: the
         promotion is a Verification-shaped claim and must name what would
         disprove it."""
-        self.assertIn("falsifier", promote_plane.promote(**ok())["episode_body"])
+        self.assertIn("falsifier", promote_plane.promote(**ok())[0]["episode_body"])
 
     def test_the_promotion_event_is_tagged_observed_not_inferred(self):
         """The MOVE is an observed event even though the fact it moves was
         inferred. Tagging the promotion itself `inferred` would put the audit
         record in the plane it is supposed to be moving things out of."""
         self.assertIn('aegis:sourceKind      "observed"',
-                      promote_plane.promote(**ok())["episode_body"])
+                      promote_plane.promote(**ok())[0]["episode_body"])
 
     def test_the_reason_survives_into_the_record(self):
-        episode = promote_plane.promote(**ok(reason="reproduced twice on staging"))
+        episode, _ = promote_plane.promote(**ok(reason="reproduced twice on staging"))
         self.assertIn("reproduced twice on staging", episode["episode_body"])
 
 
