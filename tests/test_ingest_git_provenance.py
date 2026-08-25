@@ -80,5 +80,70 @@ class PathFilterTests(unittest.TestCase):
             self.assertTrue(mod.interesting(path), path)
 
 
+class IriLaneTests(unittest.TestCase):
+    """The base is the whole edge.
+
+    An `aegis:modifies` edge is only worth writing if it lands on a CodeModule
+    that exists. This script shipped for a while pointing at
+    `http://aegis.gastown.local/code/`, which quipu measured at ZERO live
+    subjects against 10,425 under the ontology base — so every edge it wrote
+    joined to nothing, which reads exactly like the unbuilt adapter this script
+    was written to replace. These tests are what stop that recurring, and they
+    fail loudly rather than drifting quietly.
+    """
+
+    ONTO = "http://aegis.gastown.local/ontology/"
+
+    def test_a_module_iri_is_the_one_the_live_code_graph_uses(self):
+        self.assertEqual(
+            mod.iri("bobbin", "src/lib.rs"),
+            f"{self.ONTO}code/bobbin/src%2Flib.rs",
+        )
+
+    def test_the_dead_lane_is_not_minted_under_any_shape(self):
+        """The specific regression: a bare `/code/` base with no `ontology/`."""
+        for built in (
+            mod.iri("bobbin", "src/lib.rs"),
+            mod.iri("bobbin", "commit", "abc123"),
+            mod.iri("bead", "camayoc-7lt"),
+        ):
+            self.assertTrue(built.startswith(f"{self.ONTO}code/"), built)
+            self.assertNotIn("gastown.local/code/", built)
+
+    def test_a_commit_iri_matches_yupanas_producer(self):
+        """yupana `export::commit_iri` mints `{ONTO}code/{repo}/commit/{sha}`.
+
+        Both lanes emit a GitCommit node for the same commit; identical IRIs
+        mean `/knot` supersedes per (s, p, o) rather than landing a second,
+        disjoint population of the same referent.
+        """
+        self.assertEqual(
+            mod.iri("yupana", "commit", "0123456789ab"),
+            f"{self.ONTO}code/yupana/commit/0123456789ab",
+        )
+
+    def test_the_two_producers_agree_on_every_realistic_source_path(self):
+        """yupana's `module_iri` replaces only `/`. For the path alphabet these
+        repos contain, that is the same string this script builds."""
+        for path in ("src/lib.rs", "src/cli/hook.rs", "README.md",
+                     "scripts/beads-jsonl.py", "docs/design/ingress.md"):
+            self.assertEqual(
+                mod.iri("r", path),
+                f"{self.ONTO}code/r/" + path.replace("/", "%2F"),
+                path,
+            )
+
+    def test_the_encoders_diverge_outside_that_alphabet_and_this_side_is_right(self):
+        """Pinned as a known divergence, not smoothed over.
+
+        yupana would emit a raw space here, which is not a legal IRI character;
+        this script percent-encodes it. Recorded so nobody "fixes" the mismatch
+        by copying the weaker encoder — the unification belongs upstream.
+        """
+        built = mod.iri("r", "src/foo bar.rs")
+        self.assertEqual(built, f"{self.ONTO}code/r/src%2Ffoo%20bar.rs")
+        self.assertNotIn(" ", built)
+
+
 if __name__ == "__main__":
     unittest.main()

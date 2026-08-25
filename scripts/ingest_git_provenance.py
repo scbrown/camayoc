@@ -49,7 +49,43 @@ import sys
 from pathlib import Path
 from urllib.parse import quote
 
-BASE = "http://aegis.gastown.local/code/"
+# ── THE BASE, AND WHY IT IS THIS ONE ────────────────────────────────────────
+# Entity IRIs mint under the ONTOLOGY base, and this is load-bearing rather
+# than cosmetic: `http://aegis.gastown.local/code/` — the spelling this script
+# used to carry — has ZERO live instances. quipu's `src/namespace.rs` records
+# the measurement (aegis-6noan, 2026-08-23, across ROOT and both named graphs):
+#
+#     any subject under the bare `/code/` base ............ 0
+#     CodeSymbol under `{ontology}code/…` ............ 10,425
+#
+# and warns in as many words that a declared-and-unproduced scheme "is not a
+# neutral leftover, it is an active trap." Two repos have now walked into it.
+# bobbin implemented the bare base faithfully and would have forked the code
+# graph had the push shipped. This script DID ship, which is why its
+# `aegis:modifies` edges have been pointing at CodeModule IRIs that do not
+# exist — a chain that joins to nothing is indistinguishable from an unbuilt
+# adapter, and this file's own header explains what that costs.
+#
+# Nothing needs migrating, and the 0 above is why: no subject was ever
+# successfully landed under the old base to strand.
+#
+# The shape below is yupana's `export::module_iri` / `commit_iri` —
+# `{ONTO}code/{repo}/{path}` with `/` → `%2F`, and `.../commit/{sha}` — so the
+# two producers mint the SAME IRI for the same referent and `/knot` supersedes
+# per (s, p, o) instead of accumulating a second population. yupana matches
+# this script's `<repo>@<sha[:12]>` label spelling for the same reason.
+#
+# That agreement is exact for the path alphabet these repos actually contain
+# ([A-Za-z0-9_./-]) and NOT exact beyond it, which is worth stating rather than
+# discovering: `quote(safe="")` here percent-encodes space, `+` and `:`, while
+# yupana replaces only `/`. On `src/foo bar.rs` this emits `foo%20bar` and
+# yupana emits a raw space — an invalid IRI. So the encoders disagree and THIS
+# side is the correct one; do not "fix" the divergence by copying yupana's.
+# Three producers currently carry three encoders (bobbin's `iri::iri_segment`
+# is a third, and the closest to right); unifying them is tracked, not done.
+# `tests/test_ingest_git_provenance.py` pins both the agreement and the
+# divergence, so neither can change silently.
+BASE = "http://aegis.gastown.local/ontology/code/"
 ONTOLOGY = "http://aegis.gastown.local/ontology/"
 
 # A work-item id is `<project>-<suffix>`: aegis-1q14, bobbin-052, quipu-mq7,
