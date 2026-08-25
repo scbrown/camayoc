@@ -12,8 +12,9 @@
 > writes and the declarations agree out of the box — the namespace is still a
 > parameter, set in that file's prefix, never a hardcoded hostname. Every
 > term remains owed to a question in [competency/](../../competency/), now
-> five suites; per-question coverage is measured by `just query-coverage`
-> rather than asserted here.
+> six suites (workflow-and-archive joined on 2026-08-24; `just competency-list`
+> is the living count and watermark); per-question coverage is measured by
+> `just query-coverage` rather than asserted here.
 
 ## 1. Principle: reuse before minting
 

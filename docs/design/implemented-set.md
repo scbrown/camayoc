@@ -99,9 +99,13 @@ their edges stated:
 Aspect 5 turned up something the bead did not anticipate and that
 `camayoc-102` needs.
 
-The competency suite is 47 questions across three files
-(`sha256:7a0cc4abad386885`). The repository contains **four** stored queries,
-all in `queries/`, and all four serve the *metrics* slice:
+*As this audit was written* the competency suite was 47 questions across three
+files (`sha256:7a0cc4abad386885`) and the repository contained **four** stored
+queries, all in `queries/`, all four serving the *metrics* slice. The figures
+in this paragraph and the block quotes under it are kept in past tense on
+purpose: they are the record of what was measured when, and the update chain
+below is what supersedes them. The current figures are `just competency-list`
+and `just query-coverage`, never this page.
 
 ```console
 $ ls queries/
@@ -111,7 +115,7 @@ camayoc_metrics_for_subject.json
 camayoc_unvalidated_metric_claims.json
 ```
 
-So the **verification-and-liveness slice has zero stored queries** — including
+So the **verification-and-liveness slice had zero stored queries** — including
 the four-beads-one-cause family (#6-#10) that `camayoc-101` proposes as the
 paper's empirical core, and the falsifier questions (#1-#5) that motivate the
 aspect the paper is strongest on.
@@ -170,4 +174,5 @@ and `scripts/promote_plane.py` exist outside `docs/`, with their tests). Gates
 green at the time of writing: `just test` 46 passed (1 skipped), `just check` 0
 issues across 17 files. After `camayoc-102` and `camayoc-104`: 65 passed, 21
 files. At the 2026-08-22 re-measure: 145 ran, 0 failed (32 skipped — the
-server-backed arms skip without a `quipu-server` binary), 24 files.
+server-backed arms skip without a `quipu-server` binary), 24 files. At the
+2026-08-25 re-measure: 181 ran, 0 failed (52 skipped, same reason), 26 files.

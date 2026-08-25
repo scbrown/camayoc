@@ -10,8 +10,9 @@
 > the stored queries execute against seeded fixture graphs with positive and
 > control-negative arms (`tests/test_competency_queries.py`,
 > `tests/test_golden_path_queries.py`), and `just query-coverage` reports
-> per-question coverage with gaps named. Deliverable 4's camayoc half is the
-> 21 definitions in `queries/`, still awaiting quipu #79 to serve them.
+> per-question coverage with gaps named. Deliverable 4's camayoc half is
+> every definition in `queries/` (counted by `just query-coverage`, not
+> restated here), still awaiting quipu #79 to serve them.
 > Remaining: the crew-domain vocabulary beyond core (deliverable 2 — no
 > `ontology/crew.ttl` exists; later slices minted into core instead) and the
 > optional shantytown-records enrichment parser (deliverable 6 — unbuilt; the

@@ -6,8 +6,10 @@
 > `/graph/create` + `/graph/label` routes exist and `scripts/planes.py` uses
 > them to label the quarantine planes (camayoc-s0h). Server-side stored
 > queries (#79) remain pending as far as this repo can verify — camayoc's
-> half is done ahead of them: `queries/` ships 21 named query definitions,
+> half is done ahead of them: every named definition in `queries/` ships,
 > executed against fixture graphs in tests, ready to load when #79 lands.
+> (The count lives in `just query-coverage`'s `stored_query_count`, not here —
+> stating it in prose is how this line went stale twice.)
 > Where machinery is unbuilt the skill still says so and gives the raw-SPARQL
 > fallback — it never pretends.
 

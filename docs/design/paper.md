@@ -167,8 +167,8 @@ must name what would falsify it.
 ## 5. Evaluation — and its honest state
 
 **Methodology: competency questions, which are the standard for ontology work.**
-The suite is 47 questions across three slices, machine-readable and watermarked
-(`sha256:7a0cc4abad386885`, `scripts/competency.py`). The suite sets its own bar:
+The suite is 91 questions across six slices, machine-readable and watermarked
+(`sha256:65bc4c5ad3d84752`, `just competency-list`). The suite sets its own bar:
 *every question must eventually run as a named stored query.*
 
 **Coverage of the verification-and-liveness slice: 16 of 19 (`Partial`).**
