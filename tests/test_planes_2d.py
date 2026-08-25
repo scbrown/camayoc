@@ -17,10 +17,14 @@ workflow engine and quipu's deep freeze. The invariants pinned here:
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
+import json
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -128,6 +132,94 @@ class MoveRuleTests(unittest.TestCase):
     def test_the_record_derives_from_the_promoted_subject(self):
         episode, _ = self._promote(source_episode="ep")
         self.assertIn("prov:wasDerivedFrom", episode["episode_body"])
+
+
+class MoveRuleCommitOrderTests(unittest.TestCase):
+    """The two-write commit path, which `promote()` alone cannot exercise.
+
+    Assert-then-close is chosen so that a HALF-APPLIED move is the recoverable
+    half: the fact readable in two planes at different trust, visibly. The
+    branch that says so is `main`'s exit 4, and a rule whose failure branch is
+    untested is a rule that has only ever been observed succeeding.
+    """
+
+    GRANTS = {"alice": ["crew:records"]}
+
+    ARGV = [
+        "promote_plane.py",
+        "--subject", "http://ex/fact/1",
+        "--to", "crew:records",
+        "--by", "alice",
+        "--authored-by", "claude",
+        "--reason", "corroborated by the deploy log",
+        "--source-episode", "crew-briefing-2026-07",
+    ]
+
+    def _run(self, retract_fails: bool, argv=None):
+        """Run `main` with the network replaced by a recorder.
+
+        Returns (exit code, posted paths, stderr text).
+        """
+        posted: list[str] = []
+
+        def fake_post(path, body):
+            posted.append(path)
+            if retract_fails and path == "/episode/retract":
+                # promote_plane loads its OWN planes instance, so the error
+                # `main` catches is that module's class, not this file's.
+                raise promote_plane.planes.PlaneError("HTTP 503 store unavailable")
+            return {}
+
+        err = io.StringIO()
+        with mock.patch.object(promote_plane.planes, "_post", fake_post), \
+             mock.patch.object(promote_plane, "load_authority", lambda: self.GRANTS), \
+             mock.patch.object(sys, "argv", argv or self.ARGV), \
+             contextlib.redirect_stderr(err):
+            code = promote_plane.main()
+        return code, posted, err.getvalue()
+
+    def test_the_assert_is_committed_before_the_close(self):
+        """Commit ORDER, not merely both writes: close-then-failed-assert would
+        lose the promoted fact outright, which is the unrecoverable direction."""
+        code, posted, _ = self._run(retract_fails=False)
+        self.assertEqual(0, code)
+        self.assertEqual(["/episode", "/episode/retract"], posted)
+
+    def test_a_failed_close_exits_4_rather_than_reporting_success(self):
+        code, posted, _ = self._run(retract_fails=True)
+        self.assertEqual(4, code)
+        self.assertEqual(["/episode", "/episode/retract"], posted)
+
+    def test_a_failed_close_says_the_fact_is_now_in_two_planes(self):
+        """The operator has to learn the state from the failure itself; an
+        exit code alone leaves a half-applied move looking like a lost one."""
+        _, _, err = self._run(retract_fails=True)
+        self.assertIn("PROMOTED but source close FAILED", err)
+        self.assertIn("readable in both planes", err)
+
+    def test_the_failure_hands_back_the_exact_retry_body(self):
+        """Recovery must not require reconstructing the retraction by hand —
+        that is where an `on_orphan` default would silently differ."""
+        _, _, err = self._run(retract_fails=True)
+        self.assertIn("POST /episode/retract", err)
+        payload = json.loads(err[err.index("{"):err.rindex("}") + 1])
+        self.assertEqual(
+            {
+                "episode": "crew-briefing-2026-07",
+                "timestamp": "2026-01-01T00:00:00Z",
+                "actor": "alice",
+                "on_orphan": "preserve",
+            },
+            payload,
+        )
+
+    def test_without_a_source_episode_no_close_is_attempted_at_all(self):
+        """The left-open path must not post an empty retraction: a retract with
+        no episode named is exactly the close that silently never happened."""
+        argv = [a for a in self.ARGV if a not in ("--source-episode", "crew-briefing-2026-07")]
+        code, posted, _ = self._run(retract_fails=True, argv=argv)
+        self.assertEqual(0, code)
+        self.assertEqual(["/episode"], posted)
 
 
 if __name__ == "__main__":

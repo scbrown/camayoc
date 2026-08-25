@@ -1,11 +1,15 @@
 # The implemented set — what the paper may claim
 
-> **Implementation status (2026-08-22):** ✅ **Current — re-measured.** Every
+> **Implementation status (2026-08-25):** ✅ **Current — re-measured.** Every
 > row below was measured against this repo on this date, with the grep or file
 > that produced it. Re-run before drafting; do not carry a row forward on
-> trust. This re-measure changed two verdicts: aspects 2 and 3 were
-> design-only on 2026-08-17 and are no longer (camayoc-s0h and camayoc-mip
-> closed 2026-08-18 with `scripts/planes.py` and `scripts/promote_plane.py`).
+> trust. This re-measure changed one verdict: **aspect 3 is no longer partial**
+> — the retraction half of the move landed with the workflow slice on
+> 2026-08-24 (`camayoc-913`) and the row had been carried forward on trust
+> against the row two lines above it, which already said so. The 2026-08-22
+> re-measure had changed two: aspects 2 and 3 were design-only on 2026-08-17
+> and are no longer (`camayoc-s0h` and `camayoc-mip` closed 2026-08-18 with
+> `scripts/planes.py` and `scripts/promote_plane.py`).
 
 `camayoc-100` exists because a provisional patent and a systems paper have
 different standards of proof. **A patent may claim constructively reduced
@@ -23,16 +27,18 @@ who finds one unbuilt claim stops believing the built ones.
 |---|----------|-------|----------|
 | 1 | Provenance-refusing ingress | ✅ **Built** | `shapes/core.shapes.ttl` makes `aegis:sourceKind` mandatory; `shapes/code-entities.ttl:50` constrains it to the closed `observed\|declared\|inferred` vocabulary. Refusal proven, not asserted — `tests/test_knot_provenance.py` (216 lines). |
 | 2 | Quarantined inference | ✅ **Built** (camayoc-s0h, 2026-08-18) | `scripts/planes.py` registers the planes as quipu named graphs and labels them in the trust lattice — both or neither, and `plane_for` refuses an unknown `sourceKind` rather than defaulting to ROOT. Refusals pinned by `tests/test_planes.py` (13 tests): `inferred` never shares a plane with `observed` and always ranks strictly below it. Runtime caveat to state: it requires quipu's `POST /graph/create` + `/graph/label` routes (added upstream for the bead); against an older quipu it reports UNAVAILABLE and bootstrap *fails* rather than writing to ROOT. See `docs/design/ingress.md` §2.1. |
-| 2b | Windowed operational ingress + the move rule | ✅ **Built** (2026-08-24) | Routing is 2-D: `plane_for(source_kind, data_kind)` refuses `operational` toward the static planes; `scripts/windows.py` creates-and-labels month windows (`operational`/`fresh`/`soleRecord`) for deep freeze; `scripts/promote_plane.py` now closes the source episode (assert → close → record, `camayoc:sourceLeftOpen` said out loud when it cannot). Pinned by `tests/test_planes_2d.py` (11 tests). See `docs/design/workflow-and-archive.md`. |
-| 3 | Governed promotion | 🟡 **Partial — the assertion half** (camayoc-mip, 2026-08-18) | `scripts/promote_plane.py`: authority-gated (fails closed on a missing `config/plane-authority.json`), refuses self-promotion, refuses non-upward moves, refuses promoting what is not in the source plane; records `camayoc:planePromotion` with full provenance. 15 tests, almost all refusals, plus the happy-path control. **Not yet a graph *move***: it asserts into the target and does not retract from `crew:inferred` — whether the bitemporal original's valid interval should be closed is a governance call left for the keeper (tracked, see camayoc-913). Claim the mechanism with the half stated. |
+| 2b | Windowed operational ingress + the move rule | ✅ **Built** (2026-08-24) | Routing is 2-D: `plane_for(source_kind, data_kind)` refuses `operational` toward the static planes; `scripts/windows.py` creates-and-labels month windows (`operational`/`fresh`/`soleRecord`) for deep freeze; the same change landed the promotion move rule, which is now carried by aspect 3's row rather than duplicated here. Pinned by `tests/test_planes_2d.py` (16 tests). See `docs/design/workflow-and-archive.md`. |
+| 3 | Governed promotion | ✅ **Built** (camayoc-mip 2026-08-18; the move half, camayoc-913, 2026-08-24) | `scripts/promote_plane.py`: authority-gated (fails closed on a missing `config/plane-authority.json`), refuses self-promotion, refuses non-upward moves, refuses promoting what is not in the source plane; records `camayoc:planePromotion` with full provenance. 15 tests in `tests/test_promote_plane.py`, almost all refusals, plus the happy-path control. It is now a graph **move**, not a copy-up: `promote()` returns `(assert, close)` and `main` commits assert → `POST /episode/retract` on `--source-episode` (`on_orphan: preserve`) → record. The retraction is a **bitemporal interval close, never a delete**, which is what answered the governance question that held this row open: valid-time replay still shows the fact where and when it lived (competency/workflow-and-archive.md Q13). Commit order is load-bearing and tested both ways — a failed close leaves the fact readable in two planes at different trust (exit 4, stated out loud with the exact retry body), where close-then-failed-assert would lose it outright. Absent `--source-episode` the record carries `camayoc:sourceLeftOpen true` rather than implying a close that never happened. Pinned by `tests/test_planes_2d.py` `MoveRuleTests` + `MoveRuleCommitOrderTests` (8 tests). |
 | 4 | Falsifier-gated verification | ✅ **Built** | `shapes/core.shapes.ttl:89-95` — `aegis:falsifier`, `sh:minCount 1` on `Verification`, with the refusal message. Probed by `scripts/gate_probe.sh`; the probe's own discrimination is `camayoc-104`. |
 | 5 | Liveness by deliberate absence | 🟡 **Partial — and the partiality is the point** | The *vocabulary* exists (`ontology/core.ttl:34, :120` — `aegis:ExecutionPath`, `aegis:ownedBy`; the 2026-08-17 row cited two term names that do not appear in the file), and the deliberate absence is explicit at `shapes/core.shapes.ttl:130`: liveness "belongs with hank/quipu, not a made-up write-time liveness rule". What does **not** exist is the read-time side: the liveness-join questions (verification-and-liveness #6, #8, #9) have **no stored queries** — #10 gained one (`camayoc_blockers_by_evidence_kind`) with `camayoc-102`, and #7 gained `camayoc_blocked_on_closed_dependency` with `camayoc-89e` (2026-08-22; not a liveness join — it needs only `blockedOn` and the already-modelled `closedAt`). See §2. |
 | 6 | Installation-time gate proof | ✅ **Built, and now independence-proven** | `scripts/gate_probe.sh` with `tests/test_gate_probe.py` holding the probes to being able to fail. `camayoc-104` closed the remaining gap: each probe is shown to omit exactly one required property (parsed from the shapes, not hardcoded), and a store enforcing one shape at a time proves only its own arm. Claimable as stated. |
 | 7 | Tier-honest serving | 🟡 **Partial** | `aegis:tier` is carried on policies (`shapes/policies/edit-grounding.ttl:49, :71, :78`) and the tier vocabulary is in `ontology/core.ttl:54`. But camayoc does not *serve* facts — yupana does. What camayoc owns is the tag's definition and its mandatory-ness, not the serving. **Claim the vocabulary; do not claim the serving.** |
 | 8 | Typed non-answers | 🟡 **Partial, one instance** | Fully realised in exactly one place: `scripts/competency.py` returns `Empty \| Partial \| Full` with a `NO COVERAGE` verdict, method/threshold/watermark carried, 18 tests. That is a real instance of the discipline. It is **one** instance, on the ontology's own coverage, not a general non-answer taxonomy across camayoc's surfaces. |
 
-**Summary: four built, four partial, none design-only.** (On 2026-08-17 this
-read three/three/two; aspects 2 and 3 landed on 2026-08-18.)
+**Summary: five built (1, 2, 3, 4, 6), three partial (5, 7, 8), none
+design-only.** (On 2026-08-17 this read three/three/two; aspects 2 and 3
+landed on 2026-08-18, and aspect 3's remaining half — the retraction — on
+2026-08-24, which is what moved the count to five/three.)
 
 ## 1. What this means for the paper
 
@@ -73,14 +79,20 @@ their edges stated:
   caveat to state is deployment-shaped, not mechanism-shaped: it requires a
   quipu with the `/graph/create` + `/graph/label` routes, and the failure
   against an older store is a refusal, which is the honest direction.
-- *Governed promotion* is claimable as **half built, and the built half is the
-  governance**: authority-gated, self-promotion-refused, upward-only,
-  provenance-recorded — with fifteen tests that are almost all refusals. The
-  unbuilt half is the retraction from `crew:inferred` (the "move" in D's
-  framing), deliberately left for a keeper decision about closing bitemporal
-  intervals (`camayoc-913`). A paper sentence that says "promotion" and means
-  "copy-up with an audit record" without saying so would be exactly the
-  adjacency defect the corpus documents.
+- *Governed promotion* is claimable as **built, both halves**: the governance
+  half — authority-gated, self-promotion-refused, upward-only,
+  provenance-recorded, with fifteen tests that are almost all refusals — and,
+  since 2026-08-24, the **move** half. `camayoc-913` was open because
+  retracting from `crew:inferred` looked like erasing the low-trust past;
+  bitemporality answers it, and the close is an interval close on the source
+  *episode* rather than a delete, so as-of replay still finds the fact in the
+  plane it was written to. The edge the paper must still state is the honest
+  one the mechanism states itself: when the caller cannot name the source
+  episode, the promotion proceeds with `camayoc:sourceLeftOpen true` on the
+  record — a copy-up that says so, not a move that pretends. Saying
+  "promotion" while meaning "copy-up with an audit record" *without* that
+  flag would be exactly the adjacency defect the corpus documents; the flag
+  is what keeps the claim clean.
 
 ## 2. The gap the audit surfaced: liveness is unqueryable
 
