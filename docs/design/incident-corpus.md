@@ -1,7 +1,7 @@
 # The 2026-08-06/07 incident corpus
 
 > **Implementation status (2026-08-25):** 🟡 **Labelled; the denominator is
-> now instrumentable, and unmeasured.** The instances and their taxonomy are
+> now instrumented, and unmeasured until a window runs through it.** The instances and their taxonomy are
 > recorded contemporaneously and are solid. The **rate** the paper needs is
 > still *not* computable from the record of 2026-08-06/07 as it was kept, and
 > §4 says so explicitly rather than estimating one — that is a property of a
@@ -15,9 +15,17 @@
 >   durable `write.refused` event carrying graph/actor/source/reason/
 >   `refused_datums`, served by `GET /events?types=write.refused` and counted
 >   by `quipu events refusals`. **A queryable denominator source exists.**
->   Item 1 — accepted versus refused-for-missing-falsifier — is a query
->   against that stream joined to accepted `Verification` nodes, and it needs
->   no new camayoc term.
+>   **Item 1 is built:** `scripts/refusal_denominator.py` (`just
+>   refusal-rate`) is that query, joined to the accepted `Verification`
+>   population and needing no new camayoc term. It reports and never writes —
+>   a rate between two moving populations is a read-time judgment, not a fact
+>   true at write time. Building it corrected this section twice: `reason`
+>   names the GATE, not the failing shape, so "refused for a missing
+>   falsifier" is an upper bound rather than a count; and the refusal stream
+>   is prospective while the accepted population is the whole resident graph,
+>   so the share is a floor for that reason as well as for `speculate`. What
+>   is still unmeasured is a real window: the instrument exists, nothing has
+>   run through it yet, and a number will only mean something once one has.
 > - **Item 2 stays deferred, for a different and correct reason.** An A1–A7
 >   controlled vocabulary on refused verifications is now *buildable* and
 >   still **must not be minted**: no competency question asks for per-form
@@ -208,7 +216,7 @@ it is: a small denominator, completely enumerated.
 Concrete instrumentation, so the gap is a finding with a remedy rather than an
 apology:
 
-1. **Count the denominator at ingress.** ✅ *Source exists (2026-08-25).* Once
+1. **Count the denominator at ingress.** ✅ *Built (2026-08-25).* Once
    `Verification` is a shape-gated class, every accepted verification is a
    stored fact — that half has been true since aspect 4. The missing half was
    the refusals, and a refused write never enters the graph, so for a year the
@@ -224,6 +232,34 @@ apology:
    are deliberately not stored, so the stream answers *how many and why*, not
    *what was rejected*. A per-form count therefore cannot be recovered from
    the refusal record alone — which is what item 2 is about.
+
+   `scripts/refusal_denominator.py` (`just refusal-rate`) is that join. It
+   **reports and never writes**: a refusal rate is a ratio between two
+   populations that both keep moving, which makes it a judgment computed at
+   read time rather than a fact true at write time, and storing it would
+   store something that starts decaying with the next write. 37 tests in
+   `tests/test_refusal_denominator.py`, most of them abstentions — a store
+   that could not be reached, an event envelope in an unrecognised shape, and
+   an `/ask` answer carrying no count all exit 3 rather than rendering as
+   zero refusals, which is `gate_probe.sh`'s distinction applied to the same
+   failure one layer up.
+
+   **Two corrections this section owes to having built the thing.** First,
+   *"total refused for a missing falsifier" is not a join away and this
+   document said it was.* The stream's `reason` field names the GATE that
+   refused — `shacl | policy | authority | owl | placement` — not the shape
+   that failed, and the bodies are gone. So the shacl total is an **upper
+   bound** on the missing-falsifier count and there is no path from this
+   source to the count itself. The reporter prints it as an upper bound and
+   names no narrower quantity; any narrowing is an operator-supplied
+   `--reason-contains` filter, reported as the operator's classification.
+   Second, *the two populations do not share a time origin,* which is §4.2's
+   own defect at a new scale: refusals are a prospective stream that began
+   when quipu started recording them, while accepted `Verification`s are the
+   resident graph — every write ever made, the pre-gate legacy population
+   included. The denominator is therefore too large and the share too small.
+   That makes the reported share a floor in three independent ways, and the
+   report states all three on every run rather than in a footnote.
 2. **Record the form.** ⛔ *Deliberately not built, and not for want of a
    dependency.* A controlled vocabulary over A1–A7 on refused verifications
    would give per-form counts directly. **No competency question asks for
@@ -234,7 +270,11 @@ apology:
    for a query nobody has written, which is exactly the failure the rule
    exists to prevent. **The question comes first, then the terms.** Until
    someone writes it, §4.2's missing per-form distribution stays missing and
-   stays stated.
+   stays stated. Item 1 landing does not change this: the reporter built for
+   it deliberately names no per-form quantity, and its own test suite asserts
+   that no refusal-form vocabulary exists in `ontology/core.ttl` — so a
+   future session reaching for the terms trips a test before it reaches the
+   ontology.
 3. **Normalise by agent-hours.** ✅ *Built (2026-08-25).* Both harnesses
    already write complete per-session token accounting to local disk, so this
    is a deterministic-parser fact (ingress rule 3) and needed no new plumbing.

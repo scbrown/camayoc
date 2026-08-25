@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_verification_population",
+  "description": "The accepted Verification population — the DENOMINATOR docs/design/incident-corpus.md §4.2 says the corpus lacks, read by scripts/refusal_denominator.py and joined against quipu's write.refused event stream. Deliberately not mapped to a competency question: it answers no question about the domain, it supplies the other half of a ratio, and the ratio itself is computed at read time and never stored. Note what it CANNOT be narrowed to: the refusal stream does not keep refused fact bodies, so this population cannot be split to match a per-form refusal breakdown that does not exist.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?verification ?label WHERE { ?verification a aegis:Verification . OPTIONAL { ?verification rdfs:label ?label } } ORDER BY ?verification",
+  "params": []
+}

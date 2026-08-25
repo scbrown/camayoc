@@ -136,6 +136,18 @@ measured, claim-by-claim ledger.
   token cost per work item, per-provider burn windows, sessions with no usage
   records, what a decision cost. No quota term exists on purpose — the
   consumption is ours to record; the ceiling is the provider's.
+- **Refused-write denominator** (`just refusal-rate`) — joins quipu's durable
+  `write.refused` event stream to the accepted `Verification` population and
+  reports the refusal share the incident corpus never had. It reports and
+  never writes: a refusal *rate* is a ratio between two moving populations, so
+  it is a judgment computed at read time, not a fact true at write time. The
+  share is a FLOOR three times over and the report says so on every run —
+  `speculate` refusals are excluded from the stream, refused fact bodies are
+  not stored (so no per-form breakdown is recoverable, ever, and `reason`
+  names the gate rather than the failing shape), and a prospective stream
+  divided by a retrospective population has a denominator that is too large.
+  An unreachable store, or one predating the stream, exits 3: could not look
+  is not zero.
 - **git → work-item provenance** (`just ingest-git`) — walks commit history
   and emits the `WorkItem ←implements— GitCommit —modifies→ CodeModule` chain
   as Turtle. Deterministic, byte-identical on re-run, and pure `observed`. It

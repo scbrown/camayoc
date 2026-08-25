@@ -27,6 +27,15 @@ ingest-git *args:
 ingest-usage *args:
     @python3 scripts/ingest_session_usage.py {{args}}
 
+# The refused-write denominator (docs/design/incident-corpus.md §4.2, §5.1):
+# quipu's durable write.refused stream joined to the accepted Verification
+# population. Reports, never writes — a refusal RATE is a judgment computed at
+# read time, not a fact true at write time. The share it prints is a FLOOR
+# three times over and says so on every run. An unreachable store or a quipu
+# predating the stream exits 3: could not look is not zero.
+refusal-rate *args:
+    @python3 scripts/refusal_denominator.py {{args}}
+
 # Assess a question against the competency suite. NO COVERAGE is an outcome:
 # an ontology gap is reported as itself, never answered from the nearest term.
 competency question:
