@@ -398,56 +398,53 @@ COVERAGE_DSC: dict[int, dict] = {
     },
 }
 
-#: workflow-and-archive. Landed 2026-08-24 with the vocabulary and the move
-#: rule. Q1-Q12's stored queries and the shuttle fixture are camayoc-rkb,
-#: dispatched separately — those rows are unwritten with a known owner. The
-#: gaps are the ARCHIVE half: graph kinds, freezes and thaws are properties of
-#: the store's meta-graph, answered by GET /graphs rather than by SPARQL over
-#: this ontology, and a stored query cannot reach them.
+#: workflow-and-archive. The vocabulary and the move rule landed 2026-08-24;
+#: the stored queries and the shuttle fixture landed 2026-08-25 (camayoc-rkb)
+#: against tests/fixtures/workflow-archive.trig — a TriG DATASET, because
+#: this slice's questions are about where facts live as much as what they
+#: say, and a single-graph fixture would answer them all from one pile.
+#:
+#: What remains is not unwritten work. Every one of the seven gaps is the
+#: SAME boundary and it is a real one: graph kinds, freeze state, thaw
+#: records and composed dataset labels are properties of quipu's meta-graph
+#: and its store tables, served by GET /graphs, not triples any SPARQL query
+#: can reach. Q6 is the one exception and it is a different boundary — SPARQL
+#: can fetch a public key and cannot evaluate a signature against it.
+#:
+#: The Q6/Q7 gaps used to name a second cause: this tool's own grounding
+#: self-check read only minted terms, so a query correctly REUSING a
+#: quipu-owned aegis term was reported UNGROUNDED. That was the tool
+#: penalising the repo's reuse-before-minting rule, and it is fixed —
+#: ontology/core.ttl records the reuse with rdfs:isDefinedBy and
+#: query_coverage.ontology_terms() reads it. Q7 is stored as a result.
 COVERAGE_WA: dict[int, dict] = {
-    1: {"expressible": "WorkflowRun, aegis:runOf and aegis:currentState, "
-                       "window-scoped. Stored query + shuttle fixture: "
-                       "camayoc-rkb."},
-    2: {"expressible": "Valid-time as-of over the re-asserted currentState "
-                       "facts — quipu's, and the reason currentState is "
-                       "re-asserted per transition rather than mutated. "
-                       "camayoc-rkb."},
-    3: {"expressible": "TransitionEvent with fromState/toState/observedAt, "
-                       "append-only by design. camayoc-rkb."},
-    4: {"expressible": "aegis:outcome for the closed runs, non-terminal "
-                       "currentState for the open ones. camayoc-rkb."},
-    5: {"expressible": "aegis:hasStep on the definition against aegis:atStep "
-                       "on the run's transitions — declared versus actually "
-                       "traversed. camayoc-rkb."},
+    1: {"query": "camayoc_wf_runs_in_window"},
+    2: {"query": "camayoc_wf_run_state_as_of"},
+    3: {"query": "camayoc_wf_transition_history"},
+    4: {"query": "camayoc_wf_window_closeout"},
+    5: {"query": "camayoc_wf_declared_vs_traversed"},
     6: {
         "query": None,
-        "gap": "aegis:signature, VerifierRegistration, verifier and publicKey "
-               "are quipu-owned aegis terms, reused not re-minted (see "
-               "ontology/core.ttl's note on performedBy). So the verification "
-               "join needs the identity graph, which is not reachable from "
-               "camayoc's fixture — and this tool's own grounding self-check "
-               "reads only ontology/core.ttl, so a query legitimately reusing "
-               "them would be reported UNGROUNDED. Both halves have to be "
-               "settled before a row here can be honest.",
-        "needs": ["VerifierRegistration records reachable from the queried "
-                  "dataset", "a grounding check that knows quipu-owned aegis "
-                  "terms from undefined ones"],
+        "gap": "The identity-graph half is no longer the blocker — the "
+               "fixture carries VerifierRegistrations and "
+               "camayoc_wf_unverifiable_transitions performs exactly this "
+               "join for Q7. What is left is the verb: Q6 asks whether the "
+               "signature VERIFIES, and SPARQL cannot evaluate an ed25519 "
+               "signature over a canonical message. A query can return the "
+               "agent, the signature and the registered public key and "
+               "stop there. Reporting that as coverage would let 'a key is "
+               "registered' pass for 'the signature is good', which is the "
+               "same shape of wrong answer as counting an unmeasured "
+               "session as zero cost.",
+        "needs": ["the verification RESULT as a write-time fact — quipu's "
+                  "write gate (quipu-8cc) checking the signature at ingress "
+                  "and recording the outcome, which is a fact true at write "
+                  "time and not a judgment that decays",
+                  "or a verification step outside SPARQL, which makes this a "
+                  "question no stored query answers alone"],
     },
-    7: {
-        "query": None,
-        "gap": "The negative form of Q6 and the more useful one — unsigned "
-               "transitions, or signatures with no matching registration — and "
-               "blocked on the same identity graph. Shuttle ships this as "
-               "`shuttle-unverified-transitions`; the point of the question "
-               "here is that it is answerable from day one, which camayoc "
-               "cannot yet demonstrate.",
-        "needs": ["VerifierRegistration records reachable from the queried "
-                  "dataset"],
-    },
-    8: {"expressible": "aegis:performedBy with aegis:inRun over a time window. "
-                       "The 'including frozen windows' half is dataset "
-                       "composition (FROM / include_kinds), a parameter of the "
-                       "query rather than a missing term. camayoc-rkb."},
+    7: {"query": "camayoc_wf_unverifiable_transitions"},
+    8: {"query": "camayoc_wf_agent_activity_across_windows"},
     9: {
         "query": None,
         "gap": "Graph kinds and freeze state live in quipu's meta-graph and "
@@ -463,7 +460,11 @@ COVERAGE_WA: dict[int, dict] = {
         "query": None,
         "gap": "Whether a dataset's composed kind label includes archive is a "
                "property of the dataset, not of any triple in it. Same "
-               "store-surface boundary as Q9.",
+               "store-surface boundary as Q9. Note what the stored queries "
+               "DO settle: camayoc_wf_agent_activity_across_windows names "
+               "its archive graph in a FROM, so which windows an answer "
+               "needed is visible in the query text even though the label "
+               "is not queryable.",
         "needs": ["composed dataset kind labels as queryable facts"],
     },
     11: {
@@ -477,26 +478,23 @@ COVERAGE_WA: dict[int, dict] = {
     },
     12: {
         "query": None,
-        "gap": "Half graph, half store: 'every run in the window is terminal' "
-               "is a stored query, 'operational kind and not yet frozen' is a "
-               "meta-graph label. It cannot be answered by either surface "
-               "alone, which is the honest finding rather than a missing term.",
+        "gap": "Half graph, half store, and only the graph half is now "
+               "answerable: camayoc_wf_window_closeout reports every run in "
+               "a window as completed or open, which settles 'is every run "
+               "terminal'. 'Operational kind and not yet frozen' is a "
+               "meta-graph label, so the two halves still cannot be joined "
+               "into the freezability verdict the question asks for. Half an "
+               "answer is not coverage.",
         "needs": ["meta-graph kind and lifecycle labels joinable against run "
-                  "state"],
+                  "state (the run-state half is camayoc_wf_window_closeout)"],
     },
-    13: {"expressible": "camayoc:planePromotion carries promotedFrom, "
-                        "promotedInto and sourceLeftOpen, written by "
-                        "scripts/promote_plane.py; the as-of visibility half is "
-                        "quipu's bitemporal replay. The mechanism this question "
-                        "certifies is built (camayoc-913) and the certifying "
-                        "query is not written — which is why the question is "
-                        "here."},
+    13: {"query": "camayoc_wf_plane_promotion_record"},
     14: {
         "query": None,
         "gap": "A thaw keeps the frozen_packs row with thawed_at rather than "
-               "deleting it — a store table, not graph facts. Same boundary as "
-               "Q9/Q11. The question is right and camayoc is the wrong place "
-               "to answer it from.",
+               "deleting it — a store table, not graph facts. Same boundary "
+               "as Q9/Q11. The question is right and camayoc is the wrong "
+               "place to answer it from.",
         "needs": ["thaw records reachable from a query"],
     },
 }

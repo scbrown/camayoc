@@ -1,0 +1,11 @@
+{
+  "action": "load",
+  "name": "camayoc_wf_run_state_as_of",
+  "description": "workflow-and-archive Q2: what state a run was in at an instant, read from the append-only transition log — the latest transition at or before the instant, and its toState. Answered from TransitionEvents rather than by valid-time slicing the re-asserted aegis:currentState facts: the two return the same state, the transition log is the truth currentState is derived from, and this form is answerable without a bitemporal store. BEFORE THE FIRST TRANSITION THERE IS NO ROW. That absence is the answer — the run's state before it was ever transitioned is not recorded, and returning a starting state nobody wrote would be inventing one.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?state ?event ?observedAt FROM <{window}> WHERE { ?event a aegis:TransitionEvent ; aegis:inRun <{run}> ; aegis:toState ?state ; aegis:observedAt ?observedAt . FILTER(?observedAt <= \"{instant}\") FILTER NOT EXISTS { ?later a aegis:TransitionEvent ; aegis:inRun <{run}> ; aegis:observedAt ?laterAt . FILTER(?laterAt <= \"{instant}\" && ?laterAt > ?observedAt) } }",
+  "params": [
+    "window",
+    "run",
+    "instant"
+  ]
+}

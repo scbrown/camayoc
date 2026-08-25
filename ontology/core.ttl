@@ -16,6 +16,7 @@
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
 @prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix camayoc: <https://camayoc.local/ontology/> .
 
 # ---- Classes -----------------------------------------------------------
 
@@ -287,7 +288,7 @@ aegis:stepOf a rdf:Property ;
 
 aegis:stepOrder a rdf:Property ;
     rdfs:label "step order" ;
-    rdfs:comment "The step's position in its trajectory's total order." ;
+    rdfs:comment "The step's position in the total order of the thing that declares it — a Trajectory's observed walk (golden-paths Q1) or a WorkflowDefinition's declared steps (workflow-and-archive Q5). Reused across both rather than minted twice, which is what rdfs:range-only and no rdfs:domain is for." ;
     rdfs:range xsd:integer .
 
 aegis:actor a rdf:Property ;
@@ -488,3 +489,72 @@ aegis:performedBy a rdf:Property ;
     rdfs:label "performed by" ;
     rdfs:comment "The agent (an aegis:Principal or crew-member IRI) that performed and signed a transition. Paired with aegis:signature — the hex ed25519 signature over the canonical shuttle-transition-v1 message — verifiable against the agent's aegis:VerifierRegistration in the identity graph. signature/publicKey/verifier/VerifierRegistration are quipu-owned aegis terms, reused not re-minted. (Q6, Q7, Q8)" ;
     rdfs:range rdfs:Resource .
+
+# ---- Reused, NOT minted: quipu-owned aegis terms -----------------------
+# These four are quipu's, and camayoc reuses them rather than declaring
+# rivals in the same namespace (the reuse-before-minting rule, and the note
+# on aegis:performedBy above). What is recorded here is exactly that — where
+# each term is defined and which question needs it. There is no
+# `a rdf:Property` and no `a rdfs:Class` in this block, deliberately: a
+# minting declaration would claim ownership camayoc does not have, and would
+# let camayoc's copy drift from quipu's.
+#
+# Recording the reuse is not bookkeeping. scripts/query_coverage.py's
+# grounding self-check reads this file to decide whether a stored query names
+# predicates that exist, and before this block a query that CORRECTLY reused
+# a quipu term was reported UNGROUNDED — the tool penalised the rule the repo
+# runs on. `rdfs:isDefinedBy` is how a reader, and that check, tell a reused
+# term from an undefined one.
+
+aegis:signature
+    rdfs:isDefinedBy <https://github.com/scbrown/quipu> ;
+    rdfs:label "signature" ;
+    rdfs:comment "quipu-owned. The hex ed25519 signature over the canonical shuttle-transition-v1 message, carried on a TransitionEvent as an ordinary fact so it survives a deep freeze. Reused by workflow-and-archive Q6 and Q7." .
+
+aegis:VerifierRegistration
+    rdfs:isDefinedBy <https://github.com/scbrown/quipu> ;
+    rdfs:label "Verifier registration" ;
+    rdfs:comment "quipu-owned. The record binding an agent to the public key that verifies its signatures. Lives in a dataKind=identity graph that is never frozen — which is what keeps archived transitions checkable. Reused by workflow-and-archive Q6 and Q7." .
+
+aegis:verifier
+    rdfs:isDefinedBy <https://github.com/scbrown/quipu> ;
+    rdfs:label "verifier" ;
+    rdfs:comment "quipu-owned. The agent a VerifierRegistration registers a key for. Reused by workflow-and-archive Q6 and Q7 — the join from a transition's performer to its key." .
+
+aegis:publicKey
+    rdfs:isDefinedBy <https://github.com/scbrown/quipu> ;
+    rdfs:label "public key" ;
+    rdfs:comment "quipu-owned. The key a VerifierRegistration registers. Reused by workflow-and-archive Q6, which is a GAP for a reason this term cannot fix: SPARQL can retrieve the key and cannot evaluate the signature against it." .
+
+# ---- The plane-move record (camayoc's own namespace) -------------------
+# Owed to competency/workflow-and-archive.md Q13: "when fact <fact> was
+# promoted out of crew:inferred, was its source-plane interval closed?"
+# `scripts/promote_plane.py` has written these since camayoc-mip; they are
+# declared here now because Q13's stored query reads them, and a stored query
+# over undeclared vocabulary is the "returns zero rows forever and reads as
+# nothing to report" failure in a namespace nobody was checking.
+#
+# ONLY the four the question needs. promote_plane.py also writes
+# camayoc:promotedBy, camayoc:authoredBy, camayoc:promotedAt and
+# camayoc:reason; no competency question asks who, when or why a promotion
+# happened, so those stay undeclared until one does. The rule does not bend
+# because the terms are already on disk.
+
+camayoc:planePromotion a rdf:Property ;
+    rdfs:label "plane promotion" ;
+    rdfs:comment "Attaches a promotion record to the fact that was promoted. The record is a blank node carrying the move's own provenance as observed facts — the promotion IS an observed event even though the fact it moved was inferred. No range: the record is structural, not a class anyone types. (Q13)" .
+
+camayoc:promotedFrom a rdf:Property ;
+    rdfs:label "promoted from" ;
+    rdfs:comment "The plane graph the fact left. Always crew:inferred today — promotion is out of quarantine — and recorded rather than assumed, so a later reader is not required to know that. (Q13)" ;
+    rdfs:range rdfs:Resource .
+
+camayoc:promotedInto a rdf:Property ;
+    rdfs:label "promoted into" ;
+    rdfs:comment "The plane graph the fact entered. (Q13)" ;
+    rdfs:range rdfs:Resource .
+
+camayoc:sourceLeftOpen a rdf:Property ;
+    rdfs:label "source left open" ;
+    rdfs:comment "Whether the source-plane interval was left open. false: the source episode was closed, a bitemporal interval close and never a delete, so the original stays visible as-of its write time. true: the promoter could not name the source episode, and the record says so out loud rather than implying a close that never happened — the fact is then readable in two planes at different trust, which is recoverable and visible instead of silent. The exact cell Q13 asks for. (Q13)" ;
+    rdfs:range xsd:boolean .

@@ -76,3 +76,18 @@ The slice is done when 1–12 run as named queries against a fixture graph
 holding at least one exported shuttle run in a hot window and one in a
 frozen window, and 13–14 replay correctly across a promotion and a
 freeze/thaw cycle.
+
+**Measured against that acceptance, 2026-08-25 (camayoc-rkb).** The fixture
+exists — `tests/fixtures/workflow-archive.trig`, a TriG dataset with a hot
+window, a frozen window, the definitions plane and the identity graph — and
+1–5, 7, 8 and 13 run as named queries against it
+(`queries/camayoc_wf_*.json`, 36 tests). **The acceptance as written is not
+reachable, and that is a finding rather than a shortfall.** 9–12 and 14 ask
+about graph kinds, freeze state, composed dataset labels and thaw records:
+those are properties of quipu's meta-graph and store tables, served by
+`GET /graphs`, and no SPARQL query over this ontology can reach them. 6 asks
+whether a signature *verifies*; SPARQL can fetch the registered public key
+and cannot evaluate an ed25519 signature against it. 14's freeze half is
+replayable and its thaw half is not. The questions stay as they are — they
+are the right questions, and camayoc is the wrong place to answer some of
+them from, which is exactly what a competency suite is for.

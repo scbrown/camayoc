@@ -1,0 +1,270 @@
+# Fixture dataset for the workflow-and-archive competency queries — camayoc-rkb.
+#
+# TriG, not Turtle, and that is the point. This slice's questions are about
+# WHERE facts live as much as what they say: a run belongs to the time window
+# of the month it started, a frozen window composes back in explicitly, and
+# the keys that verify transition signatures live in an identity graph that is
+# never frozen. A single-graph fixture would answer every question from one
+# undifferentiated pile and prove nothing about window scoping.
+#
+# Four graphs, mirroring the real scheme under a test namespace so nothing
+# here can be mistaken for a production IRI:
+#
+#   .../plane/crew/records                  the workflow DEFINITIONS (durable
+#                                           knowledge, shuttle-exported, so
+#                                           sourceKind "observed")
+#   .../window/shuttle/runs/2026-07         a FROZEN window (archive/backed)
+#   .../window/shuttle/runs/2026-08         the HOT window (operational/fresh)
+#   .../graph/identity                      VerifierRegistrations; dataKind
+#                                           identity, never frozen
+#
+# WHAT THIS FIXTURE DELIBERATELY CANNOT MODEL. rdflib has no bitemporality, so
+# each run carries exactly ONE aegis:currentState triple — the projection a
+# live quipu returns when read at now, not the re-assertion history. The
+# history is the append-only TransitionEvents, which is where it belongs
+# (currentState is "derived convenience", ontology/core.ttl). That is why Q2's
+# stored query reads the transition log rather than valid-time slicing
+# currentState: the transition log gives the same answer and is answerable
+# without a bitemporal store, so the query is testable here and correct there.
+#
+# Seeded so every query has a positive finding AND a control negative, the
+# competency suite's own acceptance criterion. The controls, by question:
+#
+#   Q1  ex:run-c is a hotfix run in the same window — a Q1 for wf-release that
+#       returned it would be returning every run and passing a bare non-empty
+#       assertion.
+#   Q2  before ex:run-a's first transition there is NO row. Absent, never
+#       backfilled with an invented "queued".
+#   Q4  ex:run-b has no aegis:outcome: open, and must not be reported closed.
+#   Q5  ex:step-sign is declared by wf-release and traversed by no run.
+#   Q7  ex:agent-shuttle's signed transitions have a registration and must not
+#       appear among the unverifiable ones; ex:reg-retired registers an agent
+#       who performed nothing, so the join cannot be satisfied backwards.
+#   Q8  ex:agent-nokey acted only in the hot window, so composing the archive
+#       must change the answer for ex:agent-shuttle and not for it.
+
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex:    <http://camayoc.test/fixture/> .
+
+# =========================================================================
+# The workflow definitions — durable knowledge, not window-scoped.
+# =========================================================================
+# Runs age out and freeze; the definition they ran does not. Keeping it in a
+# knowledge plane is what lets Q5 compose "declared" (here) against "actually
+# traversed" (in a window) — and what keeps a freeze from archiving the
+# definition along with the runs.
+
+<http://camayoc.test/plane/crew/records> {
+
+    ex:wf-release
+        a aegis:WorkflowDefinition ;
+        rdfs:label "release" ;
+        aegis:sourceKind "observed" ;
+        aegis:hasStep ex:step-build, ex:step-test, ex:step-sign, ex:step-publish .
+
+    ex:step-build   rdfs:label "build the artifact" ;  aegis:stepOrder 1 .
+    ex:step-test    rdfs:label "run the suite" ;       aegis:stepOrder 2 .
+    ex:step-sign    rdfs:label "sign the artifact" ;   aegis:stepOrder 3 .
+    ex:step-publish rdfs:label "publish the release" ; aegis:stepOrder 4 .
+
+    # A second definition, so a query scoped to one does not silently answer
+    # for both.
+    ex:wf-hotfix
+        a aegis:WorkflowDefinition ;
+        rdfs:label "hotfix" ;
+        aegis:sourceKind "observed" ;
+        aegis:hasStep ex:step-patch, ex:step-ship .
+
+    ex:step-patch rdfs:label "apply the patch" ; aegis:stepOrder 1 .
+    ex:step-ship  rdfs:label "ship it" ;         aegis:stepOrder 2 .
+}
+
+# =========================================================================
+# The HOT window: 2026-08, operational / fresh / soleRecord.
+# =========================================================================
+
+<http://camayoc.test/window/shuttle/runs/2026-08> {
+
+    # --- ex:run-a: completed, and it SKIPPED a declared step (Q5) ---------
+    ex:run-a
+        a aegis:WorkflowRun ;
+        rdfs:label "release run 2026-08-02" ;
+        aegis:runOf ex:wf-release ;
+        aegis:sourceKind "observed" ;
+        aegis:createdAt "2026-08-02T09:00:00Z" ;
+        aegis:closedAt "2026-08-02T12:00:00Z" ;
+        aegis:outcome "succeeded" ;
+        aegis:currentState "published" .
+
+    ex:t-a1
+        a aegis:TransitionEvent ;
+        aegis:inRun ex:run-a ;
+        aegis:atStep ex:step-build ;
+        aegis:fromState "queued" ;
+        aegis:toState "building" ;
+        aegis:observedAt "2026-08-02T09:00:00Z" ;
+        aegis:sourceKind "observed" ;
+        aegis:performedBy ex:agent-shuttle ;
+        aegis:signature "9f2c1a7d0b4e6f8a11c3d5e79b0f2468ace13579bdf02468ace13579bdf02468" .
+
+    ex:t-a2
+        a aegis:TransitionEvent ;
+        aegis:inRun ex:run-a ;
+        aegis:atStep ex:step-test ;
+        aegis:fromState "building" ;
+        aegis:toState "testing" ;
+        aegis:observedAt "2026-08-02T10:00:00Z" ;
+        aegis:sourceKind "observed" ;
+        aegis:performedBy ex:agent-shuttle ;
+        aegis:signature "1b3d5f7911335577995bd7f13579bdf02468ace13579bdf02468ace135790246" .
+
+    # Signed by an agent with NO VerifierRegistration. Q7's second arm: the
+    # signature is present and worth exactly nothing, which is a different
+    # finding from an unsigned transition and must not be merged with it.
+    ex:t-a3
+        a aegis:TransitionEvent ;
+        aegis:inRun ex:run-a ;
+        aegis:atStep ex:step-publish ;
+        aegis:fromState "testing" ;
+        aegis:toState "published" ;
+        aegis:observedAt "2026-08-02T12:00:00Z" ;
+        aegis:sourceKind "observed" ;
+        aegis:performedBy ex:agent-nokey ;
+        aegis:signature "deadbeef00112233445566778899aabbccddeeff00112233445566778899aabb" .
+
+    # --- ex:run-b: still open (Q4's control), and one unsigned step (Q7) --
+    ex:run-b
+        a aegis:WorkflowRun ;
+        rdfs:label "release run 2026-08-14" ;
+        aegis:runOf ex:wf-release ;
+        aegis:sourceKind "observed" ;
+        aegis:createdAt "2026-08-14T08:00:00Z" ;
+        aegis:currentState "testing" .
+
+    ex:t-b1
+        a aegis:TransitionEvent ;
+        aegis:inRun ex:run-b ;
+        aegis:atStep ex:step-build ;
+        aegis:fromState "queued" ;
+        aegis:toState "building" ;
+        aegis:observedAt "2026-08-14T08:00:00Z" ;
+        aegis:sourceKind "observed" ;
+        aegis:performedBy ex:agent-shuttle ;
+        aegis:signature "2c4e6081224466889abcdef02468ace13579bdf02468ace13579bdf024680ace" .
+
+    # No aegis:signature at all. Q7's first arm.
+    ex:t-b2
+        a aegis:TransitionEvent ;
+        aegis:inRun ex:run-b ;
+        aegis:atStep ex:step-test ;
+        aegis:fromState "building" ;
+        aegis:toState "testing" ;
+        aegis:observedAt "2026-08-14T09:30:00Z" ;
+        aegis:sourceKind "observed" ;
+        aegis:performedBy ex:agent-shuttle .
+
+    # --- ex:run-c: a run of the OTHER definition, in the same window ------
+    ex:run-c
+        a aegis:WorkflowRun ;
+        rdfs:label "hotfix run 2026-08-09" ;
+        aegis:runOf ex:wf-hotfix ;
+        aegis:sourceKind "observed" ;
+        aegis:createdAt "2026-08-09T11:00:00Z" ;
+        aegis:closedAt "2026-08-09T11:45:00Z" ;
+        aegis:outcome "succeeded" ;
+        aegis:currentState "shipped" .
+
+    ex:t-c1
+        a aegis:TransitionEvent ;
+        aegis:inRun ex:run-c ;
+        aegis:atStep ex:step-patch ;
+        aegis:fromState "queued" ;
+        aegis:toState "patching" ;
+        aegis:observedAt "2026-08-09T11:00:00Z" ;
+        aegis:sourceKind "observed" ;
+        aegis:performedBy ex:agent-shuttle ;
+        aegis:signature "3d5f70912335577999bdf13579bdf02468ace13579bdf02468ace13579bdf024" .
+
+    ex:t-c2
+        a aegis:TransitionEvent ;
+        aegis:inRun ex:run-c ;
+        aegis:atStep ex:step-ship ;
+        aegis:fromState "patching" ;
+        aegis:toState "shipped" ;
+        aegis:observedAt "2026-08-09T11:45:00Z" ;
+        aegis:sourceKind "observed" ;
+        aegis:performedBy ex:agent-shuttle ;
+        aegis:signature "4e6081a2446688aaccef02468ace13579bdf02468ace13579bdf02468ace1357" .
+}
+
+# =========================================================================
+# The FROZEN window: 2026-07, relabelled archive / backed by the freeze.
+# =========================================================================
+# The freeze archives the window without unbinding its IRI, so the graph is
+# still addressable by name and composes back in with an explicit FROM. Q8 is
+# the question that has to reach it.
+
+<http://camayoc.test/window/shuttle/runs/2026-07> {
+
+    ex:run-z
+        a aegis:WorkflowRun ;
+        rdfs:label "release run 2026-07-20" ;
+        aegis:runOf ex:wf-release ;
+        aegis:sourceKind "observed" ;
+        aegis:createdAt "2026-07-20T07:00:00Z" ;
+        aegis:closedAt "2026-07-20T09:10:00Z" ;
+        aegis:outcome "failed" ;
+        aegis:currentState "failed" .
+
+    ex:t-z1
+        a aegis:TransitionEvent ;
+        aegis:inRun ex:run-z ;
+        aegis:atStep ex:step-build ;
+        aegis:fromState "queued" ;
+        aegis:toState "building" ;
+        aegis:observedAt "2026-07-20T07:00:00Z" ;
+        aegis:sourceKind "observed" ;
+        aegis:performedBy ex:agent-shuttle ;
+        aegis:signature "5f70912a5577999bbdf13579bdf02468ace13579bdf02468ace13579bdf02468" .
+
+    ex:t-z2
+        a aegis:TransitionEvent ;
+        aegis:inRun ex:run-z ;
+        aegis:atStep ex:step-test ;
+        aegis:fromState "building" ;
+        aegis:toState "failed" ;
+        aegis:observedAt "2026-07-20T09:10:00Z" ;
+        aegis:sourceKind "observed" ;
+        aegis:performedBy ex:agent-shuttle ;
+        aegis:signature "60812a3b66889abbddf02468ace13579bdf02468ace13579bdf02468ace13579" .
+}
+
+# =========================================================================
+# The identity graph — dataKind identity, never frozen.
+# =========================================================================
+# aegis:VerifierRegistration / aegis:verifier / aegis:publicKey are
+# quipu-owned terms, reused and not re-minted (ontology/core.ttl records the
+# reuse rather than declaring them). A freeze must never take these with it:
+# archived transitions stay verifiable precisely because their keys did not
+# go into the pack.
+
+<http://camayoc.test/graph/identity> {
+
+    ex:reg-shuttle
+        a aegis:VerifierRegistration ;
+        rdfs:label "shuttle exporter key, registered 2026-06-30" ;
+        aegis:sourceKind "declared" ;
+        aegis:verifier ex:agent-shuttle ;
+        aegis:publicKey "ed25519:3b1f9c2d4e6a8b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f60718293a4b5c6d7e8" .
+
+    # A registration for an agent who performed no transition in either
+    # window. The join must not be satisfiable in reverse: registering a key
+    # says nothing about whether anyone signed with it.
+    ex:reg-retired
+        a aegis:VerifierRegistration ;
+        rdfs:label "retired exporter key, kept for archive verification" ;
+        aegis:sourceKind "declared" ;
+        aegis:verifier ex:agent-retired ;
+        aegis:publicKey "ed25519:7c2a0d3e5f719b3c5d7e9f1a3b5c7d9e1f2a3b4c5d6e7f8091a2b3c4d5e6f708" .
+}

@@ -1,0 +1,11 @@
+{
+  "action": "load",
+  "name": "camayoc_wf_transition_history",
+  "description": "workflow-and-archive Q3: the full transition history of one run — each step, from-state to to-state, in time order, with the agent that performed it. Append-only by design, so this is the complete record and not a reconstruction: fromState is carried ON the event rather than inferred from the previous row, which is what keeps a gap in the log visible as a gap. Composes the knowledge plane holding the definitions because a step's NAME lives with the definition, not in the window — the window records that a step was reached, the definition records what it is called. Compose only the window and the history is still complete; the step labels come back empty, which is absence shown rather than a name invented.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?event ?observedAt ?step ?stepLabel ?fromState ?toState ?agent FROM <{window}> FROM <{definitions}> WHERE { ?event a aegis:TransitionEvent ; aegis:inRun <{run}> ; aegis:fromState ?fromState ; aegis:toState ?toState ; aegis:observedAt ?observedAt . OPTIONAL { ?event aegis:atStep ?step . OPTIONAL { ?step rdfs:label ?stepLabel } } OPTIONAL { ?event aegis:performedBy ?agent } } ORDER BY ?observedAt",
+  "params": [
+    "window",
+    "definitions",
+    "run"
+  ]
+}

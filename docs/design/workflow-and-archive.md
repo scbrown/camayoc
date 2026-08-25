@@ -1,6 +1,7 @@
 # Design: Workflow runs and the archive — the second routing dimension
 
-> **Implementation status (2026-08-24):** ✅ **Built, question-first.**
+> **Implementation status (2026-08-25):** ✅ **Built, question-first, and
+> now answering.**
 > [competency/workflow-and-archive.md](../../competency/workflow-and-archive.md)
 > landed before any term; the workflow slice
 > (`aegis:WorkflowDefinition/WorkflowStep/WorkflowRun/TransitionEvent` and
@@ -19,6 +20,19 @@
 > (bobbin compiles them in). Deliberately not built here: the freeze
 > mechanics (quipu's, see its `graph-kinds-and-deep-freeze.md`) and shuttle
 > itself (`scbrown/shuttle`).
+>
+> **The questions run (2026-08-25, camayoc-rkb).** Eight of the fourteen are
+> named stored queries — `queries/camayoc_wf_*.json`, Q1–Q5, Q7, Q8 and Q13 —
+> executing against `tests/fixtures/workflow-archive.trig`, a TriG dataset
+> holding a hot window, a frozen window, the definitions plane and the
+> identity graph. 36 tests in `tests/test_workflow_queries.py`; Q13 replays
+> against the episode `scripts/promote_plane.py` actually emits rather than
+> against fixture triples written to match it. Coverage: **8/14**, six gaps,
+> nothing unwritten. Q9–Q12 and Q14 are the store-surface boundary — graph
+> kinds, freeze state and thaw records are meta-graph and store-table
+> properties served by `GET /graphs`, not triples a query can reach — and Q6
+> is the crypto boundary: SPARQL fetches a public key and cannot evaluate a
+> signature against it. No term was minted to close a gap.
 
 **Status:** shuttle exports workflow runs — high-volume, high-churn
 operational records — into quipu. This is the ingress discipline for that

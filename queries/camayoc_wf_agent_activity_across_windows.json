@@ -1,0 +1,13 @@
+{
+  "action": "load",
+  "name": "camayoc_wf_agent_activity_across_windows",
+  "description": "workflow-and-archive Q8: everything one agent did across all runs in a time range, composing a hot window with a frozen one. The archive half is the question: a freeze archives a window without unbinding its IRI, so the frozen graph is still addressable and still composes back in. Against a live quipu the same query is issued with include_kinds [operational, archive] or FROM <urn:quipu:dataset:frozen> instead of naming each window; the FROMs here name them so the composition is explicit and testable. Omit the archive and the answer is quietly short — which is exactly the failure the question exists to catch.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?event ?run ?observedAt ?step ?fromState ?toState FROM <{window}> FROM <{archive}> WHERE { ?event a aegis:TransitionEvent ; aegis:performedBy <{principal}> ; aegis:inRun ?run ; aegis:fromState ?fromState ; aegis:toState ?toState ; aegis:observedAt ?observedAt . OPTIONAL { ?event aegis:atStep ?step } FILTER(?observedAt >= \"{from}\" && ?observedAt <= \"{to}\") } ORDER BY ?observedAt",
+  "params": [
+    "window",
+    "archive",
+    "principal",
+    "from",
+    "to"
+  ]
+}

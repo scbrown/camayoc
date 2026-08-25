@@ -189,13 +189,15 @@ vocabulary (Q16–21), each term owed to its question: 16/19.
 > counted toward nothing, meaning the tool understated real coverage while
 > appearing complete. All six slices now have tables, a test asserts set
 > equality between them and `competency/*.md` so an uncounted slice cannot
-> land again, and `just query-coverage` prints a suite total: **32 of 91
-> stored, 29 expressible and unwritten, 30 competency gaps.** The per-slice
-> figures above are unchanged and remain correct.
+> land again, and `just query-coverage` prints a suite total: **40 of 91
+> stored, 22 expressible and unwritten, 29 competency gaps** (32/91 when the
+> denominator first existed; `camayoc-rkb` took workflow-and-archive from
+> 0/14 to 8/14 later the same day). The per-slice figures above are unchanged
+> and remain correct.
 >
 > **What number this section should lead with is an authorial decision and is
 > deliberately left open.** 16/19 is the strongest true statement available
-> and 32/91 is the most complete one; they are not in conflict, and choosing
+> and 40/91 is the most complete one; they are not in conflict, and choosing
 > between them — or reporting both, with the three states kept apart, since
 > an unwritten query and a competency gap are different claims about the
 > ontology — is a framing call for whoever drafts §5, not a figure to be

@@ -74,15 +74,50 @@ def _load_tables():
 SLICES: dict[str, dict[int, dict]] = _load_tables().SLICES
 
 
-def ontology_terms() -> set[str]:
-    """Local names of every property and class the ontology defines."""
+#: The namespaces the grounding self-check knows how to check. A prefix that
+#: is NOT listed here is not checked at all, which is a hole rather than a
+#: pass — so anything camayoc's own queries write in must be here.
+GROUNDED_PREFIXES = ("aegis", "camayoc")
+
+
+def ontology_terms() -> dict[str, set[str]]:
+    """Local names the ontology declares or records, per namespace prefix.
+
+    TWO WAYS A TERM COUNTS AS GROUNDED, and they are not the same thing:
+
+      * DECLARED — `aegis:foo a rdf:Property` / `rdfs:Class`. camayoc minted
+        it, owed to a competency question.
+      * RECORDED AS REUSED — `aegis:foo rdfs:isDefinedBy <owner>`, with no
+        minting declaration. The term is quipu's (or another owner's) and
+        camayoc reuses it. Recording the reuse is what distinguishes it from
+        a typo, which is the only other thing an undeclared term can be.
+
+    The second case exists because this check used to punish the repo's own
+    reuse-before-minting rule: a stored query correctly reusing
+    `aegis:VerifierRegistration` was reported UNGROUNDED, and the only ways
+    out were to re-mint quipu's term in quipu's namespace or to not write the
+    query. Neither is right. The reuse block in ontology/core.ttl is.
+    """
     text = ONTOLOGY.read_text()
-    return set(re.findall(r"^aegis:(\w+)\s+a\s+(?:rdf:Property|rdfs:Class)", text, re.M))
+    terms: dict[str, set[str]] = {p: set() for p in GROUNDED_PREFIXES}
+    for prefix in GROUNDED_PREFIXES:
+        declared = re.findall(
+            rf"^{prefix}:(\w+)\s+a\s+(?:rdf:Property|rdfs:Class)", text, re.M
+        )
+        reused = re.findall(rf"^{prefix}:(\w+)\s*\n\s+rdfs:isDefinedBy", text, re.M)
+        terms[prefix] = set(declared) | set(reused)
+    return terms
 
 
-def query_predicates(template: str) -> set[str]:
-    """The aegis: predicates a stored query's template references."""
-    return set(re.findall(r"aegis:(\w+)", template))
+def query_predicates(template: str) -> set[tuple[str, str]]:
+    """The (prefix, local name) pairs a stored query's template references.
+
+    Namespace-qualified rather than a bare set of local names: `camayoc:foo`
+    and `aegis:foo` are different terms, and checking one against the other's
+    declarations would call an undefined term grounded.
+    """
+    pattern = "|".join(GROUNDED_PREFIXES)
+    return set(re.findall(rf"\b({pattern}):(\w+)", template))
 
 
 def load_queries() -> dict[str, dict]:
@@ -118,7 +153,11 @@ def report(slice_name: str = "verification-and-liveness") -> dict:
             row["state"] = "MISSING"
             row["gap"] = f"{name}.json is named here but absent from queries/"
         else:
-            undefined = sorted(query_predicates(stored[name]["template"]) - terms)
+            undefined = sorted(
+                f"{prefix}:{local}"
+                for prefix, local in query_predicates(stored[name]["template"])
+                if local not in terms[prefix]
+            )
             if undefined:
                 row["state"] = "UNGROUNDED"
                 row["gap"] = (

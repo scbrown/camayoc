@@ -181,6 +181,42 @@ That was a coverage figure of **4/47 ≈ 9%** when this audit was written.
 > metrics-and-requirements 4/13, and 0/15, 0/14, 0/14 for the three that had
 > never been counted. Nothing regressed — 32 was always the number of stored
 > queries; what changed is that there is now a denominator to put it over.
+>
+> **Update 2026-08-25, later the same day — `camayoc-rkb`: 32 → 40 of 91.**
+> The workflow-and-archive slice went from **0/14 to 8/14**. Q1–Q5, Q7, Q8 and
+> Q13 are stored queries in `queries/camayoc_wf_*.json`, executing against
+> `tests/fixtures/workflow-archive.trig` — a TriG **dataset**, not a graph,
+> because this slice's questions are about where facts live as much as what
+> they say. 36 tests in `tests/test_workflow_queries.py`, each with a seeded
+> positive and a control negative, and the controls are the interesting half:
+> the same query composed against the wrong graphs returns a quietly short
+> answer rather than an error, which is the failure the window scheme exists
+> to prevent.
+>
+> **One gap closed by a tool fix, none by minting.** Q7 was recorded as
+> blocked partly because `query_coverage.py`'s grounding self-check read only
+> MINTED terms, so a stored query correctly reusing a quipu-owned aegis term
+> (`signature`, `VerifierRegistration`, `verifier`) was reported UNGROUNDED —
+> the tool penalising this repo's own reuse-before-minting rule. The fix is a
+> reuse block in `ontology/core.ttl` recording each term's owner with
+> `rdfs:isDefinedBy` and no minting declaration, which the check now reads.
+> Nothing was minted in the aegis namespace to close a gap.
+>
+> **What stayed a gap, on purpose.** Six of fourteen. Q9–Q12 and Q14 are one
+> boundary: graph kinds, freeze state, thaw records and composed dataset
+> labels are quipu meta-graph and store-table properties served by
+> `GET /graphs`, not triples SPARQL can reach — camayoc is the wrong place to
+> answer them from and says so. Q6 is a different one: it asks whether a
+> signature VERIFIES, and SPARQL can fetch a public key but cannot evaluate
+> an ed25519 signature against it. Reporting the retrieval as coverage would
+> let "a key is registered" pass for "the signature is good". The
+> Principal / Session-stop / StateTransition family was not touched at all;
+> `ontology/core.ttl`'s decision not to pre-empt that design stands.
+>
+> Suite-wide: **40 of 91 stored across six slices, 22 expressible and
+> unwritten, 29 competency gaps.** Per slice: verification-and-liveness 16/19,
+> golden-paths 12/16, workflow-and-archive 8/14, metrics-and-requirements
+> 4/13, crew-task-lifecycle 0/15, document-structure-and-chunks 0/14.
 
 The consequence for drafting order is narrowed and concrete: `camayoc-101`
 writes up the incident night as a labelled corpus, and the natural reviewer

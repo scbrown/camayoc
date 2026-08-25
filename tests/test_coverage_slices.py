@@ -163,15 +163,22 @@ class SuiteTotalTests(unittest.TestCase):
     denominator: two of six slices were counted, so the reportable number was
     16/19 and 12/16 — two ratios that between them describe 35 of the suite's
     91 questions and read, to anyone who did not check, as the suite.
+
+    Moved 32 -> 40 on 2026-08-25 by camayoc-rkb: the workflow-and-archive
+    slice went from 0/14 to 8/14. Seven of its rows were unwritten and one
+    (Q7) was a gap that turned out to be this tool's own defect rather than
+    the ontology's — the grounding check reported a correctly REUSED
+    quipu-owned term as undefined. The gap count falls by one for that
+    reason and only that reason; no gap was closed by minting.
     """
 
     def test_the_suite_total_is_reported_and_pinned(self):
         figures = coverage.totals()
         self.assertEqual(6, figures["slices"])
         self.assertEqual(91, figures["total"])
-        self.assertEqual(32, figures["covered"])
-        self.assertEqual(29, figures["unwritten"])
-        self.assertEqual(30, figures["gaps"])
+        self.assertEqual(40, figures["covered"])
+        self.assertEqual(22, figures["unwritten"])
+        self.assertEqual(29, figures["gaps"])
 
     def test_the_three_states_account_for_every_question(self):
         """No question falls between the states. If one ever does it is

@@ -1,0 +1,12 @@
+{
+  "action": "load",
+  "name": "camayoc_wf_declared_vs_traversed",
+  "description": "workflow-and-archive Q5: the steps a workflow definition declares, against the ones a given run actually passed through. Composes the knowledge plane holding the definition with the operational window holding the run — the definition outlives the window and must not be frozen with it. A declared step the run never reached comes back with an EMPTY traversal time, which is the finding: a skipped step is absent from the transition log and must stay visibly absent rather than being filled in from the declaration.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?step ?stepLabel ?order ?traversedAt ?toState FROM <{definitions}> FROM <{window}> WHERE { <{definition}> aegis:hasStep ?step . ?step rdfs:label ?stepLabel ; aegis:stepOrder ?order . OPTIONAL { ?event a aegis:TransitionEvent ; aegis:inRun <{run}> ; aegis:atStep ?step ; aegis:observedAt ?traversedAt ; aegis:toState ?toState } } ORDER BY ?order",
+  "params": [
+    "definitions",
+    "window",
+    "definition",
+    "run"
+  ]
+}
