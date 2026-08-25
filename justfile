@@ -18,6 +18,15 @@ test:
 ingest-git *args:
     @python3 scripts/ingest_git_provenance.py {{args}}
 
+# Emit the §D cost vocabulary from a harness's own session logs
+# (docs/design/incident-corpus.md §5.3). Deterministic and abstaining: the
+# unit of consumption is the API request, not the log entry, and a record that
+# cannot be counted honestly is dropped and said out loud. --principal is
+# required — the harness records a session, not who the crew calls the agent
+# that ran it.
+ingest-usage *args:
+    @python3 scripts/ingest_session_usage.py {{args}}
+
 # Assess a question against the competency suite. NO COVERAGE is an outcome:
 # an ontology gap is reported as itself, never answered from the nearest term.
 competency question:

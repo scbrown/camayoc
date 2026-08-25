@@ -1,16 +1,35 @@
 # The 2026-08-06/07 incident corpus
 
-> **Implementation status (2026-08-22):** 🟡 **Labelled, denominator
-> incomplete.** The instances and their taxonomy are recorded
-> contemporaneously and are solid. The **rate** the paper needs is *not*
-> computable from the record as it was kept, and §4 says so explicitly rather
-> than estimating one. §5 specifies the instrumentation that would fix this
-> for the next window — audited 2026-08-22, none of it is buildable in
-> camayoc alone: items 1–2 need the refusal side recorded somewhere queryable,
-> and a refused write never enters the graph, so that count lives with quipu's
-> refusal path; item 3 depended on the cost-accounting vocabulary, which
-> landed later on 2026-08-22 (`camayoc-e29` — the terms and stored queries
-> exist; the parser that fills them for a live window is still to build).
+> **Implementation status (2026-08-25):** 🟡 **Labelled; the denominator is
+> now instrumentable, and unmeasured.** The instances and their taxonomy are
+> recorded contemporaneously and are solid. The **rate** the paper needs is
+> still *not* computable from the record of 2026-08-06/07 as it was kept, and
+> §4 says so explicitly rather than estimating one — that is a property of a
+> past window and no later work changes it. What changed is §5, the
+> prospective half:
+>
+> - **Items 1–2 are no longer blocked outside this repo.** The 2026-08-22
+>   audit said "a refused write never enters the graph, so that count lives
+>   with quipu's refusal path". It does, and quipu built it: main `71440ff`
+>   records every gate refusal (`shacl|policy|authority|owl|placement`) as a
+>   durable `write.refused` event carrying graph/actor/source/reason/
+>   `refused_datums`, served by `GET /events?types=write.refused` and counted
+>   by `quipu events refusals`. **A queryable denominator source exists.**
+>   Item 1 — accepted versus refused-for-missing-falsifier — is a query
+>   against that stream joined to accepted `Verification` nodes, and it needs
+>   no new camayoc term.
+> - **Item 2 stays deferred, for a different and correct reason.** An A1–A7
+>   controlled vocabulary on refused verifications is now *buildable* and
+>   still **must not be minted**: no competency question asks for per-form
+>   refusal counts, and competency-before-classes is not suspended because a
+>   dependency cleared. The question comes first or the term does not come at
+>   all. This is a deliberate hold, not an unbuilt item.
+> - **Item 3 is built.** `scripts/ingest_session_usage.py` (`just
+>   ingest-usage`) parses a harness's own session logs into the §D vocabulary
+>   `camayoc-e29` minted, so Q16–Q21 run against a live window instead of only
+>   against the fixture. Measured while building it: the unit of consumption
+>   is the API request, not the log entry — see §5.
+>
 > Tracked as `camayoc-0d3` rather than left as prose.
 > (§4.2's own lesson bit this repo once more meanwhile: the coverage tool's
 > verification denominator was itself undercounted until 2026-08-22 — six §D
@@ -187,17 +206,55 @@ it is: a small denominator, completely enumerated.
 Concrete instrumentation, so the gap is a finding with a remedy rather than an
 apology:
 
-1. **Count the denominator at ingress.** Once `Verification` is a shape-gated
-   class, every accepted verification is a stored fact. Total accepted, total
-   refused for a missing falsifier, and the ratio become queryable — and the
-   refusal count is itself the rate this corpus lacks, measured prospectively
-   and without a search step.
-2. **Record the form.** A controlled vocabulary over A1–A7 on refused
-   verifications gives per-form counts directly.
-3. **Normalise by agent-hours**, available from the cost-accounting slice
-   (competency §D, Q17) — both harnesses already write complete per-session
-   token accounting to local disk, so agent-hours are a deterministic-parser
-   fact and need no new plumbing.
+1. **Count the denominator at ingress.** ✅ *Source exists (2026-08-25).* Once
+   `Verification` is a shape-gated class, every accepted verification is a
+   stored fact — that half has been true since aspect 4. The missing half was
+   the refusals, and a refused write never enters the graph, so for a year the
+   honest statement here was "this count lives somewhere camayoc cannot
+   reach". It now lives somewhere camayoc can *query*: quipu records each gate
+   refusal as a durable `write.refused` event with graph/actor/source/reason/
+   `refused_datums`, served by `GET /events?types=write.refused`. Total
+   accepted, total refused for a missing falsifier, and the ratio are a join
+   away, and the refusal count is itself the rate this corpus lacks — measured
+   prospectively, with no search step. Two boundaries the event stream states
+   about itself and this document must repeat rather than smooth over:
+   refusals inside `speculate` are excluded, and the refused **fact bodies**
+   are deliberately not stored, so the stream answers *how many and why*, not
+   *what was rejected*. A per-form count therefore cannot be recovered from
+   the refusal record alone — which is what item 2 is about.
+2. **Record the form.** ⛔ *Deliberately not built, and not for want of a
+   dependency.* A controlled vocabulary over A1–A7 on refused verifications
+   would give per-form counts directly. **No competency question asks for
+   them.** Camayoc's first convention is competency-questions-before-classes —
+   no ontology term without a question in `competency/` that needs it — and
+   that rule does not lapse because the blocking dependency cleared. Minting
+   A1–A7 now would be minting a taxonomy this document happens to contain,
+   for a query nobody has written, which is exactly the failure the rule
+   exists to prevent. **The question comes first, then the terms.** Until
+   someone writes it, §4.2's missing per-form distribution stays missing and
+   stays stated.
+3. **Normalise by agent-hours.** ✅ *Built (2026-08-25).* Both harnesses
+   already write complete per-session token accounting to local disk, so this
+   is a deterministic-parser fact (ingress rule 3) and needed no new plumbing.
+   `scripts/ingest_session_usage.py` (`just ingest-usage`) is that parser: it
+   emits `aegis:Session` and `aegis:UsageRecord` in the vocabulary
+   `camayoc-e29` minted, tagged `observed`, so Q16–Q21 run against a live
+   window rather than only against the fixture.
+
+   **Two findings from building it, both of which the format description
+   would not have told anyone.** First, *the unit of consumption is the API
+   request, not the log entry*: the claude harness writes one entry per
+   content block and repeats the whole turn's `usage` object on every one of
+   them. Measured against a real session — 237 entries carrying usage, 92
+   distinct requests, the usage object identical across each group — the
+   naive per-entry sum reports 39,467,766 tokens for a session that consumed
+   15,653,391. A 2.5x overcount, in the direction that flatters a throughput
+   claim and inflates a spend one, and it would have looked entirely
+   plausible. Second, *only the claude reader is verified*, because no real
+   codex rollout file was available to measure one against; codex logs are
+   counted as unrecognised in the run's denominator and emit nothing, since
+   a parser written from a prose description of a format is a guess, and the
+   first finding is precisely what such a description omits.
 
 Note the shape of this: **the mechanism the paper proposes is also the
 instrument that would have measured the problem it was built for.** That is
