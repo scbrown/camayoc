@@ -94,14 +94,18 @@ Use the script:
 
 ```bash
 scripts/beads-jsonl.py list [--status open]
-scripts/beads-jsonl.py close <id> --reason "..."
-scripts/beads-jsonl.py note  <id> --text   "..."
+scripts/beads-jsonl.py close   <id> --reason "..."
+scripts/beads-jsonl.py note    <id> --text   "..."
+scripts/beads-jsonl.py retitle <id> --title  "..."
 ```
 
 It refuses any write that loses information — a record disappearing, a closed
 issue reopening, notes or comments shrinking — because the file has no schema
 enforcement and one bad write is a silent data loss committed as a normal diff.
-`note` appends and never replaces.
+`note` appends and never replaces. `retitle` writes the old title into the
+notes before replacing it, which is what makes changing a title a non-lossy
+write rather than an exception to the rule — hand-editing the `title` field
+fixes the staleness and loses the record that it was ever wrong.
 
 Commit these changes normally, with `chore(beads): … (jsonl export)` in the
 subject, matching the convention already in this repo's history.

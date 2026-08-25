@@ -28,6 +28,20 @@ anything that loses information:
   * notes and comments may only grow (`--notes` on real `bd` REPLACES, which
     destroyed a 1510-char audit earlier in this project's history)
   * a closed issue may not silently reopen
+  * a title may only be replaced by `retitle`, which writes the old one into
+    the notes first — see below
+
+## Why `retitle` and not an editor keystroke
+
+A title is the only field a reader sees in `list`, and it is the field most
+likely to go stale: `camayoc-0d3` read "blocked on quipu's refusal log" for
+three days after that block lifted. Hand-editing the `title` field would fix
+the staleness and lose the record that it was ever wrong, which is exactly
+the lossy write this script exists to refuse — so the fix has to be a verb
+that cannot be lossy. `retitle` appends the previous title to the notes
+before replacing it. That is what makes the write safe under this script's
+own rules rather than an exception carved out of them: nothing is lost, the
+correction is dated, and the notes still only grow.
 
 Field names and shapes match what real `bd` emits, taken from a Dolt-backed
 sibling repo, so a future import sees nothing unusual.
@@ -35,8 +49,9 @@ sibling repo, so a future import sees nothing unusual.
 ## Usage
 
     scripts/beads-jsonl.py create "Title" [--description ...] [--priority 3] [--type task] [--label pitch]
-    scripts/beads-jsonl.py close <id> --reason "..."
-    scripts/beads-jsonl.py note  <id> --text   "..."
+    scripts/beads-jsonl.py close   <id> --reason "..."
+    scripts/beads-jsonl.py note    <id> --text   "..."
+    scripts/beads-jsonl.py retitle <id> --title  "..."
     scripts/beads-jsonl.py list [--status open]
 """
 
@@ -86,6 +101,16 @@ def save(records: list[dict], before: list[dict]) -> None:
     )
 
 
+def append_note(record: dict, text: str) -> None:
+    """Append to an issue's notes. Never replaces — that is the whole guard.
+
+    Shared by `note` and `retitle` so there is exactly one way notes are
+    written and a second verb cannot quietly grow a second policy.
+    """
+    existing = record.get("notes") or ""
+    record["notes"] = (existing + "\n\n" + text).strip() if existing else text
+
+
 def find(records: list[dict], issue_id: str) -> dict:
     for record in records:
         if record.get("id") == issue_id:
@@ -104,6 +129,12 @@ def main() -> int:
     p_note = sub.add_parser("note", help="append to an issue's notes")
     p_note.add_argument("id")
     p_note.add_argument("--text", required=True)
+
+    p_retitle = sub.add_parser(
+        "retitle", help="replace a title, preserving the old one in the notes"
+    )
+    p_retitle.add_argument("id")
+    p_retitle.add_argument("--title", required=True)
 
     p_list = sub.add_parser("list")
     p_list.add_argument("--status")
@@ -176,11 +207,37 @@ def main() -> int:
         print(f"closed {args.id}")
 
     elif args.cmd == "note":
-        existing = record.get("notes") or ""
         # Append, never replace. The whole point of the guard above.
-        record["notes"] = (existing + "\n\n" + args.text).strip() if existing else args.text
+        append_note(record, args.text)
         record["updated_at"] = stamp
         print(f"noted {args.id}")
+
+    elif args.cmd == "retitle":
+        new_title = args.title.strip()
+        old_title = record.get("title") or ""
+        if not new_title:
+            print("refusing to write: a blank title loses the old one for nothing",
+                  file=sys.stderr)
+            return 1
+        if new_title == old_title:
+            # Not an error worth a traceback, but not a success either: a
+            # no-op retitle would append a note recording that nothing
+            # changed, which is noise dressed as provenance.
+            print(f"{args.id} already has that title", file=sys.stderr)
+            return 1
+        # The old title goes into the notes BEFORE the field is replaced.
+        # This ordering is the safety property, not a formality: the append
+        # is what makes a title change a non-lossy write, and save()'s
+        # notes-may-only-grow guard is what proves it happened.
+        append_note(
+            record,
+            f"{stamp} retitled. PREVIOUS TITLE: {old_title!r}. "
+            f"The old title is kept here because a corrected title that "
+            f"erases the wrong one hides how long the record misled.",
+        )
+        record["title"] = new_title
+        record["updated_at"] = stamp
+        print(f"retitled {args.id}")
 
     save(records, before)
     return 0
