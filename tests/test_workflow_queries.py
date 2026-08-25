@@ -46,12 +46,10 @@ HOT = "http://camayoc.test/window/shuttle/runs/2026-08"
 FROZEN = "http://camayoc.test/window/shuttle/runs/2026-07"
 IDENTITY = "http://camayoc.test/graph/identity"
 
-try:
-    import rdflib
+from rdflib_guard import HAVE_RDFLIB, requires_rdflib  # noqa: F401
 
-    HAVE_RDFLIB = True
-except ImportError:  # pragma: no cover - environment-dependent
-    HAVE_RDFLIB = False
+if HAVE_RDFLIB:  # the suites below reference `rdflib` directly
+    import rdflib
 
 
 def load(name: str, relative: str):
@@ -94,7 +92,7 @@ def fixture_dataset():
     return dataset
 
 
-@unittest.skipUnless(HAVE_RDFLIB, "rdflib not installed")
+@requires_rdflib
 class WorkflowQueryExecutionTests(unittest.TestCase):
     """Q1-Q5, Q7, Q8: each runs, and each returns what a human seeded for it."""
 
@@ -382,7 +380,7 @@ class WorkflowQueryExecutionTests(unittest.TestCase):
         self.assertEqual(["t-a3"], [r[0].rsplit("/", 1)[-1] for r in rows])
 
 
-@unittest.skipUnless(HAVE_RDFLIB, "rdflib not installed")
+@requires_rdflib
 class PromotionReplayTests(unittest.TestCase):
     """Q13 replayed across a real promotion, not against tuned fixture triples.
 
@@ -450,7 +448,7 @@ class PromotionReplayTests(unittest.TestCase):
         self.assertEqual(episode["graph"], rows[0][0])
 
 
-@unittest.skipUnless(HAVE_RDFLIB, "rdflib not installed")
+@requires_rdflib
 class FreezeAndThawReplayTests(unittest.TestCase):
     """Q14, and the half of the freeze/thaw cycle camayoc can actually replay.
 

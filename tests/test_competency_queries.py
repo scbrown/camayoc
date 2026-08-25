@@ -35,12 +35,10 @@ QUERIES = ROOT / "queries"
 FIXTURE = ROOT / "tests" / "fixtures" / "verification-liveness.ttl"
 EX = "http://camayoc.test/fixture/"
 
-try:
-    import rdflib
+from rdflib_guard import HAVE_RDFLIB, requires_rdflib  # noqa: F401
 
-    HAVE_RDFLIB = True
-except ImportError:  # pragma: no cover - environment-dependent
-    HAVE_RDFLIB = False
+if HAVE_RDFLIB:  # the suites below reference `rdflib` directly
+    import rdflib
 
 
 def load_coverage_script():
@@ -77,7 +75,7 @@ def run(graph, name: str, **params):
     return [tuple("" if v is None else str(v) for v in row) for row in graph.query(template)]
 
 
-@unittest.skipUnless(HAVE_RDFLIB, "rdflib not installed")
+@requires_rdflib
 class CompetencyQueryExecutionTests(unittest.TestCase):
     """Each query runs, and each returns the finding a human seeded for it."""
 

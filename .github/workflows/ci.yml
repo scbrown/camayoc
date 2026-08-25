@@ -28,6 +28,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      # The stored-query suites execute against rdflib rather than a live
+      # quipu, and `@requires_rdflib` skips them when it is absent. Without
+      # this line CI skipped all three files — the competency questions are
+      # this repo's test suite, so that was a green check over an unrun suite,
+      # the same defect as camayoc-045 above. `tests/rdflib_guard.py` now
+      # turns that skip into a failure whenever CI is set, so this cannot
+      # regress silently; installing it here is what keeps the arm green.
+      - run: pip install rdflib
       - name: Install just
         run: |
           sudo apt-get update -qq
@@ -50,6 +58,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - run: pip install rdflib
       - name: Fetch quipu-server
         id: fetch
         run: |
