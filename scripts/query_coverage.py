@@ -20,6 +20,25 @@ without being EXPRESSIBLE — which the self-check below enforces, because a
 stored query naming a predicate the ontology does not define would return zero
 rows forever and read as "nothing to report".
 
+Those levels reach the OUTPUT as three states. Until 2026-08-25 they reached
+it as two, which was this module collapsing the distinction its own docstring
+draws:
+
+    STORED      a named query answers the question.
+    UNWRITTEN   expressible, and nobody wrote it. Work with a known shape.
+    GAP         the ontology cannot express it. A competency gap, reported as
+                itself.
+
+Only STORED counts toward coverage. An unwritten query is nearer to done than
+a competency gap and that is exactly why it must not be counted: a slice whose
+questions are all expressible and none stored answers nothing.
+
+EVERY SLICE IS COUNTED, AND A TEST HOLDS IT THERE. The tables live in
+scripts/coverage_tables.py and tests/test_coverage_slices.py asserts they
+match competency/*.md exactly. This module twice reported a coverage figure
+over a denominator that omitted real questions — §D in 2026-08-22, four whole
+slices in 2026-08-25 — and an uncounted question is a gap unreported.
+
 Usage:
     python3 scripts/query_coverage.py            # the report
     python3 scripts/query_coverage.py --json     # machine-readable
@@ -28,6 +47,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import re
 import sys
@@ -37,121 +57,21 @@ ROOT = Path(__file__).resolve().parents[1]
 QUERIES = ROOT / "queries"
 ONTOLOGY = ROOT / "ontology" / "core.ttl"
 
-#: Question -> the stored query that answers it, or None with the reason.
-#:
-#: Hand-maintained because the mapping is a judgment: only a human can say that
-#: `camayoc_blockers_by_evidence_kind` answers Q10. What is NOT hand-maintained
-#: is whether the named file exists or whether the terms exist — both are
-#: checked below, so this table cannot quietly claim coverage it does not have.
-#: slice name -> {question number -> coverage entry}. report() takes the slice.
-COVERAGE_VL: dict[int, dict] = {
-    1: {"query": "camayoc_verification_falsifier"},
-    2: {"query": "camayoc_verifications_without_falsifier"},
-    3: {"query": "camayoc_falsifiers_not_rerun"},
-    4: {"query": "camayoc_adversarially_proven_checks"},
-    5: {"query": "camayoc_check_variable_dependence"},
-    6: {
-        "query": None,
-        "gap": "No Principal class and no observed stop/heartbeat record, so 'is "
-               "this principal running' has nothing to join against. Correctly "
-               "NOT a stored fact — ingress rule 5 forbids storing judgments that "
-               "decay — but the read-time join needs an observed liveness record "
-               "to join TO, and none is modelled. aegis:Session now exists (§D, "
-               "camayoc-e29) and carries its principal via aegis:actor, but a "
-               "session is not a liveness record: nothing says the session is "
-               "still running. This remains the largest gap and it blocks the "
-               "four-beads-one-cause family the paper leads with.",
-        "needs": ["Principal", "observed stop record (frm/item/item_status/ts)"],
-    },
-    7: {"query": "camayoc_blocked_on_closed_dependency"},
-    8: {
-        "query": None,
-        "gap": "No Alert or Escalation class. Same missing liveness join as Q6, "
-               "plus the subject class itself.",
-        "needs": ["Alert", "Escalation", "Principal liveness record"],
-    },
-    9: {
-        "query": None,
-        "gap": "Only createdAt and closedAt are modelled, so elapsed time WITHOUT "
-               "a state transition is not derivable — the intermediate transitions "
-               "are not recorded as facts.",
-        "needs": ["StateTransition", "transitionedAt"],
-    },
-    10: {"query": "camayoc_blockers_by_evidence_kind"},
-    11: {"query": "camayoc_execution_path_for_mechanism"},
-    12: {"query": "camayoc_drifted_execution_paths"},
-    13: {"query": "camayoc_single_owner_execution_paths"},
-    # Section D (cost and effort accounting) numbers itself 16-21 — there is
-    # no Q14/Q15 in the suite file. These rows were absent from this table
-    # until 2026-08-22, which silently understated the slice's denominator —
-    # the exact defect incident-corpus.md §4.2 documents. A gap uncounted is
-    # a gap unreported.
-    # §D became expressible with camayoc-e29 (2026-08-22): Session +
-    # UsageRecord + provider/tokensConsumed/inSession/attributedTo, with
-    # observedAt and actor REUSED rather than re-minted.
-    16: {"query": "camayoc_work_item_token_cost"},
-    17: {"query": "camayoc_principal_consumption_by_provider"},
-    18: {"query": "camayoc_work_per_token"},
-    19: {"query": "camayoc_sessions_without_usage"},
-    20: {"query": "camayoc_provider_burn_window"},
-    21: {"query": "camayoc_decision_cost"},
-}
+#: The tables themselves live in scripts/coverage_tables.py — data, and a
+#: judgment only a human can make. Loaded rather than imported so this stays a
+#: standalone script with no package on the path.
+def _load_tables():
+    spec = importlib.util.spec_from_file_location(
+        "coverage_tables", Path(__file__).resolve().parent / "coverage_tables.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
-COVERAGE_GP: dict[int, dict] = {
-    1: {"query": "camayoc_gp_trajectory_replay"},
-    2: {"query": "camayoc_gp_trajectories_for_topic"},
-    3: {"query": "camayoc_gp_admissible_exemplars"},
-    4: {"query": "camayoc_gp_unverified_stretch"},
-    5: {
-        "query": None,
-        "gap": "Per-step provenance-cone membership is computed by `quipu path "
-               "cone` (quipu-gp2, design-only) and only its OMISSION verdicts "
-               "are modelled (PathOmission with authority cone-analysis). A "
-               "term for stored in-cone/out-of-cone status per step is "
-               "deferred until that command exists — its output shape decides, "
-               "and minting the term first would be modelling a mechanism's "
-               "internals before the mechanism.",
-        "needs": ["per-step cone-membership facts (shape decided by quipu path cone)"],
-    },
-    6: {"query": "camayoc_gp_omissions"},
-    7: {"query": "camayoc_gp_dead_ends"},
-    8: {"query": "camayoc_gp_blessing_history"},
-    9: {"query": "camayoc_gp_superseded_paths"},
-    10: {"query": "camayoc_gp_promotion_queue"},
-    11: {"query": "camayoc_gp_paths_for_similar_work"},
-    12: {"query": "camayoc_gp_conformance"},
-    13: {"query": "camayoc_gp_backtest_outcomes"},
-    14: {
-        "query": None,
-        "gap": "aegis:derivedConstraint is minted, but no Policy or capability-"
-               "grant records exist to join against — the audit chain "
-               "constraint <- path <- exemplars needs the L5 mechanisms "
-               "(gated on verdict signing). Deferred with the later ladder "
-               "levels, per the suite's acceptance note.",
-        "needs": ["aegis:Policy records reachable from this graph", "grant/act records"],
-    },
-    15: {
-        "query": None,
-        "gap": "No record of individual authorized ACTS exists, so 'which acts "
-               "were authorized by path-derived constraints' has nothing to "
-               "join against. Same L5 dependency as Q14.",
-        "needs": ["act records carrying their authorizing constraint"],
-    },
-    16: {
-        "query": None,
-        "gap": "Staleness is a read-time judgment over conformance evidence "
-               "accumulated by the guard (yupana FR-41, design-only). "
-               "deviatesAt is minted; the guard that writes conformance "
-               "records at scale does not exist yet.",
-        "needs": ["guard-written conformance records over time"],
-    },
-}
-
-SLICES: dict[str, dict[int, dict]] = {
-    "verification-and-liveness": COVERAGE_VL,
-    "golden-paths": COVERAGE_GP,
-}
+SLICES: dict[str, dict[int, dict]] = _load_tables().SLICES
 
 
 def ontology_terms() -> set[str]:
@@ -180,7 +100,16 @@ def report(slice_name: str = "verification-and-liveness") -> dict:
         name = entry.get("query")
         row = {"question": number, "query": name}
 
-        if name is None:
+        if name is None and "expressible" in entry:
+            # EXPRESSIBLE but not STORED. Kept apart from GAP because they are
+            # different findings with different owners: this is a query nobody
+            # has written, not vocabulary the ontology lacks. Reporting both as
+            # "gap" makes unwritten work look like a modelling problem, which
+            # is the more forgivable of the two and the wrong answer.
+            row["state"] = "UNWRITTEN"
+            row["gap"] = entry["expressible"]
+            row["needs"] = []
+        elif name is None:
             row["state"] = "GAP"
             row["gap"] = entry["gap"]
             row["needs"] = entry.get("needs", [])
@@ -209,8 +138,27 @@ def report(slice_name: str = "verification-and-liveness") -> dict:
         "covered": covered,
         "total": total,
         "verdict": verdict,
+        # Reported separately and never folded into `covered`. An unwritten
+        # query is closer to done than a competency gap, and that is exactly
+        # why it must not be counted as coverage: a slice whose questions are
+        # all expressible and none stored answers nothing.
+        "unwritten": sum(1 for r in rows if r["state"] == "UNWRITTEN"),
+        "gaps": sum(1 for r in rows if r["state"] == "GAP"),
         "rows": rows,
         "stored_query_count": len(stored),
+    }
+
+
+def totals() -> dict:
+    """The whole-suite figure. There was no such thing before 2026-08-25,
+    because there was no denominator: four of six slices were uncounted."""
+    results = [report(name) for name in SLICES]
+    return {
+        "slices": len(results),
+        "covered": sum(r["covered"] for r in results),
+        "total": sum(r["total"] for r in results),
+        "unwritten": sum(r["unwritten"] for r in results),
+        "gaps": sum(r["gaps"] for r in results),
     }
 
 
@@ -221,11 +169,12 @@ def main() -> int:
 
     results = [report(name) for name in SLICES]
     if args.json:
-        print(json.dumps(results, indent=2))
+        print(json.dumps({"slices": results, "totals": totals()}, indent=2))
         return 0
 
     for result in results:
         print_slice(result)
+    print_totals(totals())
     return 0
 
 
@@ -233,7 +182,8 @@ def print_slice(result: dict) -> None:
     print(f"competency slice: {result['slice']}")
     print(
         f"stored-query coverage: {result['covered']}/{result['total']} "
-        f"— {result['verdict']}"
+        f"— {result['verdict']} "
+        f"({result['unwritten']} unwritten, {result['gaps']} competency gap(s))"
     )
     print()
     for row in result["rows"]:
@@ -244,9 +194,18 @@ def print_slice(result: dict) -> None:
             for need in row.get("needs", []):
                 print(f"           needs: {need}")
     print()
+
+
+def print_totals(figures: dict) -> None:
+    print(
+        f"SUITE TOTAL: {figures['covered']}/{figures['total']} stored across "
+        f"{figures['slices']} slices — {figures['unwritten']} expressible and "
+        f"unwritten, {figures['gaps']} competency gap(s)."
+    )
     print(
         "A question with no stored query is an ontology gap reported as itself, "
-        "never answered from the nearest term."
+        "never answered from the nearest term — and an UNCOUNTED question is a "
+        "gap unreported, which is why every slice has a table and a test says so."
     )
 
 

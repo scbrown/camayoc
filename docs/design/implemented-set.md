@@ -154,6 +154,33 @@ That was a coverage figure of **4/47 ≈ 9%** when this audit was written.
 > Principal/liveness modelling: `Session` gives them a principal-bearing
 > node but no observed stop/heartbeat record, so aspect 5's read-time gap
 > above is now the WHOLE remaining gap of the slice.
+>
+> **Update 2026-08-25 — the same defect, one level up, and a structural fix.**
+> The 2026-08-22 entry above congratulates itself on catching an undercounted
+> denominator inside a slice. The tool was undercounting SLICES at the same
+> time: `SLICES` listed two of the suite's six files, so `crew-task-lifecycle`
+> (15), `document-structure-and-chunks` (14), `metrics-and-requirements` (13)
+> and `workflow-and-archive` (14) — **56 questions** — carried no verdict at
+> all. It also *understated* real coverage, which is the detail worth keeping:
+> four stored queries shipped for the metrics slice on 2026-08-07 and counted
+> toward nothing, so the tool reported less than the repo had while appearing
+> complete.
+>
+> Restating the lesson is what failed, twice. The fix is a test, not a note:
+> `tests/test_coverage_slices.py` asserts set equality between the coverage
+> tables and `competency/*.md`, and between each table's question numbers and
+> the questions the suite parser finds, so a slice or a question cannot land
+> without a row. The report also now separates **UNWRITTEN** (the ontology
+> carries the terms; nobody wrote the query) from **GAP** (the ontology cannot
+> express it) — levels the tool's own docstring had always distinguished and
+> its output had always collapsed.
+>
+> The honest suite-wide figure, first computable on this date: **32 of 91
+> stored across six slices, 29 expressible and unwritten, 30 competency
+> gaps.** Per slice: verification-and-liveness 16/19, golden-paths 12/16,
+> metrics-and-requirements 4/13, and 0/15, 0/14, 0/14 for the three that had
+> never been counted. Nothing regressed — 32 was always the number of stored
+> queries; what changed is that there is now a denominator to put it over.
 
 The consequence for drafting order is narrowed and concrete: `camayoc-101`
 writes up the incident night as a labelled corpus, and the natural reviewer
@@ -175,4 +202,4 @@ green at the time of writing: `just test` 46 passed (1 skipped), `just check` 0
 issues across 17 files. After `camayoc-102` and `camayoc-104`: 65 passed, 21
 files. At the 2026-08-22 re-measure: 145 ran, 0 failed (32 skipped — the
 server-backed arms skip without a `quipu-server` binary), 24 files. At the
-2026-08-25 re-measure: 181 ran, 0 failed (52 skipped, same reason), 26 files.
+2026-08-25 re-measure: 210 ran, 0 failed (52 skipped, same reason), 26 files.

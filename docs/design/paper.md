@@ -182,6 +182,25 @@ uncounted question being a gap unreported. Later the same day `camayoc-89e`
 landed the five single-edge mints (Q3/Q4/Q5/Q7/Q12) and `camayoc-e29` the §D
 vocabulary (Q16–21), each term owed to its question: 16/19.
 
+> **A suite-wide denominator now exists, and this section does not yet use
+> it (2026-08-25).** The same defect recurred one level up: `SLICES` in the
+> coverage tool listed two of the suite's six files, so four slices and 56
+> questions carried no verdict — and four already-stored metrics queries
+> counted toward nothing, meaning the tool understated real coverage while
+> appearing complete. All six slices now have tables, a test asserts set
+> equality between them and `competency/*.md` so an uncounted slice cannot
+> land again, and `just query-coverage` prints a suite total: **32 of 91
+> stored, 29 expressible and unwritten, 30 competency gaps.** The per-slice
+> figures above are unchanged and remain correct.
+>
+> **What number this section should lead with is an authorial decision and is
+> deliberately left open.** 16/19 is the strongest true statement available
+> and 32/91 is the most complete one; they are not in conflict, and choosing
+> between them — or reporting both, with the three states kept apart, since
+> an unwritten query and a competency gap are different claims about the
+> ontology — is a framing call for whoever drafts §5, not a figure to be
+> swapped in by a sweep.
+
 | | Questions | State |
 |---|---|---|
 | Stored and executing | Q1–Q5, Q7, Q10–Q13, Q16–Q21 | falsifier retrieval and staleness, adversarial proof, variable dependence, closed-dependency blocks, blockers by evidence kind, execution paths and drift, cost accounting |

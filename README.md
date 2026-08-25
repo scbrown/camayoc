@@ -124,12 +124,14 @@ measured, claim-by-claim ledger.
   refusals where absence would make the node a lie (a `GoldenPath` without
   its exemplar trajectory is refused) and a gate-probe arm proving each
   refusal. [docs/design/golden-paths.md](docs/design/golden-paths.md)
-- **Stored queries, honest coverage** — 32 named stored queries in
-  [queries/](queries/), each tested against a seeded fixture with a positive
-  *and* a control-negative arm. `just query-coverage` reports the living
-  figure per slice (verification-and-liveness 16/19, golden paths 12/16 at
-  this writing); a question with no stored query is an ontology gap reported
-  as itself, never answered from the nearest term.
+- **Stored queries, honest coverage** — every named query in
+  [queries/](queries/) is tested against a seeded fixture with a positive
+  *and* a control-negative arm. `just query-coverage` is the living figure:
+  **32 of 91 stored across six slices**, plus 29 questions that are
+  expressible with today's vocabulary and simply unwritten, and 30 that are
+  competency gaps. Those last two are reported apart on purpose — an unwritten
+  query is work with a known shape, an ontology gap is a finding — and a
+  question with no stored query is never answered from the nearest term.
 - **Cost accounting** — `Session` and `UsageRecord`, with six §D queries:
   token cost per work item, per-provider burn windows, sessions with no usage
   records, what a decision cost. No quota term exists on purpose — the

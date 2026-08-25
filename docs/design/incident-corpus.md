@@ -33,7 +33,9 @@
 > Tracked as `camayoc-0d3` rather than left as prose.
 > (§4.2's own lesson bit this repo once more meanwhile: the coverage tool's
 > verification denominator was itself undercounted until 2026-08-22 — six §D
-> questions were missing from it.)
+> questions were missing from it, and four of the suite's six SLICES — 56
+> questions — until 2026-08-25, when it stopped being a lesson anyone restates
+> and became a test.)
 
 Source of record: [`../../competency/verification-and-liveness.md`](../../competency/verification-and-liveness.md),
 written during and immediately after the night of **2026-08-06/07** on a live
