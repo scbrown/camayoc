@@ -23,10 +23,21 @@ ontology's first job is to **not duplicate it**:
 
 | Existing | Namespace | Reused for |
 |---|---|---|
-| `aegis:` (quipu shapes) | governance atoms: `Policy`, `Principal`, `authorityOver`, `reports_to`, verdicts | agents, authority, governance |
+| `aegis:` (quipu shapes) | governance atoms: `Policy`, `Principal`, `authorityOver`, `reports_to`, `appliesTo`, verdicts | agents, authority, governance |
 | `prov:` (W3C PROV-O) | `wasGeneratedBy`, activities | episode provenance (quipu supplies this automatically on episode writes) |
 | `quipu:` control vocabulary | labels (`freshness`, `trust`, `policyClass`), datasets, packs | trust posture, planes |
 | `bobbin:` code entities | `CodeModule`, `CodeSymbol`, `Document`, `Section` | task ↔ code linkage (later slice) |
+
+`aegis:appliesTo` is listed there as a **standing reuse constraint rather than
+a current dependency** — camayoc uses it nowhere today. quipu declares it for
+repo-relative path globs scoping where an action-boundary policy binds. The
+2026-08-25 evaluation (`camayoc-95a`) read the whole suite against it and
+found no question that needs path scoping: two questions carry an `<area>`
+parameter (`crew-task-lifecycle` 6, `verification-and-liveness` 2) and neither
+defines `<area>` as a path, so reading one as a path glob would be inventing
+the meaning rather than reusing the term. The row exists so that if a camayoc
+rule ever does scope by path, it reuses this term instead of minting the
+equivalent — which is the failure the table is here to prevent.
 
 Camayoc mints terms only where no owner exists. Those live under a
 **parameterized namespace** — `camayoc:` resolving to a deployment-configured
