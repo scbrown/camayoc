@@ -4,6 +4,11 @@
   "description": "golden-paths Q13: did work items that conformed to this path close done more than the ones that deviated? Returns each follower's outcome and deviation so the rates are computed by the reader - the store holds facts, not the decaying judgment.",
   "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?trajectory ?workitem ?outcome ?deviation WHERE { ?trajectory a aegis:Trajectory ; aegis:followsPath <{path}> ; aegis:trajectoryOf ?workitem . OPTIONAL { ?workitem aegis:outcome ?outcome } OPTIONAL { ?trajectory aegis:deviatesAt ?deviation } } ORDER BY ?workitem",
   "params": [
-    "path"
+    {
+      "name": "path",
+      "type": "iri",
+      "required": true,
+      "description": "path parameter for this stored query."
+    }
   ]
 }

@@ -1,9 +1,14 @@
 {
   "action": "load",
   "name": "camayoc_falsifiers_not_rerun",
-  "description": "verification-and-liveness Q3: 'X is fixed/landed/deployed' claims whose falsifier was last run BEFORE a given change — stale proofs wearing current ones' clothes. The comparison is read-time: verifiedAt is a fact of the run, and 'still current' is never stored.",
+  "description": "verification-and-liveness Q3: 'X is fixed/landed/deployed' claims whose falsifier was last run BEFORE a given change \u2014 stale proofs wearing current ones' clothes. The comparison is read-time: verifiedAt is a fact of the run, and 'still current' is never stored.",
   "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?verification ?label ?claim ?verifiedAt WHERE { ?verification a aegis:Verification ; rdfs:label ?label ; aegis:verifies ?claim ; aegis:verifiedAt ?verifiedAt . FILTER(?verifiedAt < \"{changedAt}\") } ORDER BY ?verifiedAt",
   "params": [
-    "changedAt"
+    {
+      "name": "changedAt",
+      "type": "text",
+      "required": true,
+      "description": "changedAt parameter for this stored query."
+    }
   ]
 }

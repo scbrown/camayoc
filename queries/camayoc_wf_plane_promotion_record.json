@@ -1,9 +1,14 @@
 {
   "action": "load",
   "name": "camayoc_wf_plane_promotion_record",
-  "description": "workflow-and-archive Q13, the move-rule half: when a fact was promoted out of crew:inferred, what the promotion recorded — which plane it left, which it entered, and whether the source interval was actually closed. camayoc:sourceLeftOpen is the load-bearing cell: false means scripts/promote_plane.py closed the source episode (a bitemporal interval close, never a delete), true means it could not name the source episode and said so rather than implying a close that never happened. GRAPH ?plane rather than a FROM parameter because the record lands in the TARGET plane and a caller asking whether a promotion happened does not yet know which that was. The second half of Q13 — is the original still visible as-of its write time — is quipu's bitemporal replay and not expressible here; the close being bitemporal is what makes the answer yes.",
+  "description": "workflow-and-archive Q13, the move-rule half: when a fact was promoted out of crew:inferred, what the promotion recorded \u2014 which plane it left, which it entered, and whether the source interval was actually closed. camayoc:sourceLeftOpen is the load-bearing cell: false means scripts/promote_plane.py closed the source episode (a bitemporal interval close, never a delete), true means it could not name the source episode and said so rather than implying a close that never happened. GRAPH ?plane rather than a FROM parameter because the record lands in the TARGET plane and a caller asking whether a promotion happened does not yet know which that was. The second half of Q13 \u2014 is the original still visible as-of its write time \u2014 is quipu's bitemporal replay and not expressible here; the close being bitemporal is what makes the answer yes.",
   "template": "PREFIX camayoc: <https://camayoc.local/ontology/> SELECT ?plane ?record ?promotedFrom ?promotedInto ?sourceLeftOpen WHERE { GRAPH ?plane { <{fact}> camayoc:planePromotion ?record . ?record camayoc:promotedFrom ?promotedFrom ; camayoc:promotedInto ?promotedInto ; camayoc:sourceLeftOpen ?sourceLeftOpen } }",
   "params": [
-    "fact"
+    {
+      "name": "fact",
+      "type": "iri",
+      "required": true,
+      "description": "fact parameter for this stored query."
+    }
   ]
 }

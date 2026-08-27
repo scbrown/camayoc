@@ -1,10 +1,20 @@
 {
   "action": "load",
   "name": "camayoc_wf_unverifiable_transitions",
-  "description": "workflow-and-archive Q7: transitions in a window whose signature cannot be checked — either unsigned, or signed by an agent with no aegis:VerifierRegistration in the identity graph. The two are reported as DIFFERENT defects because they are: an unsigned transition never claimed provenance, a signature with no registered key claims it and cannot back it. Composes the window with the identity graph, which is dataKind identity and never frozen, so archived transitions stay checkable. This is detectable from day one, before any write-gate enforces it (quipu-8cc) — which is the whole point of the question. It does NOT verify the signature itself; no SPARQL query can (Q6).",
+  "description": "workflow-and-archive Q7: transitions in a window whose signature cannot be checked \u2014 either unsigned, or signed by an agent with no aegis:VerifierRegistration in the identity graph. The two are reported as DIFFERENT defects because they are: an unsigned transition never claimed provenance, a signature with no registered key claims it and cannot back it. Composes the window with the identity graph, which is dataKind identity and never frozen, so archived transitions stay checkable. This is detectable from day one, before any write-gate enforces it (quipu-8cc) \u2014 which is the whole point of the question. It does NOT verify the signature itself; no SPARQL query can (Q6).",
   "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?event ?run ?agent ?observedAt ?signature ?defect FROM <{window}> FROM <{identity}> WHERE { ?event a aegis:TransitionEvent ; aegis:inRun ?run ; aegis:performedBy ?agent ; aegis:observedAt ?observedAt . OPTIONAL { ?event aegis:signature ?signature } OPTIONAL { ?registration a aegis:VerifierRegistration ; aegis:verifier ?agent } FILTER(!BOUND(?signature) || !BOUND(?registration)) BIND(IF(BOUND(?signature), \"signed by an agent with no verifier registration\", \"no signature at all\") AS ?defect) } ORDER BY ?observedAt",
   "params": [
-    "window",
-    "identity"
+    {
+      "name": "window",
+      "type": "iri",
+      "required": true,
+      "description": "window parameter for this stored query."
+    },
+    {
+      "name": "identity",
+      "type": "iri",
+      "required": true,
+      "description": "identity parameter for this stored query."
+    }
   ]
 }

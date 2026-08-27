@@ -96,7 +96,28 @@ ensure_server() {
   bin=$(find_or_install_binary) || return 1
   say "server: starting $bin (db: .quipu/store.db)"
   mkdir -p "$QUIPU_DIR"
-  ( cd "$PROJECT_DIR" && nohup "$bin" --db "$QUIPU_DIR/store.db" > "$QUIPU_DIR/server.log" 2>&1 & echo $! > "$QUIPU_DIR/server.pid" )
+  # Starting a background job inside a command/subshell still makes bash wait
+  # for that job before the subshell exits. Spawn a new session directly so
+  # bootstrap can continue while the server owns its own lifetime.
+  python3 - "$bin" "$PROJECT_DIR" "$QUIPU_DIR" <<'PY'
+import os
+import subprocess
+import sys
+
+binary, project_dir, quipu_dir = sys.argv[1:]
+log_path = os.path.join(quipu_dir, "server.log")
+with open(log_path, "ab", buffering=0) as log:
+    process = subprocess.Popen(
+        [binary, "--db", os.path.join(quipu_dir, "store.db")],
+        cwd=project_dir,
+        stdin=subprocess.DEVNULL,
+        stdout=log,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+with open(os.path.join(quipu_dir, "server.pid"), "w", encoding="utf-8") as pid_file:
+    pid_file.write(f"{process.pid}\n")
+PY
   local i=0
   while [ $i -lt 30 ]; do reachable && break; sleep 0.5; i=$((i+1)); done
   reachable || { say "server: did not come up — see .quipu/server.log"; return 1; }

@@ -10,7 +10,17 @@
       "required": true,
       "description": "Principal IRI."
     },
-    "from",
-    "to"
+    {
+      "name": "from",
+      "type": "text",
+      "required": true,
+      "description": "from parameter for this stored query."
+    },
+    {
+      "name": "to",
+      "type": "text",
+      "required": true,
+      "description": "to parameter for this stored query."
+    }
   ]
 }

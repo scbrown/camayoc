@@ -1,9 +1,14 @@
 {
   "action": "load",
   "name": "camayoc_wf_window_closeout",
-  "description": "workflow-and-archive Q4: every run in a window with its outcome if it completed and its state if it is still open. COMPLETION IS READ FROM THE PRESENCE OF aegis:outcome, not from a list of terminal state names — aegis:outcome's own rule is that absence means open, and no term declares which state strings are terminal. A stored query carrying its own hardcoded terminal-state list would silently misclassify every workflow whose vocabulary differs from the one it was written against. This is also half of Q12, whose other half (is the window operational and unfrozen) is a meta-graph label no SPARQL query can reach.",
+  "description": "workflow-and-archive Q4: every run in a window with its outcome if it completed and its state if it is still open. COMPLETION IS READ FROM THE PRESENCE OF aegis:outcome, not from a list of terminal state names \u2014 aegis:outcome's own rule is that absence means open, and no term declares which state strings are terminal. A stored query carrying its own hardcoded terminal-state list would silently misclassify every workflow whose vocabulary differs from the one it was written against. This is also half of Q12, whose other half (is the window operational and unfrozen) is a meta-graph label no SPARQL query can reach.",
   "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?run ?label ?state ?status ?outcome ?closedAt FROM <{window}> WHERE { ?run a aegis:WorkflowRun ; rdfs:label ?label ; aegis:currentState ?state . OPTIONAL { ?run aegis:outcome ?outcome } OPTIONAL { ?run aegis:closedAt ?closedAt } BIND(IF(BOUND(?outcome), \"completed\", \"open\") AS ?status) } ORDER BY ?label",
   "params": [
-    "window"
+    {
+      "name": "window",
+      "type": "iri",
+      "required": true,
+      "description": "window parameter for this stored query."
+    }
   ]
 }

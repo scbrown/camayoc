@@ -4,6 +4,11 @@
   "description": "golden-paths Q2: trajectories whose work item is about a topic, with each work item's close disposition. Absence of outcome means open.",
   "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?trajectory ?workitem ?outcome WHERE { ?trajectory a aegis:Trajectory ; aegis:trajectoryOf ?workitem . ?workitem aegis:about \"{topic}\" . OPTIONAL { ?workitem aegis:outcome ?outcome } } ORDER BY ?workitem",
   "params": [
-    "topic"
+    {
+      "name": "topic",
+      "type": "text",
+      "required": true,
+      "description": "topic parameter for this stored query."
+    }
   ]
 }

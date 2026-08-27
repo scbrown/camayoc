@@ -4,6 +4,11 @@
   "description": "golden-paths Q7: the hazards of one golden path - abandoned branches its exemplars explored that did not help. Pruned is not deleted; a follower should know what was tried.",
   "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?step ?label WHERE { <{path}> aegis:deadEnd ?step . ?step rdfs:label ?label } ORDER BY ?label",
   "params": [
-    "path"
+    {
+      "name": "path",
+      "type": "iri",
+      "required": true,
+      "description": "path parameter for this stored query."
+    }
   ]
 }

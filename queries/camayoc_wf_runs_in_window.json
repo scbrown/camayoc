@@ -1,10 +1,20 @@
 {
   "action": "load",
   "name": "camayoc_wf_runs_in_window",
-  "description": "workflow-and-archive Q1: the runs of one workflow definition in one time window, with each run's current state. Window-scoped by an explicit FROM because that is what a window IS — the graph is quipu's unit of pack, attach, label and authority, and a query that forgot the FROM would answer across every month at once. currentState is the derived projection, not the truth; the transitions are the truth (Q2, Q3).",
+  "description": "workflow-and-archive Q1: the runs of one workflow definition in one time window, with each run's current state. Window-scoped by an explicit FROM because that is what a window IS \u2014 the graph is quipu's unit of pack, attach, label and authority, and a query that forgot the FROM would answer across every month at once. currentState is the derived projection, not the truth; the transitions are the truth (Q2, Q3).",
   "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?run ?label ?state ?startedAt FROM <{window}> WHERE { ?run a aegis:WorkflowRun ; aegis:runOf <{definition}> ; rdfs:label ?label ; aegis:currentState ?state . OPTIONAL { ?run aegis:createdAt ?startedAt } } ORDER BY ?startedAt",
   "params": [
-    "window",
-    "definition"
+    {
+      "name": "window",
+      "type": "iri",
+      "required": true,
+      "description": "window parameter for this stored query."
+    },
+    {
+      "name": "definition",
+      "type": "iri",
+      "required": true,
+      "description": "definition parameter for this stored query."
+    }
   ]
 }

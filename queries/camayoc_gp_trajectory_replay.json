@@ -4,6 +4,11 @@
   "description": "golden-paths Q1: the ordered replay of one trajectory - each step with its order, label, action, actor, the Decision it enacts and the Verification it produced, where recorded. Absent cells are absent, never invented.",
   "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?step ?order ?label ?actionKind ?actor ?decision ?verification WHERE { ?step a aegis:Step ; aegis:stepOf <{trajectory}> ; aegis:stepOrder ?order ; rdfs:label ?label . OPTIONAL { ?step aegis:actionKind ?actionKind } OPTIONAL { ?step aegis:actor ?actor } OPTIONAL { ?step aegis:enacts ?decision } OPTIONAL { ?step aegis:verifiedBy ?verification } } ORDER BY ?order",
   "params": [
-    "trajectory"
+    {
+      "name": "trajectory",
+      "type": "iri",
+      "required": true,
+      "description": "trajectory parameter for this stored query."
+    }
   ]
 }
