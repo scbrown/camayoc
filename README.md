@@ -24,7 +24,7 @@ extractor.
 ## Role in the stack
 
 ```text
-shantytown / git / hank / sessions          (activity: raw fiber)
+shantytown / git / yupana / sessions        (activity: raw fiber)
         │
         ▼
     camayoc                                  (ontology + ingress + packs)
@@ -38,7 +38,8 @@ shantytown / git / hank / sessions          (activity: raw fiber)
 
 - **[quipu](https://github.com/scbrown/quipu)** stores and governs; it
   deliberately contains no extraction and no LLM.
-- **[hank](https://github.com/scbrown/hank)** observes code structure.
+- **[Yupana](https://github.com/scbrown/yupana)** observes code structure. The
+  `hank` executable name remains only as a compatibility alias.
 - **[bobbin](https://github.com/scbrown/bobbin)** serves knowledge back into
   agent context.
 - **[shantytown](https://github.com/scbrown/shantytown)** runs the crew whose
@@ -213,8 +214,10 @@ choice, per component, never assumed:
 - **[bobbin](https://github.com/scbrown/bobbin)** — semantic code search +
   context bundles; installed from crates.io, project indexed, `bobbin serve`
   added to `.mcp.json`.
-- **[hank](https://github.com/scbrown/hank)** — defs/refs, call graph, blast
-  radius; installed from git (pre-release), `hank serve` added to `.mcp.json`.
+- **[Yupana](https://github.com/scbrown/yupana)** — defs/refs, call graph,
+  blast radius, and change-time policy checks; installed from git
+  (pre-release), `yupana serve` added to `.mcp.json` (`hank` remains a
+  compatibility alias).
 - **[beads](https://github.com/steveyegge/beads)** — the agent-first
   work-item tracker (`bd`). Dual role: shantytown's first-class tracker
   backend, and a deterministic observed-tier **ingress path** — a bead is a
