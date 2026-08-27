@@ -1,5 +1,4 @@
-# camayoc — quiet by default, verbose=true to debug
-set quiet
+# camayoc task entry points
 
 default:
     just --list
