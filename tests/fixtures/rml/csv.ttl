@@ -1,0 +1,17 @@
+@prefix ex: <https://example.invalid/rml/> .
+@prefix ql: <http://semweb.mmlab.be/ns/ql#> .
+@prefix rml: <http://semweb.mmlab.be/ns/rml#> .
+@prefix rr: <http://www.w3.org/ns/r2rml#> .
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+
+ex:csv-map a rr:TriplesMap ;
+    rml:logicalSource ex:csv-source ; rr:subjectMap ex:csv-subject ;
+    rr:predicateObjectMap ex:csv-name ; rr:graph ex:target .
+ex:csv-source a rml:LogicalSource ; rml:source ex:csv-truth ;
+    rml:referenceFormulation ql:CSV ; rml:iterator "row" .
+ex:csv-subject a rr:SubjectMap ; rr:template "https://example.invalid/entity/{id}" ;
+    rr:class ex:Entity ; rr:termType rr:IRI .
+ex:csv-name a rr:PredicateObjectMap ; rr:predicate ex:nameValue ; rr:objectMap ex:csv-object .
+ex:csv-object a rr:ObjectMap ; rml:reference "name" ; rr:termType rr:Literal .
+ex:csv-truth aegis:source_uri "file:records.csv" ; aegis:access_via "file" ;
+    aegis:freshness "snapshot(fixture)" ; aegis:verified_by "sha256:fixture" .

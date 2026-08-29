@@ -1,0 +1,17 @@
+@prefix ex: <https://example.invalid/rml/> .
+@prefix rml: <http://semweb.mmlab.be/ns/rml#> .
+@prefix rr: <http://www.w3.org/ns/r2rml#> .
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+
+ex:sqlite-map a rr:TriplesMap ;
+    rml:logicalSource ex:sqlite-source ; rr:subjectMap ex:sqlite-subject ;
+    rr:predicateObjectMap ex:sqlite-name ; rr:graph ex:target .
+ex:sqlite-source a rml:LogicalSource ; rml:source ex:sqlite-truth ;
+    rml:referenceFormulation rr:SQL2008 ;
+    rml:query "SELECT id, name FROM records ORDER BY id" .
+ex:sqlite-subject a rr:SubjectMap ; rr:template "https://example.invalid/entity/{id}" ;
+    rr:class ex:Entity ; rr:termType rr:IRI .
+ex:sqlite-name a rr:PredicateObjectMap ; rr:predicate ex:nameValue ; rr:objectMap ex:sqlite-object .
+ex:sqlite-object a rr:ObjectMap ; rml:reference "name" ; rr:termType rr:Literal .
+ex:sqlite-truth aegis:source_uri "file:records.db" ; aegis:access_via "file" ;
+    aegis:freshness "snapshot(fixture)" ; aegis:verified_by "sha256:fixture" .

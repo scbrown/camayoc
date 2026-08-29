@@ -195,9 +195,10 @@ def plane_for(source_kind: str, data_kind: str = "knowledge") -> str:
 def episode_body(name: str, turtle: str, source_kind: str, actor: str, source: str) -> dict:
     """An `/episode` body routed to the plane its `sourceKind` earns.
 
-    `/episode` is used rather than `/knot` because `/knot` cannot target a
-    graph — it is hardcoded to ROOT and its free-form body silently DROPS a
-    `graph` key, so a knot write would look routed and land in ROOT.
+    `/episode` remains this helper's structured node/edge path. Current Quipu
+    also permits arbitrary Turtle through `/knot` with a registered committed
+    `graph`; the RML executor uses that path because generated predicates are
+    not representable as episode edges.
     """
     return {
         "name": name,

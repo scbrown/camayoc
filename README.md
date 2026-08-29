@@ -188,8 +188,8 @@ measured, claim-by-claim ledger.
   graph hash.
 - **Governed RML executor** (`scripts/rml_executor.py`) — compiles standard
   RML/R2RML triples-map data, refuses unsupported constructs before source
-  access, and emits sorted duplicate-free N-Quads. JSON materialization is
-  implemented; bounded CSV/SQLite adapters and the governed commit lane remain.
+  access, reads bounded JSON/CSV/SQLite sources, emits sorted duplicate-free
+  N-Quads, and commits through Quipu's SHACL-governed named-graph write lane.
 
 ## Install: one plugin, governed memory
 

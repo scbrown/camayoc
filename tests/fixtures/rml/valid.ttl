@@ -2,6 +2,7 @@
 @prefix ql: <http://semweb.mmlab.be/ns/ql#> .
 @prefix rml: <http://semweb.mmlab.be/ns/rml#> .
 @prefix rr: <http://www.w3.org/ns/r2rml#> .
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
 
 ex:map a rr:TriplesMap ;
     rml:logicalSource ex:source ;
@@ -26,3 +27,7 @@ ex:name a rr:PredicateObjectMap ;
 ex:nameObject a rr:ObjectMap ;
     rml:reference "name" ;
     rr:termType rr:Literal .
+
+ex:external-truth aegis:source_uri "file:records.json" ;
+    aegis:access_via "file" ; aegis:freshness "snapshot(fixture)" ;
+    aegis:verified_by "sha256:fixture" .

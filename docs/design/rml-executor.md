@@ -1,12 +1,11 @@
 # Design: governed RML-subset execution
 
-> **Implementation status (2026-08-29):** 🟨 **Parser and deterministic JSON
-> materializer built; bounded CSV/SQLite and governed write remain.** Quipu
-> currently governs four external-truth pointers, but
-> they are source-discovery records rather than executable RML triples maps.
-> The standard RML/R2RML classes are loaded through Quipu governance. Camayoc
-> MUST NOT claim complete execution until the remaining adapters, governed
-> write, and end-to-end fixture below all pass.
+> **Implementation status (2026-08-29):** ✅ **The bounded version-one executor
+> is implemented and verified end to end.** It fetches a mapping closure from
+> Quipu, preflights it before source access, reads file-backed JSON/CSV/SQLite,
+> emits deterministic N-Quads, and submits the result to a registered named
+> graph through Quipu's SHACL-governed `/knot` lane. The live fixture committed
+> 14 conformant triples and a repeat execution read back the same 14-row graph.
 
 Camayoc owns transformation from structured external truth into candidate RDF.
 Quipu owns mapping storage, governance, and graph writes. The executor is a
@@ -112,18 +111,17 @@ resolve mapping -> validate plan -> open bounded source -> materialize -> commit
    validate the base IRI and target graph, and compile every iterator,
    reference, template, and SQL statement. This phase performs no source I/O.
 3. **Open bounded source.** Dispatch by both `access_via` and reference
-   formulation. Apply byte, row, time, redirect, and response limits before
-   parsing. Credentials come from a named local resolver; mapping RDF never
-   carries credential values.
+   formulation. Version one accepts only allowlisted file paths and applies
+   byte and row limits before parsing. Mapping RDF never carries credentials.
 4. **Materialize.** Iterate records in source order, generate RDF terms, sort
    the resulting quads lexically by N-Quads representation, and deduplicate
    exact duplicates. Missing required references fail the invocation; they do
    not silently omit a triple.
-5. **Commit.** Serialize one deterministic episode body whose source names the
-   mapping IRI and verified external-truth identity. Submit once through
-   Camayoc's existing plane-routing/write lane. On timeout or gateway error,
-   preserve the exact body and follow Quipu's indeterminate-write verification
-   protocol; any retry is byte-identical.
+5. **Commit.** Convert the deterministic quads to Turtle and submit them once
+   through `/knot` to the mapping's registered target graph. The request source
+   names the mapping IRI, mapping-closure hash, external-truth subject, and
+   verified source hash. HTTP refusal and indeterminate transport failure are
+   distinct machine-readable outcomes.
 
 `validate` runs phases 1-2. `plan` runs phases 1-3 and reports bounded source
 metadata without emitting values. `execute --dry-run` runs phases 1-4 and
@@ -137,8 +135,8 @@ referenceFormulation)`, not from a filename suffix.
 
 | Source | Required pair | Boundary |
 |---|---|---|
-| CSV | `file` or `rest` + `ql:CSV` | Header required; duplicate headers refuse; RFC 4180 parsing; bounded rows/bytes. |
-| JSON | `file` or `rest` + `ql:JSONPath` | UTF-8 JSON; bounded JSONPath subset rooted at `$`; no script/filter evaluation. |
+| CSV | `file` + `ql:CSV` | Header required; duplicate headers refuse; RFC 4180 parsing; bounded rows/bytes. |
+| JSON | `file` + `ql:JSONPath` | UTF-8 JSON array; `$[*]` only; bounded rows/bytes. |
 | SQLite | `file` + `rr:SQL2008` | Read-only URI, one `SELECT`, bound parameters only, progress-handler deadline. |
 
 Version one does not execute the live `promql` pointer. It remains a pointer
@@ -177,8 +175,7 @@ The first CLI surface is intentionally narrow:
 
 ```text
 scripts/rml_executor.py validate <triples-map-iri> [--mapping-file FILE]
-scripts/rml_executor.py plan <triples-map-iri> [--mapping-file FILE]
-scripts/rml_executor.py execute <triples-map-iri> [--mapping-file FILE] [--dry-run]
+scripts/rml_executor.py execute <triples-map-iri> --source-file FILE [--mapping-file FILE] [--dry-run]
 ```
 
 Production mode resolves mapping RDF from Quipu. `--mapping-file` exists for
@@ -210,9 +207,10 @@ multiple term-map constructors, missing references, traversal outside an
 allowlisted root, non-SELECT SQL, unsupported joins, unknown formulations, and
 a failure before the mocked write endpoint receives any request.
 
-Two later fixtures exercise CSV and SQLite. The four live jsyl2 pointer records
-remain read-only integration controls: all resolve as complete pointers; only
-sources whose adapter pair is supported may advance beyond source planning.
+Companion fixtures exercise CSV and SQLite and require byte-equivalent quads.
+The live integration fixture is
+`https://camayoc.dev/mapping/aegis-07hmc.3-fixture`; its target is a dedicated
+registered fixture graph rather than a production plane.
 
 ## 9. Implementation sequence
 

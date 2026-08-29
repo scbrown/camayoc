@@ -1,5 +1,5 @@
 [
-  {"id": "two", "name": "Beta"},
-  {"id": "one", "name": "Alpha"},
-  {"id": "one", "name": "Alpha"}
+  {"id": "two", "name": "Beta", "observed_at": "2026-08-29T17:45:00Z"},
+  {"id": "one", "name": "Alpha", "observed_at": "2026-08-29T17:45:00Z"},
+  {"id": "one", "name": "Alpha", "observed_at": "2026-08-29T17:45:00Z"}
 ]
