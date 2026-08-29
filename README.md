@@ -183,6 +183,9 @@ measured, claim-by-claim ledger.
   asserting scrub success. It atomically publishes a content-addressed durable
   copy and binds that file URI into the source mapping. Static and frozen-window
   packs are exercised through relocation with disposable independent keys.
+  Quipu's v1 share directory is the git/import projection of this same governed
+  bundle: its `share_id` tracks lineage and never replaces the pack's canonical
+  graph hash.
 
 ## Install: one plugin, governed memory
 

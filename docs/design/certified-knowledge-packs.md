@@ -1,7 +1,7 @@
 # Design: certified knowledge packs
 
-> **Implementation status (2026-08-29):** 🟨 **Producer certification built;
-> end-to-end deployment remains.** Quipu implements `.qpack.db`
+> **Implementation status (2026-08-29):** 🟩 **Producer certification and
+> digest-addressed distribution built.** Quipu implements `.qpack.db`
 > creation, deterministic content hashing, verification, attach/import, and the
 > `CertifiedShareBundle` SHACL envelope. Camayoc's `certify_pack.py` invokes
 > pack+verify, reads the authoritative manifest hash, and emits the separate
@@ -91,7 +91,39 @@ or SHACL hash. Publication is atomic at
 `<durable-root>/sha256/<manifest-digest>.qpack.db`; `source_uri` must identify
 that exact content-addressed copy.
 
-## 3. Declarative ingress: the Camayoc RML subset
+## 3. Relationship to the Quipu v1 share interface
+
+The `aegis-33cgl` v1 share directory and a Camayoc `.qpack.db` are two physical
+projections of one governed semantic object, not competing knowledge formats:
+
+- `.qpack.db` is the single-file, directly attachable Camayoc distribution
+  artifact. Its `pack_manifest.content_hash` is the bundle's
+  `canonicalGraphHash`.
+- `{manifest.json, export.nt, shapes.ttl}` is Quipu's git-native projection for
+  review, lineage, diff, and `/import`. Its `share_id` identifies that transport
+  envelope and parent chain; it never replaces the canonical graph identity.
+- Camayoc invokes Quipu to create either projection. It does not reimplement
+  canonical RDF serialization, share-manifest hashing, resolution, or
+  quarantine.
+- `manifest.producer.name = "quipu"` identifies the canonicalizer. The
+  publisher key identifies authorship, and the independent certifier key
+  identifies conformance; those three roles must not be collapsed.
+
+Consumers preserve every v1 manifest field and follow Quipu's import contract:
+hash/version/path mismatch refuses before parsing; exact entity matches may be
+rewritten locally; fuzzy matches remain review candidates; non-conforming or
+off-vocabulary facts remain quarantined; certification never promotes directly
+to ROOT. The certified bundle's external-truth mapping is the discovery path to
+the digest-addressed artifact, while the v1 share directory is the composition
+path. Both name the same bounded source and named shapes version.
+
+Garage/S3, git, and OCI are storage or transport adapters over the digest key.
+They are not trust roots, do not mint new bundle identities, and do not change
+the signed claims. The current producer implements an atomic filesystem adapter;
+an S3 adapter must preserve the exact `sha256/<digest>.qpack.db` key contract and
+verify the uploaded object before recording its URI.
+
+## 4. Declarative ingress: the Camayoc RML subset
 
 Camayoc also owns the executor for declarative source-to-graph mappings because
 this is knowledge ingress, not storage. Mappings are RDF data governed in
@@ -129,7 +161,7 @@ mapping must materialize it twice with the same entity names and episode body,
 produce one logical result, and name the mapping IRI in provenance. Subsequent
 fixtures cover `services.json` and Prometheus scrape targets.
 
-## 4. Interfaces and ownership
+## 5. Interfaces and ownership
 
 | Concern | Owner | Interface |
 |---|---|---|
@@ -145,7 +177,7 @@ shortcut. In particular, a Shuttle `TransitionEvent` signature cannot stand in
 for either the publisher or certifier claim: it authenticates a transition,
 not the finished bounded artifact.
 
-## 5. Acceptance gates
+## 6. Acceptance gates
 
 - A static pack and a Shuttle-window pack both conform to the loaded Quipu
   certification shapes; removing either signature or setting scrub pass false
