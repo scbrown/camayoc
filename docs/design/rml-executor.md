@@ -1,11 +1,12 @@
 # Design: governed RML-subset execution
 
-> **Implementation status (2026-08-29):** 🟨 **Normative contract; executor
-> not yet built.** Quipu currently governs four external-truth pointers, but
+> **Implementation status (2026-08-29):** 🟨 **Parser and deterministic JSON
+> materializer built; bounded CSV/SQLite and governed write remain.** Quipu
+> currently governs four external-truth pointers, but
 > they are source-discovery records rather than executable RML triples maps.
-> The standard RML/R2RML classes are not yet in Quipu's loaded vocabulary.
-> Camayoc MUST NOT claim execution until the vocabulary gate, implementation,
-> and end-to-end fixture below all pass.
+> The standard RML/R2RML classes are loaded through Quipu governance. Camayoc
+> MUST NOT claim complete execution until the remaining adapters, governed
+> write, and end-to-end fixture below all pass.
 
 Camayoc owns transformation from structured external truth into candidate RDF.
 Quipu owns mapping storage, governance, and graph writes. The executor is a

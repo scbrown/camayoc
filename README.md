@@ -186,6 +186,10 @@ measured, claim-by-claim ledger.
   Quipu's v1 share directory is the git/import projection of this same governed
   bundle: its `share_id` tracks lineage and never replaces the pack's canonical
   graph hash.
+- **Governed RML executor** (`scripts/rml_executor.py`) — compiles standard
+  RML/R2RML triples-map data, refuses unsupported constructs before source
+  access, and emits sorted duplicate-free N-Quads. JSON materialization is
+  implemented; bounded CSV/SQLite adapters and the governed commit lane remain.
 
 ## Install: one plugin, governed memory
 
