@@ -1,0 +1,34 @@
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# Executable consumer fixture mirroring Quipu's governed certification contract.
+aegis:CertifiedShareBundleShape a sh:NodeShape ;
+    sh:targetClass aegis:CertifiedShareBundle ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:canonicalGraphHash ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:shapesBundleVersion ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:provenanceManifest ; sh:nodeKind sh:IRI ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:publisherAttestation ; sh:class aegis:PublisherAttestation ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:certificationSeal ; sh:class aegis:KnowledgeCertificationSeal ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+aegis:PublisherAttestationShape a sh:NodeShape ;
+    sh:targetClass aegis:PublisherAttestation ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:attestsBundle ; sh:class aegis:CertifiedShareBundle ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:signingKey ; sh:class aegis:VerifierRegistration ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:attestationSignature ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+aegis:KnowledgeCertificationSealShape a sh:NodeShape ;
+    sh:targetClass aegis:KnowledgeCertificationSeal ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:certifiesBundle ; sh:class aegis:CertifiedShareBundle ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:canonicalGraphHash ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:shapesBundleVersion ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:shaclReportHash ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:scrubCheckPass ; sh:datatype xsd:boolean ; sh:hasValue true ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:provenanceManifest ; sh:nodeKind sh:IRI ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:signingKey ; sh:class aegis:VerifierRegistration ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:attestationSignature ; sh:datatype xsd:string ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path aegis:frozenWindow ; sh:nodeKind sh:IRI ; sh:maxCount 1 ] .

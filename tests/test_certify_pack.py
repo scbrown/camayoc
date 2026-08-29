@@ -94,6 +94,37 @@ class CertificationEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(certify_pack.PackCertificationError, "requires a frozen-window"):
             certify_pack.build_envelope(self.manifest, claim)
 
+    @unittest.skipUnless(shutil.which("quipu"), "quipu CLI is required for SHACL integration")
+    def test_static_and_window_envelopes_conform_and_bad_evidence_refuses(self):
+        shapes = ROOT / "tests/fixtures/certified-pack.shapes.ttl"
+        registrations = """
+<https://example.invalid/key/publisher> a aegis:VerifierRegistration .
+<https://example.invalid/key/certifier> a aegis:VerifierRegistration .
+"""
+        for window in (False, True):
+            changes = ({"freshness": "frozen(window-42)", "shuttle_derived": True,
+                        "frozen_window_iri": "https://example.invalid/window/42"} if window else {})
+            turtle = certify_pack.build_envelope(
+                self.manifest, signed_claim(self.manifest, self.report_hash, **changes)
+            ) + registrations
+            with tempfile.TemporaryDirectory() as directory:
+                data = Path(directory) / "envelope.ttl"; data.write_text(turtle)
+                good = subprocess.run(
+                    ["quipu", "validate", "--shapes", str(shapes), "--data", str(data)],
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(0, good.returncode, good.stdout + good.stderr)
+                for broken in (
+                    turtle.replace('aegis:attestationSignature "', 'aegis:unusedSignature "', 1),
+                    turtle.replace("aegis:scrubCheckPass true", "aegis:scrubCheckPass false"),
+                ):
+                    data.write_text(broken)
+                    bad = subprocess.run(
+                        ["quipu", "validate", "--shapes", str(shapes), "--data", str(data)],
+                        capture_output=True, text=True,
+                    )
+                    self.assertNotEqual(0, bad.returncode, bad.stdout + bad.stderr)
+
 
 class QuipuInvocationTests(unittest.TestCase):
     def test_pack_then_verify_are_argument_arrays(self):
