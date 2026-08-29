@@ -178,8 +178,10 @@ measured, claim-by-claim ledger.
 - **Certified-pack producer boundary** (`scripts/certify_pack.py`) — invokes
   Quipu's `.qpack.db` pack and verify path, reads the manifest content hash, and
   renders distinct publisher/certifier claims plus the governed source mapping.
-  Signature and evidence values are still caller inputs, so this is an
-  integration boundary rather than a completed independent certifier.
+  It verifies two distinct Ed25519 keys, derives the hash from a conforming
+  machine-readable SHACL report, and scans the complete pack artifact before
+  asserting scrub success. Static and frozen-window packs are exercised through
+  relocation with disposable independent keys.
 
 ## Install: one plugin, governed memory
 

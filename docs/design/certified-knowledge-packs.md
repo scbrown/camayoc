@@ -1,13 +1,14 @@
 # Design: certified knowledge packs
 
-> **Implementation status (2026-08-29):** 🟨 **Producer boundary built; signing
-> workflow and end-to-end deployment remain.** Quipu implements `.qpack.db`
+> **Implementation status (2026-08-29):** 🟨 **Producer certification built;
+> end-to-end deployment remains.** Quipu implements `.qpack.db`
 > creation, deterministic content hashing, verification, attach/import, and the
 > `CertifiedShareBundle` SHACL envelope. Camayoc's `certify_pack.py` invokes
 > pack+verify, reads the authoritative manifest hash, and emits the separate
-> publisher/certifier claims plus external-truth mapping. It currently consumes
-> signatures and evidence hashes supplied by the caller; independent signature,
-> SHACL-report, scrub execution, and the RML executor remain acceptance gates.
+> publisher/certifier claims plus external-truth mapping. It verifies distinct
+> Ed25519 keys, computes the hash from a conforming JSON SHACL report, and scans
+> the complete SQLite artifact before asserting scrub success. The RML executor
+> remains a separate acceptance gate.
 
 Camayoc has one distribution artifact, not a Camayoc pack beside a Quipu share
 bundle. A Camayoc knowledge pack **is** a Quipu `CertifiedShareBundle`; its
@@ -76,14 +77,17 @@ The implemented producer boundary is:
 ```bash
 scripts/certify_pack.py <graph-iri> --db <source.db> --out <name.qpack.db> \
   --name <name> --version <version> --shape <shape-set> --query <query-name> \
-  # plus the two claim/key/signature inputs and evidence/mapping fields
+  --shacl-report <conforming-report.json> \
+  # plus two distinct public-key/key-IRI/signature inputs and mapping fields
 ```
 
 It executes Quipu through argument arrays (never a shell), runs `pack --verify`,
 and reads `pack_manifest.content_hash` read-only. A Shuttle-derived invocation
-without `--frozen-window-iri` refuses. This is not yet the final certifier:
-signature strings and evidence hashes are inputs, so callers MUST NOT treat the
-emitted Turtle alone as proof that those external checks ran.
+without `--frozen-window-iri` refuses. Signatures use Quipu's Ed25519 hex
+convention and cover domain-separated canonical claim messages. The producer
+refuses a bad signature, reused key identity, non-conforming report, mismatched
+report hash, or artifact scrub finding; callers do not supply the scrub boolean
+or SHACL hash.
 
 ## 3. Declarative ingress: the Camayoc RML subset
 

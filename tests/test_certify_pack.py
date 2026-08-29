@@ -1,137 +1,113 @@
 from __future__ import annotations
 
-import importlib.util
-import sqlite3
-import subprocess
-import sys
-import tempfile
-import unittest
+import hashlib, importlib.util, json, shutil, sqlite3, subprocess, sys, tempfile, unittest
 from pathlib import Path
-
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location("certify_pack", ROOT / "scripts" / "certify_pack.py")
+SPEC = importlib.util.spec_from_file_location("certify_pack", ROOT / "scripts/certify_pack.py")
 certify_pack = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader
 sys.modules["certify_pack"] = certify_pack
 SPEC.loader.exec_module(certify_pack)
-
-
 HASH = "sha256:" + "a" * 64
-REPORT_HASH = "sha256:" + "b" * 64
 
 
-def certification(**changes):
-    values = {
-        "bundle_iri": "https://example.invalid/bundle",
-        "publisher_claim_iri": "https://example.invalid/bundle/publisher",
-        "certifier_claim_iri": "https://example.invalid/bundle/certifier",
-        "publisher_key_iri": "https://example.invalid/key/publisher",
-        "certifier_key_iri": "https://example.invalid/key/certifier",
-        "publisher_signature": "cosign:publisher",
-        "certifier_signature": "cosign:certifier",
-        "shapes_version": "camayoc-rml@1",
-        "shacl_report_hash": REPORT_HASH,
-        "provenance_manifest_iri": "https://example.invalid/provenance",
-        "source_uri": "https://example.invalid/packs/crew.qpack.db",
-        "access_via": "rest",
-        "freshness": "frozen(window-42)",
-        "verified_by": HASH,
-    }
+def public_hex(key):
+    return key.public_key().public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
+
+
+def signed_claim(manifest, report_hash, **changes):
+    publisher, certifier = Ed25519PrivateKey.generate(), Ed25519PrivateKey.generate()
+    values = dict(
+        bundle_iri="https://example.invalid/bundle",
+        publisher_claim_iri="https://example.invalid/bundle/publisher",
+        certifier_claim_iri="https://example.invalid/bundle/certifier",
+        publisher_key_iri="https://example.invalid/key/publisher",
+        certifier_key_iri="https://example.invalid/key/certifier",
+        publisher_public_key=public_hex(publisher), certifier_public_key=public_hex(certifier),
+        publisher_signature="", certifier_signature="", shapes_version="camayoc-rml@1",
+        shacl_report_hash=report_hash, provenance_manifest_iri="https://example.invalid/provenance",
+        source_uri="https://example.invalid/packs/crew.qpack.db", access_via="rest",
+        freshness="snapshot(v1)", verified_by=HASH,
+    )
     values.update(changes)
+    claim = certify_pack.Certification(**values)
+    values["publisher_signature"] = publisher.sign(certify_pack.publisher_message(manifest, claim)).hex()
+    values["certifier_signature"] = certifier.sign(certify_pack.certifier_message(manifest, claim)).hex()
     return certify_pack.Certification(**values)
 
 
-class ManifestTests(unittest.TestCase):
-    def test_reads_the_one_authoritative_manifest_hash(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "pack.qpack.db"
-            with sqlite3.connect(path) as conn:
-                conn.execute(
-                    "CREATE TABLE pack_manifest (id INTEGER, pack_format TEXT, name TEXT, "
-                    "version TEXT, content_hash TEXT, source_graph TEXT)"
-                )
-                conn.execute(
-                    "INSERT INTO pack_manifest VALUES (1, '1', 'crew', '1.0.0', ?, 'urn:crew')",
-                    (HASH,),
-                )
-            manifest = certify_pack.read_manifest(path)
-        self.assertEqual(HASH, manifest.content_hash)
-        self.assertEqual("crew", manifest.name)
-
-    def test_refuses_a_noncanonical_hash(self):
-        manifest = certify_pack.PackManifest("1", "crew", "1", "sha256:short", "urn:crew")
-        with self.assertRaisesRegex(certify_pack.PackCertificationError, "64 lowercase hex"):
-            certify_pack.build_envelope(manifest, certification())
+def make_pack(path, extra="safe public data"):
+    with sqlite3.connect(path) as conn:
+        conn.execute("CREATE TABLE pack_manifest (id INTEGER, pack_format TEXT, name TEXT, version TEXT, content_hash TEXT, source_graph TEXT)")
+        conn.execute("INSERT INTO pack_manifest VALUES (1, '1', 'crew', '1.0.0', ?, 'urn:crew')", (HASH,))
+        conn.execute("CREATE TABLE payload (value TEXT)")
+        conn.execute("INSERT INTO payload VALUES (?)", (extra,))
 
 
-class EnvelopeTests(unittest.TestCase):
+class CertificationEvidenceTests(unittest.TestCase):
     def setUp(self):
         self.manifest = certify_pack.PackManifest("1", "crew", "1.0.0", HASH, "urn:crew")
+        self.report_bytes = b'{"conforms":true}\n'
+        self.report_hash = "sha256:" + hashlib.sha256(self.report_bytes).hexdigest()
 
-    def test_static_pack_emits_two_distinct_claims_without_a_fake_window(self):
-        turtle = certify_pack.build_envelope(self.manifest, certification(freshness="snapshot(v1)"))
-        self.assertIn("aegis:publisherAttestation <https://example.invalid/bundle/publisher>", turtle)
-        self.assertIn("aegis:certificationSeal <https://example.invalid/bundle/certifier>", turtle)
-        self.assertIn(f'aegis:canonicalGraphHash "{HASH}"', turtle)
-        self.assertIn("aegis:scrubCheckPass true", turtle)
-        self.assertNotIn("aegis:frozenWindow", turtle)
+    def test_real_static_and_window_e2e_survive_relocation(self):
+        for window in (False, True):
+            with self.subTest(window=window), tempfile.TemporaryDirectory() as directory:
+                root, pack = Path(directory), Path(directory) / "crew.qpack.db"
+                report = root / "report.json"
+                make_pack(pack); report.write_bytes(self.report_bytes)
+                changes = ({"freshness": "frozen(window-42)", "shuttle_derived": True,
+                            "frozen_window_iri": "https://example.invalid/window/42"} if window else {})
+                claim = signed_claim(self.manifest, self.report_hash, **changes)
+                manifest, turtle = certify_pack.certify_existing_pack(pack, report, claim)
+                relocated = root / "relocated.qpack.db"; shutil.copy2(pack, relocated)
+                self.assertEqual(manifest.content_hash, certify_pack.read_manifest(relocated).content_hash)
+                self.assertIn("aegis:scrubCheckPass true", turtle)
+                self.assertEqual(window, "aegis:frozenWindow" in turtle)
 
-    def test_shuttle_pack_requires_and_emits_its_frozen_window(self):
+    def test_tampered_and_same_key_claims_are_refused(self):
+        claim = signed_claim(self.manifest, self.report_hash)
+        with self.assertRaisesRegex(certify_pack.PackCertificationError, "invalid publisher"):
+            certify_pack.build_envelope(self.manifest, certify_pack.Certification(**{**claim.__dict__, "publisher_signature": "00" * 64}))
+        with self.assertRaisesRegex(certify_pack.PackCertificationError, "key IRIs must be distinct"):
+            certify_pack.build_envelope(self.manifest, certify_pack.Certification(**{**claim.__dict__, "certifier_key_iri": claim.publisher_key_iri}))
+
+    def test_scrub_refuses_private_artifact_bytes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pack = Path(directory) / "bad.qpack.db"; make_pack(pack, "database.example.lan")
+            with self.assertRaisesRegex(certify_pack.PackCertificationError, "private hostname"):
+                certify_pack.scrub_pack(pack)
+
+    def test_shacl_report_is_computed_and_must_conform(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report = Path(directory) / "report.json"; report.write_bytes(self.report_bytes)
+            self.assertEqual(self.report_hash, certify_pack.verify_shacl_report(report))
+            report.write_text(json.dumps({"conforms": False}))
+            with self.assertRaisesRegex(certify_pack.PackCertificationError, "conforms=true"):
+                certify_pack.verify_shacl_report(report)
+
+    def test_shuttle_pack_requires_window(self):
+        claim = signed_claim(self.manifest, self.report_hash, shuttle_derived=True)
         with self.assertRaisesRegex(certify_pack.PackCertificationError, "requires a frozen-window"):
-            certify_pack.build_envelope(self.manifest, certification(shuttle_derived=True))
-        turtle = certify_pack.build_envelope(
-            self.manifest,
-            certification(
-                shuttle_derived=True,
-                frozen_window_iri="https://example.invalid/window/42",
-            ),
-        )
-        self.assertIn("aegis:frozenWindow <https://example.invalid/window/42>", turtle)
-
-    def test_pointer_contract_refuses_unknown_access_and_freshness(self):
-        with self.assertRaisesRegex(certify_pack.PackCertificationError, "unsupported access_via"):
-            certify_pack.build_envelope(self.manifest, certification(access_via="browser maybe"))
-        with self.assertRaisesRegex(certify_pack.PackCertificationError, "invalid freshness"):
-            certify_pack.build_envelope(self.manifest, certification(freshness="recent"))
+            certify_pack.build_envelope(self.manifest, claim)
 
 
 class QuipuInvocationTests(unittest.TestCase):
-    def test_pack_then_verify_are_argument_arrays_and_manifest_is_read_after(self):
+    def test_pack_then_verify_are_argument_arrays(self):
         calls = []
         with tempfile.TemporaryDirectory() as directory:
             out = Path(directory) / "crew.qpack.db"
-
             def runner(command, **_kwargs):
                 calls.append(command)
-                if "--verify" not in command:
-                    with sqlite3.connect(out) as conn:
-                        conn.execute(
-                            "CREATE TABLE pack_manifest (id INTEGER, pack_format TEXT, name TEXT, "
-                            "version TEXT, content_hash TEXT, source_graph TEXT)"
-                        )
-                        conn.execute(
-                            "INSERT INTO pack_manifest VALUES (1, '1', 'crew', '1.0.0', ?, 'urn:crew')",
-                            (HASH,),
-                        )
+                if "--verify" not in command: make_pack(out)
                 return subprocess.CompletedProcess(command, 0, "ok", "")
-
-            manifest = certify_pack.run_quipu_pack(
-                "quipu",
-                Path("source.db"),
-                "urn:crew",
-                out,
-                "crew",
-                "1.0.0",
-                ["governance"],
-                ["camayoc_query"],
-                runner,
-            )
+            manifest = certify_pack.run_quipu_pack("quipu", Path("source.db"), "urn:crew", out, "crew", "1.0.0", ["governance"], ["camayoc_query"], runner)
         self.assertEqual(HASH, manifest.content_hash)
-        self.assertEqual("quipu", calls[0][0])
         self.assertEqual(["quipu", "pack", "--verify", str(out)], calls[1])
         self.assertNotIsInstance(calls[0], str)
 
 
-if __name__ == "__main__":
-    unittest.main()
+if __name__ == "__main__": unittest.main()

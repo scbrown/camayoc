@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import re
 import sqlite3
 import subprocess
@@ -12,10 +14,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Sequence
 
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
 
 HASH_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 ACCESS_VIA = {"mcp", "rest", "sparql-federated", "file", "promql"}
 FRESHNESS_RE = re.compile(r"^(live|snapshot\([^()]+\)|frozen\([^()]+\))$")
+PRIVATE_HOST_RE = re.compile(rb"(?i)(?:[a-z0-9-]+\.)+(?:lan|svc)\b")
+PRIVATE_IPV4_RE = re.compile(
+    rb"(?<![0-9])(?:10(?:\.[0-9]{1,3}){3}|192\.168(?:\.[0-9]{1,3}){2}|"
+    rb"172\.(?:1[6-9]|2[0-9]|3[01])(?:\.[0-9]{1,3}){2})(?![0-9])"
+)
+HOME_PATH_RE = re.compile(rb"/home/[A-Za-z0-9._-]+(?:/|\b)")
 
 
 class PackCertificationError(ValueError):
@@ -38,6 +49,8 @@ class Certification:
     certifier_claim_iri: str
     publisher_key_iri: str
     certifier_key_iri: str
+    publisher_public_key: str
+    certifier_public_key: str
     publisher_signature: str
     certifier_signature: str
     shapes_version: str
@@ -49,6 +62,80 @@ class Certification:
     verified_by: str
     frozen_window_iri: str | None = None
     shuttle_derived: bool = False
+
+
+def verify_shacl_report(report_path: Path) -> str:
+    """Require a machine-readable conforming report and hash its exact bytes."""
+    try:
+        payload = report_path.read_bytes()
+        report = json.loads(payload)
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PackCertificationError(f"cannot read SHACL JSON report: {exc}") from exc
+    if not isinstance(report, dict) or report.get("conforms") is not True:
+        raise PackCertificationError("SHACL report must contain boolean conforms=true")
+    return "sha256:" + hashlib.sha256(payload).hexdigest()
+
+
+def scrub_pack(pack_path: Path) -> None:
+    """Refuse a pack whose complete artifact bytes contain private infrastructure markers."""
+    try:
+        payload = pack_path.read_bytes()
+    except OSError as exc:
+        raise PackCertificationError(f"cannot scrub pack: {exc}") from exc
+    findings = []
+    for name, pattern in (
+        ("private hostname", PRIVATE_HOST_RE),
+        ("private IPv4 address", PRIVATE_IPV4_RE),
+        ("home-directory path", HOME_PATH_RE),
+    ):
+        if pattern.search(payload):
+            findings.append(name)
+    if findings:
+        raise PackCertificationError("artifact scrub failed: " + ", ".join(findings))
+
+
+def publisher_message(manifest: PackManifest, certification: Certification) -> bytes:
+    fields = (
+        "camayoc-publisher-attestation-v1",
+        manifest.content_hash,
+        certification.bundle_iri,
+        certification.provenance_manifest_iri,
+    )
+    return "|".join(fields).encode()
+
+
+def certifier_message(manifest: PackManifest, certification: Certification) -> bytes:
+    fields = (
+        "camayoc-knowledge-certification-v1",
+        manifest.content_hash,
+        certification.shapes_version,
+        certification.shacl_report_hash,
+        "true",
+        certification.provenance_manifest_iri,
+        certification.frozen_window_iri or "",
+    )
+    return "|".join(fields).encode()
+
+
+def verify_signatures(manifest: PackManifest, certification: Certification) -> None:
+    """Verify two independent Ed25519 attestations over domain-separated claims."""
+    if certification.publisher_key_iri == certification.certifier_key_iri:
+        raise PackCertificationError("publisher and certifier key IRIs must be distinct")
+    if certification.publisher_public_key == certification.certifier_public_key:
+        raise PackCertificationError("publisher and certifier public keys must be distinct")
+    claims = (
+        ("publisher", certification.publisher_public_key, certification.publisher_signature,
+         publisher_message(manifest, certification)),
+        ("certifier", certification.certifier_public_key, certification.certifier_signature,
+         certifier_message(manifest, certification)),
+    )
+    for role, public_key, signature, message in claims:
+        try:
+            Ed25519PublicKey.from_public_bytes(bytes.fromhex(public_key)).verify(
+                bytes.fromhex(signature), message
+            )
+        except (ValueError, InvalidSignature) as exc:
+            raise PackCertificationError(f"invalid {role} Ed25519 signature") from exc
 
 
 def _iri(value: str) -> str:
@@ -101,6 +188,7 @@ def build_envelope(manifest: PackManifest, certification: Certification) -> str:
         raise PackCertificationError(f"invalid freshness: {certification.freshness}")
     if certification.shuttle_derived and not certification.frozen_window_iri:
         raise PackCertificationError("a Shuttle-derived bundle requires a frozen-window IRI")
+    verify_signatures(manifest, certification)
 
     bundle = _iri(certification.bundle_iri)
     publisher = _iri(certification.publisher_claim_iri)
@@ -194,6 +282,18 @@ def run_quipu_pack(
     return read_manifest(out_path)
 
 
+def certify_existing_pack(
+    pack_path: Path, shacl_report_path: Path, certification: Certification
+) -> tuple[PackManifest, str]:
+    """Certify a verified pack only after locally deriving all boolean/hash evidence."""
+    manifest = read_manifest(pack_path)
+    scrub_pack(pack_path)
+    report_hash = verify_shacl_report(shacl_report_path)
+    if certification.shacl_report_hash != report_hash:
+        raise PackCertificationError("SHACL report hash does not match the supplied report")
+    return manifest, build_envelope(manifest, certification)
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("graph_iri")
@@ -211,10 +311,11 @@ def parser() -> argparse.ArgumentParser:
         "certifier-claim-iri",
         "publisher-key-iri",
         "certifier-key-iri",
+        "publisher-public-key",
+        "certifier-public-key",
         "publisher-signature",
         "certifier-signature",
         "shapes-version",
-        "shacl-report-hash",
         "provenance-manifest-iri",
         "source-uri",
         "access-via",
@@ -223,6 +324,7 @@ def parser() -> argparse.ArgumentParser:
     ]:
         result.add_argument(f"--{field}", required=True)
     result.add_argument("--frozen-window-iri")
+    result.add_argument("--shacl-report", type=Path, required=True)
     result.add_argument("--shuttle-derived", action="store_true")
     return result
 
@@ -240,16 +342,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.shape,
             args.query,
         )
+        report_hash = verify_shacl_report(args.shacl_report)
         certification = Certification(
             bundle_iri=args.bundle_iri,
             publisher_claim_iri=args.publisher_claim_iri,
             certifier_claim_iri=args.certifier_claim_iri,
             publisher_key_iri=args.publisher_key_iri,
             certifier_key_iri=args.certifier_key_iri,
+            publisher_public_key=args.publisher_public_key,
+            certifier_public_key=args.certifier_public_key,
             publisher_signature=args.publisher_signature,
             certifier_signature=args.certifier_signature,
             shapes_version=args.shapes_version,
-            shacl_report_hash=args.shacl_report_hash,
+            shacl_report_hash=report_hash,
             provenance_manifest_iri=args.provenance_manifest_iri,
             source_uri=args.source_uri,
             access_via=args.access_via,
@@ -258,6 +363,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             frozen_window_iri=args.frozen_window_iri,
             shuttle_derived=args.shuttle_derived,
         )
+        scrub_pack(args.out)
         envelope = build_envelope(manifest, certification)
         envelope_path = args.envelope_out or Path(f"{args.out}.cert.ttl")
         envelope_path.write_text(envelope)
