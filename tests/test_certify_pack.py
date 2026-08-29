@@ -63,8 +63,9 @@ class CertificationEvidenceTests(unittest.TestCase):
                             "frozen_window_iri": "https://example.invalid/window/42"} if window else {})
                 claim = signed_claim(self.manifest, self.report_hash, **changes)
                 manifest, turtle = certify_pack.certify_existing_pack(pack, report, claim)
-                relocated = root / "relocated.qpack.db"; shutil.copy2(pack, relocated)
+                relocated = certify_pack.publish_pack(pack, manifest, root / "published")
                 self.assertEqual(manifest.content_hash, certify_pack.read_manifest(relocated).content_hash)
+                self.assertIn(manifest.content_hash.removeprefix("sha256:"), str(relocated))
                 self.assertIn("aegis:scrubCheckPass true", turtle)
                 self.assertEqual(window, "aegis:frozenWindow" in turtle)
 

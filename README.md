@@ -180,8 +180,9 @@ measured, claim-by-claim ledger.
   renders distinct publisher/certifier claims plus the governed source mapping.
   It verifies two distinct Ed25519 keys, derives the hash from a conforming
   machine-readable SHACL report, and scans the complete pack artifact before
-  asserting scrub success. Static and frozen-window packs are exercised through
-  relocation with disposable independent keys.
+  asserting scrub success. It atomically publishes a content-addressed durable
+  copy and binds that file URI into the source mapping. Static and frozen-window
+  packs are exercised through relocation with disposable independent keys.
 
 ## Install: one plugin, governed memory
 

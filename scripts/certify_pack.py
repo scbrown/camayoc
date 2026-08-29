@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -92,6 +93,24 @@ def scrub_pack(pack_path: Path) -> None:
             findings.append(name)
     if findings:
         raise PackCertificationError("artifact scrub failed: " + ", ".join(findings))
+
+
+def publish_pack(pack_path: Path, manifest: PackManifest, publish_dir: Path) -> Path:
+    """Atomically publish a content-addressed durable copy and return its path."""
+    digest = manifest.content_hash.removeprefix("sha256:")
+    destination = publish_dir / "sha256" / f"{digest}.qpack.db"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        if destination.read_bytes() != pack_path.read_bytes():
+            raise PackCertificationError("content-addressed publication collision")
+        return destination
+    temporary = destination.with_suffix(destination.suffix + ".tmp")
+    try:
+        shutil.copyfile(pack_path, temporary)
+        temporary.replace(destination)
+    except OSError as exc:
+        raise PackCertificationError(f"cannot publish pack: {exc}") from exc
+    return destination
 
 
 def publisher_message(manifest: PackManifest, certification: Certification) -> bytes:
@@ -305,6 +324,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--query", action="append", default=[])
     result.add_argument("--quipu-bin", default="quipu")
     result.add_argument("--envelope-out", type=Path)
+    result.add_argument("--publish-dir", type=Path, required=True)
     for field in [
         "bundle-iri",
         "publisher-claim-iri",
@@ -364,6 +384,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             shuttle_derived=args.shuttle_derived,
         )
         scrub_pack(args.out)
+        published = publish_pack(args.out, manifest, args.publish_dir)
+        if args.source_uri != published.resolve().as_uri():
+            raise PackCertificationError(
+                f"source_uri must identify published content-addressed copy: {published.resolve().as_uri()}"
+            )
         envelope = build_envelope(manifest, certification)
         envelope_path = args.envelope_out or Path(f"{args.out}.cert.ttl")
         envelope_path.write_text(envelope)

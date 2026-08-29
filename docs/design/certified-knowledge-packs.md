@@ -77,7 +77,7 @@ The implemented producer boundary is:
 ```bash
 scripts/certify_pack.py <graph-iri> --db <source.db> --out <name.qpack.db> \
   --name <name> --version <version> --shape <shape-set> --query <query-name> \
-  --shacl-report <conforming-report.json> \
+  --shacl-report <conforming-report.json> --publish-dir <durable-root> \
   # plus two distinct public-key/key-IRI/signature inputs and mapping fields
 ```
 
@@ -87,7 +87,9 @@ without `--frozen-window-iri` refuses. Signatures use Quipu's Ed25519 hex
 convention and cover domain-separated canonical claim messages. The producer
 refuses a bad signature, reused key identity, non-conforming report, mismatched
 report hash, or artifact scrub finding; callers do not supply the scrub boolean
-or SHACL hash.
+or SHACL hash. Publication is atomic at
+`<durable-root>/sha256/<manifest-digest>.qpack.db`; `source_uri` must identify
+that exact content-addressed copy.
 
 ## 3. Declarative ingress: the Camayoc RML subset
 
