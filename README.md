@@ -175,6 +175,11 @@ measured, claim-by-claim ledger.
 - **Advisory chunk shapes** — vocabulary for bobbin's chunk graph
   (`bobbin:Chunk`, `nextChunk`, `chunkOrder`) in `shapes/code-entities.ttl`,
   value constraints only until the emitter ships and is measured.
+- **Certified-pack producer boundary** (`scripts/certify_pack.py`) — invokes
+  Quipu's `.qpack.db` pack and verify path, reads the manifest content hash, and
+  renders distinct publisher/certifier claims plus the governed source mapping.
+  Signature and evidence values are still caller inputs, so this is an
+  integration boundary rather than a completed independent certifier.
 
 ## Install: one plugin, governed memory
 

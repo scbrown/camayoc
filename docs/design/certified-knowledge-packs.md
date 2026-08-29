@@ -1,11 +1,13 @@
 # Design: certified knowledge packs
 
-> **Implementation status (2026-08-29):** 🟨 **Contract fixed; producer not yet
-> built.** Quipu implements `.qpack.db` creation, deterministic content hashing,
-> verification, attach/import, and the `CertifiedShareBundle` SHACL envelope.
-> Camayoc still needs the producer that emits the two signature claims and the
-> RML-subset executor described here. This document is the implementation
-> boundary, not evidence that either producer runs.
+> **Implementation status (2026-08-29):** 🟨 **Producer boundary built; signing
+> workflow and end-to-end deployment remain.** Quipu implements `.qpack.db`
+> creation, deterministic content hashing, verification, attach/import, and the
+> `CertifiedShareBundle` SHACL envelope. Camayoc's `certify_pack.py` invokes
+> pack+verify, reads the authoritative manifest hash, and emits the separate
+> publisher/certifier claims plus external-truth mapping. It currently consumes
+> signatures and evidence hashes supplied by the caller; independent signature,
+> SHACL-report, scrub execution, and the RML executor remain acceptance gates.
 
 Camayoc has one distribution artifact, not a Camayoc pack beside a Quipu share
 bundle. A Camayoc knowledge pack **is** a Quipu `CertifiedShareBundle`; its
@@ -68,6 +70,20 @@ only storage acceptance. The manifest hash proves content identity; the two
 registered signatures prove publisher and certifier claims. Retention, bucket
 policy, and credential custody are deployment inputs and MUST be audited before
 the first production upload.
+
+The implemented producer boundary is:
+
+```bash
+scripts/certify_pack.py <graph-iri> --db <source.db> --out <name.qpack.db> \
+  --name <name> --version <version> --shape <shape-set> --query <query-name> \
+  # plus the two claim/key/signature inputs and evidence/mapping fields
+```
+
+It executes Quipu through argument arrays (never a shell), runs `pack --verify`,
+and reads `pack_manifest.content_hash` read-only. A Shuttle-derived invocation
+without `--frozen-window-iri` refuses. This is not yet the final certifier:
+signature strings and evidence hashes are inputs, so callers MUST NOT treat the
+emitted Turtle alone as proof that those external checks ran.
 
 ## 3. Declarative ingress: the Camayoc RML subset
 
