@@ -81,7 +81,7 @@ named queries, and a trace a reviewer accepts.
    already; the slice proves it — a skill-guided agent bootstraps a bare
    store, records a real session's decisions/work/outcomes, and the
    competency questions answer from what it recorded.
-4. The competency queries as stored queries, shipped for `crew.qpack` when
+4. The competency queries as stored queries, shipped for `crew.qpack.db` when
    quipu #79/#81 land; runnable as raw SPARQL until then (the skill carries
    the patterns).
 5. An eval gate: `just check` runs the questions against a fixture graph —

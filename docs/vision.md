@@ -68,7 +68,7 @@ planning docs, and non-negotiable:
 
 ## Where it ends up
 
-A shelf of packs: `core.qpack` (the bootstrap vocabulary), `crew.qpack` (the
+A shelf of packs: `core.qpack.db` (the bootstrap vocabulary), `crew.qpack.db` (the
 agentic-coding domain), and eventually others — each versioned, hash-cited,
 carrying its own competency queries and recommended trust posture. An agent
 team anywhere in the stack attaches the packs it needs and inherits not just

@@ -58,9 +58,14 @@ shantytown / git / yupana / sessions        (activity: raw fiber)
    SHACL-refused without provenance tags, deterministic-first, LLM-inferred
    knowledge quarantined into low-trust planes.
    [docs/design/ingress.md](docs/design/ingress.md)
-3. **Domain ontologies as knowledge packs** — each domain ships as a `.qpack`
-   (quipu #81): graph + shapes + competency queries + labels + manifest, one
-   attachable file.
+   The declarative structured-source lane is specified as a governed RML/R2RML
+   subset in [docs/design/rml-executor.md](docs/design/rml-executor.md).
+3. **Domain ontologies as certified knowledge packs** — each domain ships as
+   Quipu's `.qpack.db` (quipu #81): graph + shapes + competency queries +
+   labels + manifest, one attachable file. A Camayoc pack is the
+   `CertifiedShareBundle`, not a second format; publisher and certifier claims
+   bind independently to the manifest content hash.
+   [docs/design/certified-knowledge-packs.md](docs/design/certified-knowledge-packs.md)
 4. **The competency-question suites** — the questions agents actually ask,
    maintained as the test harness for every ontology change. Six slices now:
    task lifecycle, metrics, verification-and-liveness (with its §D cost

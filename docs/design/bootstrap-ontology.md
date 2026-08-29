@@ -93,9 +93,9 @@ shantytown's `reports_to` shape, exactly as the graph already holds them.
 
 ## 4. Packaging
 
-The bootstrap vocabulary ships as **`core.qpack`** (quipu #81): the upper
+The bootstrap vocabulary ships as **`core.qpack.db`** (quipu #81): the upper
 terms, their SHACL, and the generic competency queries (e.g. "what decisions
-touch entity X"). Domain packs (`crew.qpack` first) declare it in their
+touch entity X"). Domain packs (`crew.qpack.db` first) declare it in their
 manifest's default dataset. Until packs land in quipu, the same content lives
 here as Turtle + shape files loadable via `POST /shapes` — the pack is the
 distribution format, not a prerequisite.
