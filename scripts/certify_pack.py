@@ -113,6 +113,42 @@ def publish_pack(pack_path: Path, manifest: PackManifest, publish_dir: Path) -> 
     return destination
 
 
+def publish_pack_s3(
+    pack_path: Path,
+    manifest: PackManifest,
+    bucket: str,
+    endpoint_url: str | None = None,
+    client=None,
+) -> str:
+    """Publish to an S3-compatible store and verify the retained object metadata."""
+    if not bucket or any(char in bucket for char in "/\\"):
+        raise PackCertificationError("invalid S3 bucket")
+    digest = manifest.content_hash.removeprefix("sha256:")
+    key = f"sha256/{digest}.qpack.db"
+    try:
+        if client is None:
+            import boto3
+
+            client = boto3.client("s3", endpoint_url=endpoint_url)
+        with pack_path.open("rb") as body:
+            client.put_object(
+                Bucket=bucket,
+                Key=key,
+                Body=body,
+                Metadata={"canonical-graph-hash": manifest.content_hash},
+            )
+        retained = client.head_object(Bucket=bucket, Key=key)
+        expected_size = pack_path.stat().st_size
+    except (OSError, Exception) as exc:
+        raise PackCertificationError(f"S3 publication failed: {exc}") from exc
+    metadata = retained.get("Metadata", {})
+    if retained.get("ContentLength") != expected_size:
+        raise PackCertificationError("S3 retained-object size verification failed")
+    if metadata.get("canonical-graph-hash") != manifest.content_hash:
+        raise PackCertificationError("S3 retained-object hash metadata verification failed")
+    return f"s3://{bucket}/{key}"
+
+
 def publisher_message(manifest: PackManifest, certification: Certification) -> bytes:
     fields = (
         "camayoc-publisher-attestation-v1",
@@ -324,7 +360,10 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--query", action="append", default=[])
     result.add_argument("--quipu-bin", default="quipu")
     result.add_argument("--envelope-out", type=Path)
-    result.add_argument("--publish-dir", type=Path, required=True)
+    publication = result.add_mutually_exclusive_group(required=True)
+    publication.add_argument("--publish-dir", type=Path)
+    publication.add_argument("--s3-bucket")
+    result.add_argument("--s3-endpoint")
     for field in [
         "bundle-iri",
         "publisher-claim-iri",
@@ -384,10 +423,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             shuttle_derived=args.shuttle_derived,
         )
         scrub_pack(args.out)
-        published = publish_pack(args.out, manifest, args.publish_dir)
-        if args.source_uri != published.resolve().as_uri():
+        if args.publish_dir:
+            published_uri = publish_pack(args.out, manifest, args.publish_dir).resolve().as_uri()
+        else:
+            published_uri = publish_pack_s3(
+                args.out, manifest, args.s3_bucket, args.s3_endpoint
+            )
+        if args.source_uri != published_uri:
             raise PackCertificationError(
-                f"source_uri must identify published content-addressed copy: {published.resolve().as_uri()}"
+                f"source_uri must identify published content-addressed copy: {published_uri}"
             )
         envelope = build_envelope(manifest, certification)
         envelope_path = args.envelope_out or Path(f"{args.out}.cert.ttl")

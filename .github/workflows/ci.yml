@@ -35,7 +35,7 @@ jobs:
       # the same defect as camayoc-045 above. `tests/rdflib_guard.py` now
       # turns that skip into a failure whenever CI is set, so this cannot
       # regress silently; installing it here is what keeps the arm green.
-      - run: pip install cryptography rdflib pyyaml
+      - run: pip install boto3 cryptography rdflib pyyaml
       - name: Install just
         run: |
           sudo apt-get update -qq
@@ -58,7 +58,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install cryptography rdflib pyyaml
+      - run: pip install boto3 cryptography rdflib pyyaml
       - name: Fetch quipu-server
         id: fetch
         run: |

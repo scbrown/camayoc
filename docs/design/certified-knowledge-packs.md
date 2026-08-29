@@ -119,9 +119,10 @@ path. Both name the same bounded source and named shapes version.
 
 Garage/S3, git, and OCI are storage or transport adapters over the digest key.
 They are not trust roots, do not mint new bundle identities, and do not change
-the signed claims. The current producer implements an atomic filesystem adapter;
-an S3 adapter must preserve the exact `sha256/<digest>.qpack.db` key contract and
-verify the uploaded object before recording its URI.
+the signed claims. The producer implements both an atomic filesystem adapter
+and an S3-compatible adapter. Both preserve the exact
+`sha256/<digest>.qpack.db` key contract; the S3 path verifies retained size and
+canonical-hash metadata with a separate HEAD before recording its URI.
 
 ## 4. Declarative ingress: the Camayoc RML subset
 

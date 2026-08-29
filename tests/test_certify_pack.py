@@ -141,5 +141,27 @@ class QuipuInvocationTests(unittest.TestCase):
         self.assertEqual(["quipu", "pack", "--verify", str(out)], calls[1])
         self.assertNotIsInstance(calls[0], str)
 
+    def test_s3_publication_uses_digest_key_and_verifies_retained_metadata(self):
+        class S3:
+            def put_object(self, **request):
+                self.request = request
+                self.size = len(request["Body"].read())
+
+            def head_object(self, **_request):
+                return {
+                    "ContentLength": self.size,
+                    "Metadata": self.request["Metadata"],
+                }
+
+        with tempfile.TemporaryDirectory() as directory:
+            pack = Path(directory) / "crew.qpack.db"; make_pack(pack)
+            manifest = certify_pack.read_manifest(pack)
+            client = S3()
+            uri = certify_pack.publish_pack_s3(pack, manifest, "knowledge", client=client)
+        self.assertEqual(
+            f"s3://knowledge/sha256/{HASH.removeprefix('sha256:')}.qpack.db", uri
+        )
+        self.assertEqual(HASH, client.request["Metadata"]["canonical-graph-hash"])
+
 
 if __name__ == "__main__": unittest.main()
