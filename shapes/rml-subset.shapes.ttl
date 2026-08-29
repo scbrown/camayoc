@@ -1,0 +1,144 @@
+@prefix camayoc: <https://camayoc.dev/ontology#> .
+@prefix ql: <http://semweb.mmlab.be/ns/ql#> .
+@prefix rml: <http://semweb.mmlab.be/ns/rml#> .
+@prefix rr: <http://www.w3.org/ns/r2rml#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# The governed subset implemented by docs/design/rml-executor.md. These shapes
+# admit standard RML/R2RML classes into Quipu without minting Camayoc aliases.
+# Semantic exclusions (joins, functions, dynamic predicates/graphs) remain an
+# executor preflight because SHACL closed-world checking is not used here.
+
+camayoc:RmlTriplesMapShape a sh:NodeShape ;
+    sh:targetClass rr:TriplesMap ;
+    sh:property [
+        sh:path rml:logicalSource ;
+        sh:class rml:LogicalSource ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path rr:subjectMap ;
+        sh:class rr:SubjectMap ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path rr:predicateObjectMap ;
+        sh:class rr:PredicateObjectMap
+    ] ;
+    sh:property [
+        sh:path rr:graph ;
+        sh:nodeKind sh:IRI ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] .
+
+camayoc:RmlLogicalSourceShape a sh:NodeShape ;
+    sh:targetClass rml:LogicalSource ;
+    sh:property [
+        sh:path rml:source ;
+        sh:nodeKind sh:IRI ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path rml:referenceFormulation ;
+        sh:in ( ql:CSV ql:JSONPath rr:SQL2008 ) ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path rml:iterator ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path rml:query ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1
+    ] .
+
+camayoc:RmlSubjectMapShape a sh:NodeShape ;
+    sh:targetClass rr:SubjectMap ;
+    sh:xone (
+        [ sh:property [
+            sh:path rr:constant ;
+            sh:minCount 1 ;
+            sh:maxCount 1
+        ] ]
+        [ sh:property [
+            sh:path rml:reference ;
+            sh:datatype xsd:string ;
+            sh:minCount 1 ;
+            sh:maxCount 1
+        ] ]
+        [ sh:property [
+            sh:path rr:template ;
+            sh:datatype xsd:string ;
+            sh:minCount 1 ;
+            sh:maxCount 1
+        ] ]
+    ) ;
+    sh:property [
+        sh:path rr:class ;
+        sh:nodeKind sh:IRI
+    ] ;
+    sh:property [
+        sh:path rr:termType ;
+        sh:in ( rr:IRI rr:Literal ) ;
+        sh:maxCount 1
+    ] .
+
+camayoc:RmlPredicateObjectMapShape a sh:NodeShape ;
+    sh:targetClass rr:PredicateObjectMap ;
+    sh:property [
+        sh:path rr:predicate ;
+        sh:nodeKind sh:IRI ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path rr:objectMap ;
+        sh:class rr:ObjectMap ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] .
+
+camayoc:RmlObjectMapShape a sh:NodeShape ;
+    sh:targetClass rr:ObjectMap ;
+    sh:xone (
+        [ sh:property [
+            sh:path rr:constant ;
+            sh:minCount 1 ;
+            sh:maxCount 1
+        ] ]
+        [ sh:property [
+            sh:path rml:reference ;
+            sh:datatype xsd:string ;
+            sh:minCount 1 ;
+            sh:maxCount 1
+        ] ]
+        [ sh:property [
+            sh:path rr:template ;
+            sh:datatype xsd:string ;
+            sh:minCount 1 ;
+            sh:maxCount 1
+        ] ]
+    ) ;
+    sh:property [
+        sh:path rr:termType ;
+        sh:in ( rr:IRI rr:Literal ) ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path rr:datatype ;
+        sh:nodeKind sh:IRI ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path rr:language ;
+        sh:datatype xsd:string ;
+        sh:maxCount 1
+    ] .

@@ -1,0 +1,28 @@
+@prefix ex: <https://example.invalid/rml/> .
+@prefix ql: <http://semweb.mmlab.be/ns/ql#> .
+@prefix rml: <http://semweb.mmlab.be/ns/rml#> .
+@prefix rr: <http://www.w3.org/ns/r2rml#> .
+
+ex:map a rr:TriplesMap ;
+    rml:logicalSource ex:source ;
+    rr:subjectMap ex:subject ;
+    rr:predicateObjectMap ex:name ;
+    rr:graph ex:target .
+
+ex:source a rml:LogicalSource ;
+    rml:source ex:external-truth ;
+    rml:referenceFormulation ql:JSONPath ;
+    rml:iterator "$[*]" .
+
+ex:subject a rr:SubjectMap ;
+    rr:template "https://example.invalid/entity/{id}" ;
+    rr:class ex:Entity ;
+    rr:termType rr:IRI .
+
+ex:name a rr:PredicateObjectMap ;
+    rr:predicate ex:nameValue ;
+    rr:objectMap ex:nameObject .
+
+ex:nameObject a rr:ObjectMap ;
+    rml:reference "name" ;
+    rr:termType rr:Literal .
