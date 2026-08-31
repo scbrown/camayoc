@@ -7,8 +7,12 @@
 
 # The governed subset implemented by docs/design/rml-executor.md. These shapes
 # admit standard RML/R2RML classes into Quipu without minting Camayoc aliases.
-# Semantic exclusions (joins, functions, dynamic predicates/graphs) remain an
+# Semantic exclusions (functions, dynamic predicates/graphs) remain an
 # executor preflight because SHACL closed-world checking is not used here.
+# Referencing object maps (rr:parentTriplesMap + rr:joinCondition) are
+# admitted as of camayoc-5bf — the R2RML spelling of a foreign-key-shaped
+# edge; the join is required even same-source, because an implicit identity
+# join would make edge semantics depend on shared logical sources.
 
 camayoc:RmlTriplesMapShape a sh:NodeShape ;
     sh:targetClass rr:TriplesMap ;
@@ -101,7 +105,36 @@ camayoc:RmlPredicateObjectMapShape a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path rr:objectMap ;
-        sh:class rr:ObjectMap ;
+        sh:or ( [ sh:class rr:ObjectMap ] [ sh:class rr:RefObjectMap ] ) ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] .
+
+camayoc:RmlRefObjectMapShape a sh:NodeShape ;
+    sh:targetClass rr:RefObjectMap ;
+    sh:property [
+        sh:path rr:parentTriplesMap ;
+        sh:class rr:TriplesMap ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path rr:joinCondition ;
+        sh:class rr:Join ;
+        sh:minCount 1
+    ] .
+
+camayoc:RmlJoinConditionShape a sh:NodeShape ;
+    sh:targetClass rr:Join ;
+    sh:property [
+        sh:path rr:child ;
+        sh:datatype xsd:string ;
+        sh:minCount 1 ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path rr:parent ;
+        sh:datatype xsd:string ;
         sh:minCount 1 ;
         sh:maxCount 1
     ] .

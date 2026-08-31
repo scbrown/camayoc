@@ -1,0 +1,26 @@
+@prefix ex: <https://example.invalid/rml/> .
+@prefix ql: <http://semweb.mmlab.be/ns/ql#> .
+@prefix rml: <http://semweb.mmlab.be/ns/rml#> .
+@prefix rr: <http://www.w3.org/ns/r2rml#> .
+@prefix aegis: <http://aegis.gastown.local/ontology/> .
+
+# Same-source referencing object map: orders and customers both read the one
+# CSV; placedBy edges join on customer_id. The FK-shaped edge case.
+ex:orders a rr:TriplesMap ;
+    rml:logicalSource ex:orders-source ; rr:subjectMap ex:order-subject ;
+    rr:predicateObjectMap ex:placed-by ; rr:graph ex:target .
+ex:customers a rr:TriplesMap ;
+    rml:logicalSource ex:orders-source ; rr:subjectMap ex:customer-subject ;
+    rr:graph ex:target .
+ex:orders-source a rml:LogicalSource ; rml:source ex:orders-truth ;
+    rml:referenceFormulation ql:CSV ; rml:iterator "row" .
+ex:order-subject a rr:SubjectMap ; rr:template "https://example.invalid/order/{id}" ;
+    rr:class ex:Order ; rr:termType rr:IRI .
+ex:customer-subject a rr:SubjectMap ;
+    rr:template "https://example.invalid/customer/{customer_id}" ; rr:termType rr:IRI .
+ex:placed-by a rr:PredicateObjectMap ; rr:predicate ex:placedBy ; rr:objectMap ex:placed-by-ref .
+ex:placed-by-ref a rr:RefObjectMap ; rr:parentTriplesMap ex:customers ;
+    rr:joinCondition ex:placed-by-join .
+ex:placed-by-join a rr:Join ; rr:child "customer_id" ; rr:parent "customer_id" .
+ex:orders-truth aegis:source_uri "file:orders.csv" ; aegis:access_via "file" ;
+    aegis:freshness "snapshot(fixture)" ; aegis:verified_by "sha256:fixture" .

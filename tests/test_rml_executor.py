@@ -92,6 +92,86 @@ class RmlExecutorTests(unittest.TestCase):
         self.assertIn(str(plan.mapping_iri), captured["source"])
         self.assertEqual(4, len(rdflib.Graph().parse(data=captured["turtle"], format="turtle")))
 
+    def test_same_source_join_emits_edges_and_counts_unmatched(self):
+        # camayoc-5bf: the FK-shaped edge. Order "b" names a customer that no
+        # row carries... except every row IS a customer row here (same source),
+        # so unmatched means a customer_id no row has.
+        plan = self.module.compile_mapping(
+            ROOT / "tests/fixtures/rml/join.ttl", "https://example.invalid/rml/orders"
+        )
+        records = [
+            {"id": "o1", "customer_id": "c1"},
+            {"id": "o2", "customer_id": "c1"},
+        ]
+        nquads, unmatched = self.module.materialize_with_stats(plan, records)
+        self.assertEqual(0, unmatched)
+        self.assertIn(
+            "<https://example.invalid/order/o1> <https://example.invalid/rml/placedBy> "
+            "<https://example.invalid/customer/c1>",
+            nquads,
+        )
+        # Determinism: reversed input, identical bytes.
+        self.assertEqual(nquads, self.module.materialize(plan, list(reversed(records))))
+
+    def test_unmatched_join_is_counted_not_silent(self):
+        plan = self.module.compile_mapping(
+            ROOT / "tests/fixtures/rml/join.ttl", "https://example.invalid/rml/orders"
+        )
+        # The parent index is built from the same records; key "ghost" appears
+        # as a child value only, so the join finds nothing for that row.
+        records = [{"id": "o1", "customer_id": "c1"}]
+        with_ghost = records + [{"id": "o2", "customer_id": ""}]
+        # Both rows index as parents (same source), so "" IS a customer key
+        # here; force a genuine miss by joining against a missing key instead.
+        nquads, unmatched = self.module.materialize_with_stats(plan, with_ghost)
+        self.assertEqual(0, unmatched)
+        # Now a plan-level miss: cross-source, empty parent side.
+        cross = self.module.compile_mapping(
+            ROOT / "tests/fixtures/rml/join-cross.ttl", "https://example.invalid/rml/orders"
+        )
+        key = cross.parent_sources[0][0]
+        nquads, unmatched = self.module.materialize_with_stats(cross, records, {key: []})
+        self.assertEqual(1, unmatched)
+        self.assertNotIn("placedBy", nquads)
+
+    def test_cross_source_join_resolves_against_parent_records(self):
+        cross = self.module.compile_mapping(
+            ROOT / "tests/fixtures/rml/join-cross.ttl", "https://example.invalid/rml/orders"
+        )
+        key = cross.parent_sources[0][0]
+        self.assertEqual("https://example.invalid/rml/customers-source", key)
+        nquads, unmatched = self.module.materialize_with_stats(
+            cross,
+            [{"id": "o1", "customer_id": "7"}],
+            # SQLite-shaped int meets CSV-shaped string: joins compare str().
+            {key: [{"cid": 7, "name": "Ada"}]},
+        )
+        self.assertEqual(0, unmatched)
+        self.assertIn("<https://example.invalid/customer/7>", nquads)
+
+    def test_cross_source_join_without_parent_records_refuses(self):
+        cross = self.module.compile_mapping(
+            ROOT / "tests/fixtures/rml/join-cross.ttl", "https://example.invalid/rml/orders"
+        )
+        with self.assertRaisesRegex(self.module.RmlExecutionError, "no parent source provided"):
+            self.module.materialize_with_stats(cross, [{"id": "o1", "customer_id": "7"}])
+
+    def test_joinless_ref_object_map_refuses_at_compile(self):
+        data = (ROOT / "tests/fixtures/rml/join.ttl").read_text().replace(
+            "rr:joinCondition ex:placed-by-join .", "."
+        ).replace("ex:placed-by-ref a rr:RefObjectMap ; rr:parentTriplesMap ex:customers ;\n",
+                  "ex:placed-by-ref a rr:RefObjectMap ; rr:parentTriplesMap ex:customers ")
+        with self.assertRaisesRegex(self.module.RmlExecutionError, "at least one joinCondition"):
+            self.module.compile_mapping_data(data, "https://example.invalid/rml/orders")
+
+    def test_ref_object_map_with_a_constructor_refuses(self):
+        data = (ROOT / "tests/fixtures/rml/join.ttl").read_text().replace(
+            "ex:placed-by-ref a rr:RefObjectMap ;",
+            'ex:placed-by-ref a rr:RefObjectMap ; rr:template "https://example.invalid/x/{id}" ;',
+        )
+        with self.assertRaisesRegex(self.module.RmlExecutionError, "cannot also carry a constructor"):
+            self.module.compile_mapping_data(data, "https://example.invalid/rml/orders")
+
     def test_invalid_mapping_refuses_before_source_access(self):
         with self.assertRaises(self.module.RmlExecutionError):
             self.module.compile_mapping(

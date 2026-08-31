@@ -1,7 +1,16 @@
 # Design: governed RML-subset execution
 
-> **Implementation status (2026-08-29):** ✅ **The bounded version-one executor
-> is implemented and verified end to end.** It fetches a mapping closure from
+> **Implementation status (2026-08-31):** ✅ **The bounded version-one executor
+> is implemented and verified end to end,** and **version two adds referencing
+> object maps** (camayoc-5bf, from the Spanner Graph investigation in quipu's
+> `docs/design/spanner-capabilities.md` §4.1): `rr:parentTriplesMap` +
+> `rr:joinCondition` are admitted — same-source joins read the child's own
+> records, cross-source joins load the parent's logical source via
+> `--parent-source-file <logical-source-iri>=<path>`, joins hash on the string
+> form of values, unmatched joins emit no triple but are counted in the
+> invocation report (`unmatched_joins`), and a join condition is required even
+> same-source. Functions, dynamic predicates/graphs, and logical targets remain
+> excluded. The v1 baseline: it fetches a mapping closure from
 > Quipu, preflights it before source access, reads file-backed JSON/CSV/SQLite,
 > emits deterministic N-Quads, and submits the result to a registered named
 > graph through Quipu's SHACL-governed `/knot` lane. The live fixture committed
@@ -91,7 +100,23 @@ Supported term-map terms:
 | `rr:predicateObjectMap` | Constant predicate plus one supported object map. |
 | `rr:graph` | One explicit target named graph for the triples map. |
 
-Version one excludes referencing object maps, joins, multiple logical sources,
+Version one excluded referencing object maps and joins; **version two admits
+them** (camayoc-5bf). A `rr:RefObjectMap` carries exactly one
+`rr:parentTriplesMap` (a triples map in the same closure, with its own subject
+map and logical source) and at least one `rr:joinCondition`, each with exactly
+one `rr:child` and one `rr:parent` reference — the join is required even when
+both maps share a logical source, because an implicit identity join would make
+edge semantics depend on which source two maps happen to share. Join
+evaluation is a hash join on the **string form** of values (a CSV `"1"` meets
+a SQLite `1`), the object emitted is the parent map's generated subject (must
+be an IRI), and an unmatched join emits no triple — standard R2RML — but is
+counted and reported as `unmatched_joins` so the silence is visible. Same-source
+joins read the child's records; a cross-source join requires the parent's
+logical source to be an IRI and its file supplied with
+`--parent-source-file <logical-source-iri>=<path>`, loaded under the same
+byte/row bounds as any source.
+
+Still excluded: multiple logical sources per triples map,
 custom functions, inverse expressions, dynamic predicates or graphs, XML,
 remote SQL servers, SPARQL federation, streaming inputs, and RML logical
 targets. Encountering any excluded term is a validation error, never a warning.
@@ -176,6 +201,7 @@ The first CLI surface is intentionally narrow:
 ```text
 scripts/rml_executor.py validate <triples-map-iri> [--mapping-file FILE]
 scripts/rml_executor.py execute <triples-map-iri> --source-file FILE [--mapping-file FILE] [--dry-run]
+    [--parent-source-file <logical-source-iri>=<path>]...
 ```
 
 Production mode resolves mapping RDF from Quipu. `--mapping-file` exists for

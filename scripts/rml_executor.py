@@ -24,7 +24,11 @@ RR = Namespace("http://www.w3.org/ns/r2rml#")
 QL = Namespace("http://semweb.mmlab.be/ns/ql#")
 AEGIS = Namespace("http://aegis.gastown.local/ontology/")
 CONSTRUCTORS = (RR.constant, RML.reference, RR.template)
-FORBIDDEN = (RR.parentTriplesMap, RR.joinCondition, RML.functionExecution, RML.logicalTarget)
+# v1 also forbade rr:parentTriplesMap and rr:joinCondition; referencing object
+# maps are the v2 addition (camayoc-5bf) because they are the R2RML spelling of
+# Spanner Graph's foreign-key-shaped edges. Functions and logical targets stay
+# out: they would make output depend on code the mapping closure cannot carry.
+FORBIDDEN = (RML.functionExecution, RML.logicalTarget)
 TEMPLATE_REF = re.compile(r"\{([^{}]+)\}")
 
 
@@ -42,9 +46,34 @@ class TermMap:
 
 
 @dataclass(frozen=True)
+class ParentSource:
+    """A cross-source join's parent logical source, loadable like a plan's own."""
+
+    source_iri: URIRef
+    source_uri: str
+    access_via: str
+    formulation: URIRef
+    iterator: str | None
+    query: str | None
+
+
+@dataclass(frozen=True)
+class RefObject:
+    """A referencing object map: the object is the parent map's subject for the
+    row(s) the join conditions select. Joins compare the string form of values,
+    so a CSV "1" and a SQLite 1 meet — the deterministic choice, stated rather
+    than left to adapter luck."""
+
+    parent_map: URIRef
+    parent_subject: TermMap
+    source_key: str
+    joins: tuple[tuple[str, str], ...]
+
+
+@dataclass(frozen=True)
 class PredicateObject:
     predicate: URIRef
-    object_map: TermMap
+    object_map: TermMap | RefObject
 
 
 @dataclass(frozen=True)
@@ -63,6 +92,8 @@ class Plan:
     classes: tuple[URIRef, ...]
     predicate_objects: tuple[PredicateObject, ...]
     mapping_hash: str
+    # Cross-source parents only; a same-source join reads the child's records.
+    parent_sources: tuple[tuple[str, ParentSource], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -94,6 +125,49 @@ def _term_map(graph: Graph, node) -> TermMap:
     )
 
 
+def _parent_source(graph: Graph, logical) -> ParentSource:
+    source = _one(graph, logical, RML.source)
+    formulation = _one(graph, logical, RML.referenceFormulation)
+    if formulation not in (QL.CSV, QL.JSONPath, RR.SQL2008):
+        raise RmlExecutionError(f"unsupported_term: {formulation}")
+    iterator = _one(graph, logical, RML.iterator, False)
+    query = _one(graph, logical, RML.query, False)
+    return ParentSource(
+        source,
+        str(_one(graph, source, AEGIS.source_uri)),
+        str(_one(graph, source, AEGIS.access_via)),
+        formulation,
+        str(iterator) if iterator else None,
+        str(query) if query else None,
+    )
+
+
+def _ref_object(graph: Graph, node, parent, child_logical, parent_sources: dict) -> RefObject:
+    if any(_one(graph, node, predicate, False) is not None for predicate in CONSTRUCTORS):
+        raise RmlExecutionError("invalid_term_map: ref object map cannot also carry a constructor")
+    if (parent, RDF.type, RR.TriplesMap) not in graph:
+        raise RmlExecutionError("invalid_term_map: parentTriplesMap is not a TriplesMap in the closure")
+    joins = []
+    for join in graph.objects(node, RR.joinCondition):
+        joins.append((str(_one(graph, join, RR.child)), str(_one(graph, join, RR.parent))))
+    if not joins:
+        # No implicit identity join, even same-source: edge semantics must not
+        # depend on which logical source two maps happen to share.
+        raise RmlExecutionError("invalid_term_map: ref object map requires at least one joinCondition")
+    parent_logical = _one(graph, parent, RML.logicalSource)
+    parent_subject = _term_map(graph, _one(graph, parent, RR.subjectMap))
+    if parent_logical == child_logical:
+        source_key = str(child_logical)
+    elif isinstance(parent_logical, URIRef):
+        source_key = str(parent_logical)
+        parent_sources.setdefault(source_key, _parent_source(graph, parent_logical))
+    else:
+        # A cross-source parent must be addressable so --parent-source-file
+        # can name it; a blank-node logical source cannot be.
+        raise RmlExecutionError("unsupported_term: cross-source join needs an IRI logical source")
+    return RefObject(parent, parent_subject, source_key, tuple(sorted(joins)))
+
+
 def compile_mapping_data(data: str, mapping_iri: str) -> Plan:
     """Parse and preflight a complete mapping closure before source access."""
     graph = Graph().parse(data=data, format="turtle")
@@ -118,12 +192,18 @@ def compile_mapping_data(data: str, mapping_iri: str) -> Plan:
     query = _one(graph, logical, RML.query, False)
     subject_map = _term_map(graph, subject_node)
     predicate_objects = []
+    parent_sources: dict[str, ParentSource] = {}
     for pom in graph.objects(mapping, RR.predicateObjectMap):
         predicate = _one(graph, pom, RR.predicate)
         object_node = _one(graph, pom, RR.objectMap)
         if not isinstance(predicate, URIRef):
             raise RmlExecutionError("unsupported_term: dynamic predicate")
-        predicate_objects.append(PredicateObject(predicate, _term_map(graph, object_node)))
+        parent = _one(graph, object_node, RR.parentTriplesMap, False)
+        if parent is not None:
+            object_map = _ref_object(graph, object_node, parent, logical, parent_sources)
+        else:
+            object_map = _term_map(graph, object_node)
+        predicate_objects.append(PredicateObject(predicate, object_map))
     canonical = graph.serialize(format="nt").encode()
     return Plan(
         mapping, source, str(source_uri), str(access_via), str(freshness), str(verified_by),
@@ -132,6 +212,7 @@ def compile_mapping_data(data: str, mapping_iri: str) -> Plan:
         tuple(sorted(graph.objects(subject_node, RR["class"]), key=str)),
         tuple(sorted(predicate_objects, key=lambda item: str(item.predicate))),
         "sha256:" + hashlib.sha256(b"".join(sorted(canonical.splitlines(True)))).hexdigest(),
+        tuple(sorted(parent_sources.items())),
     )
 
 
@@ -148,7 +229,11 @@ CONSTRUCT {{ ?s ?p ?o }} WHERE {{
   {{ VALUES ?s {{ <{mapping_iri}> }} }} UNION
   {{ <{mapping_iri}> (rml:logicalSource|rr:subjectMap|rr:predicateObjectMap) ?s }} UNION
   {{ <{mapping_iri}> rr:predicateObjectMap/rr:objectMap ?s }} UNION
-  {{ <{mapping_iri}> rml:logicalSource/rml:source ?s }}
+  {{ <{mapping_iri}> rml:logicalSource/rml:source ?s }} UNION
+  {{ <{mapping_iri}> rr:predicateObjectMap/rr:objectMap/rr:joinCondition ?s }} UNION
+  {{ <{mapping_iri}> rr:predicateObjectMap/rr:objectMap/rr:parentTriplesMap ?s }} UNION
+  {{ <{mapping_iri}> rr:predicateObjectMap/rr:objectMap/rr:parentTriplesMap/(rml:logicalSource|rr:subjectMap) ?s }} UNION
+  {{ <{mapping_iri}> rr:predicateObjectMap/rr:objectMap/rr:parentTriplesMap/rml:logicalSource/rml:source ?s }}
   ?s ?p ?o
 }}"""
     body = json.dumps({"construct": query, "format": "turtle"}, sort_keys=True).encode()
@@ -281,9 +366,51 @@ def _value(term_map: TermMap, record: dict):
     return Literal(raw, datatype=term_map.datatype, lang=term_map.language)
 
 
-def materialize(plan: Plan, records: Sequence[dict]) -> str:
-    """Return sorted, duplicate-free canonical N-Quads for source-order records."""
+def _join_key(record: dict, columns: Sequence[str]) -> tuple[str, ...]:
+    for column in columns:
+        if column not in record:
+            raise RmlExecutionError(f"materialization_error: missing join reference {column}")
+    return tuple(str(record[column]) for column in columns)
+
+
+def _parent_indexes(plan: Plan, records, parent_records) -> dict[RefObject, dict]:
+    """Hash-join build side: parent join-key tuple -> generated parent subjects."""
+    cross_keys = {key for key, _ in plan.parent_sources}
+    indexes: dict[RefObject, dict] = {}
+    for item in plan.predicate_objects:
+        ref = item.object_map
+        if not isinstance(ref, RefObject) or ref in indexes:
+            continue
+        if ref.source_key in cross_keys:
+            if ref.source_key not in (parent_records or {}):
+                raise RmlExecutionError(
+                    f"source_policy_refused: no parent source provided for {ref.source_key}"
+                )
+            rows = parent_records[ref.source_key]
+        else:
+            rows = records
+        index: dict = {}
+        for row in rows:
+            subject = _value(ref.parent_subject, row)
+            if not isinstance(subject, URIRef):
+                raise RmlExecutionError("materialization_error: parent subject must be an IRI")
+            index.setdefault(_join_key(row, [parent for _, parent in ref.joins]), set()).add(subject)
+        indexes[ref] = index
+    return indexes
+
+
+def materialize_with_stats(
+    plan: Plan, records: Sequence[dict], parent_records: dict | None = None
+) -> tuple[str, int]:
+    """Sorted, duplicate-free canonical N-Quads, plus the unmatched-join count.
+
+    An unmatched join emits no triple (standard R2RML) but is COUNTED so the
+    silence is visible in the invocation report — the same stance Spanner takes
+    on dangling edges: absent unless a constraint says otherwise, never quiet.
+    """
+    indexes = _parent_indexes(plan, records, parent_records)
     quads = set()
+    unmatched = 0
     for record in records:
         subject = _value(plan.subject_map, record)
         if not isinstance(subject, URIRef):
@@ -291,9 +418,26 @@ def materialize(plan: Plan, records: Sequence[dict]) -> str:
         for class_iri in plan.classes:
             quads.add(f"{subject.n3()} {RDF.type.n3()} {class_iri.n3()} {plan.target_graph.n3()} .\n")
         for item in plan.predicate_objects:
-            obj = _value(item.object_map, record)
-            quads.add(f"{subject.n3()} {item.predicate.n3()} {obj.n3()} {plan.target_graph.n3()} .\n")
-    return "".join(sorted(quads))
+            if isinstance(item.object_map, RefObject):
+                ref = item.object_map
+                parents = indexes[ref].get(_join_key(record, [child for child, _ in ref.joins]))
+                if not parents:
+                    unmatched += 1
+                    continue
+                for parent_subject in parents:
+                    quads.add(
+                        f"{subject.n3()} {item.predicate.n3()} {parent_subject.n3()} "
+                        f"{plan.target_graph.n3()} .\n"
+                    )
+            else:
+                obj = _value(item.object_map, record)
+                quads.add(f"{subject.n3()} {item.predicate.n3()} {obj.n3()} {plan.target_graph.n3()} .\n")
+    return "".join(sorted(quads)), unmatched
+
+
+def materialize(plan: Plan, records: Sequence[dict], parent_records: dict | None = None) -> str:
+    """Return sorted, duplicate-free canonical N-Quads for source-order records."""
+    return materialize_with_stats(plan, records, parent_records)[0]
 
 
 def nquads_to_turtle(nquads: str) -> str:
@@ -365,6 +509,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("triples_map_iri")
     result.add_argument("--mapping-file", type=Path)
     result.add_argument("--source-file", type=Path)
+    # <logical-source-iri>=<path>, once per cross-source join parent.
+    result.add_argument("--parent-source-file", action="append", default=[])
     result.add_argument("--allowed-root", type=Path)
     result.add_argument("--server")
     result.add_argument("--actor")
@@ -388,11 +534,30 @@ def main(argv=None) -> int:
             if not args.source_file:
                 raise RmlExecutionError("source_policy_refused: --source-file is required")
             source = load_source(plan, args.source_file, args.allowed_root or args.source_file.parent)
-            nquads = materialize(plan, source.records)
+            provided = {}
+            for spec in args.parent_source_file:
+                key, _, path = spec.partition("=")
+                if not key or not path:
+                    raise RmlExecutionError(
+                        "source_policy_refused: --parent-source-file needs <logical-source-iri>=<path>"
+                    )
+                provided[key] = Path(path)
+            parent_records = {}
+            for key, parent_source in plan.parent_sources:
+                if key not in provided:
+                    raise RmlExecutionError(
+                        f"source_policy_refused: cross-source join needs --parent-source-file {key}=<path>"
+                    )
+                parent_records[key] = load_source(
+                    parent_source, provided[key], args.allowed_root or provided[key].parent
+                ).records
+            nquads, unmatched = materialize_with_stats(plan, source.records, parent_records)
             output.update(
                 phase="materialized", nquads=nquads, source_hash=source.source_hash,
                 input_count=len(source.records), output_count=len(nquads.splitlines()),
             )
+            if any(isinstance(item.object_map, RefObject) for item in plan.predicate_objects):
+                output.update(unmatched_joins=unmatched)
             if args.server and not args.dry_run:
                 if not args.actor:
                     raise RmlExecutionError("source_policy_refused: --actor is required for writes")
