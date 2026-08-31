@@ -245,6 +245,17 @@ Transcript-derived summaries and diagnoses, written by a model, landing in
 gap: a producer that records sub-agent responses is exactly what a session
 adapter is — but v1 claims only quarantine, not evaluation.
 
+### 3.5 Prose entity mentions (deterministic, still quarantined)
+
+**Implemented: `scripts/extract_entities.py`** (camayoc-0c8). Markdown prose →
+entity mentions, matched against a gazetteer of the graph's own labels plus
+explicit user-declared regex patterns — no model in the loop. Deterministic
+extraction does not make the claim `observed`: "this prose is about that
+entity" is a reading, so every mention routes to `crew:inferred` and never
+ROOT. Ambiguous labels match for nobody, abstentions are counted on stderr,
+and an unreachable store or unprovisioned plane refuses before a triple
+moves. See [entity-mentions.md](entity-mentions.md).
+
 ## 4. What ingress never does
 
 - Never writes to a governed plane without the tags (SHACL enforces).

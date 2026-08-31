@@ -166,6 +166,14 @@ measured, claim-by-claim ledger.
   thresholds, and suite watermark; the embedding scorer is wired and selects
   itself only when weights are actually present, so a verdict can never claim
   `semantic: true` over a word-overlap number.
+- **Quarantined entity extraction** (`scripts/extract_entities.py`) — finds
+  entity mentions in markdown prose deterministically: a gazetteer built from
+  the graph's own labels plus explicit user-declared regex patterns, no model
+  in the loop. Deterministic does not mean `observed` — a mention is a reading
+  of the text, so every fact lands in the inferred plane, tagged, never ROOT.
+  Ambiguous labels match for nobody, re-runs are byte-identical, and an
+  unreachable store or unprovisioned plane refuses loudly before anything is
+  written.
 - **Settled-decision collision check** (`scripts/settled_decisions.py`) —
   scores a proposed decision against the standing human decisions and
   surfaces likely re-litigation *before* the write. Advisory, lexical and

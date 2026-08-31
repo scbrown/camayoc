@@ -26,6 +26,14 @@ ingest-git *args:
 ingest-usage *args:
     @python3 scripts/ingest_session_usage.py {{args}}
 
+# Extract entity mentions from markdown prose (docs/design/entity-mentions.md).
+# Deterministic — gazetteer from the graph's own labels plus explicit
+# --patterns, no model — and still quarantined: everything routes to the
+# inferred plane, never ROOT. Refuses loudly when the store is unreachable or
+# the plane is not provisioned; --dry-run prints the would-be triples.
+extract-entities *args:
+    @python3 scripts/extract_entities.py {{args}}
+
 # The refused-write denominator (docs/design/incident-corpus.md §4.2, §5.1):
 # quipu's durable write.refused stream joined to the accepted Verification
 # population. Reports, never writes — a refusal RATE is a judgment computed at
