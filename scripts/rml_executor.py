@@ -492,6 +492,77 @@ def governed_write(
     return result
 
 
+def fetch_materialization(server: str, target_graph, opener=request.urlopen) -> dict | None:
+    """Read the target graph's last-materialization stamp from `GET /graphs`.
+
+    Quipu serves it parsed from transaction provenance (quipu-212), so this
+    is the record of what actually committed, not a registry that can drift.
+    `None` means the graph has never been RML-materialized (or predates the
+    surface — an absent field, like an absent freshness note, is 'cannot
+    tell', never 'fresh')."""
+    req = request.Request(
+        server.rstrip("/") + "/graphs", headers={"X-Quipu-Client": "agent-adhoc"}
+    )
+    try:
+        with opener(req, timeout=30) as response:
+            body = json.load(response)
+    except (error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise RmlExecutionError(f"freshness_indeterminate: {exc}") from exc
+    for row in body.get("graphs", ()):
+        if row.get("iri") == str(target_graph):
+            return row.get("materialization")
+    return None
+
+
+FRESHNESS_WINDOW = re.compile(r"max_age\((\d+)([smhd])\)")
+_WINDOW_SECONDS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+
+
+def _window_elapsed(freshness: str, materialized_at: str | None, now) -> bool:
+    """True when a machine-readable aegis:freshness window has passed.
+
+    Only `max_age(N[smhd])` is machine-readable; any other declared freshness
+    (e.g. `snapshot(fixture)`) contributes nothing to the verdict — the hash
+    comparison stands alone. `now` arrives as an argument because the
+    executor never invents it; the verdict is a read-time judgment and the
+    caller owns the clock."""
+    import datetime as _dt
+
+    match = FRESHNESS_WINDOW.fullmatch(freshness or "")
+    if not match or not materialized_at:
+        return False
+    then = _dt.datetime.fromisoformat(materialized_at.replace("Z", "+00:00"))
+    if then.tzinfo is None:
+        then = then.replace(tzinfo=_dt.timezone.utc)
+    window = int(match.group(1)) * _WINDOW_SECONDS[match.group(2)]
+    return (now - then).total_seconds() > window
+
+
+def freshness_verdict(plan: Plan, current_hash: str, materialization: dict | None, now) -> dict:
+    """The stale/fresh judgment behind `freshness` and `remap`.
+
+    A mapping is STALE when the source bytes no longer match the hash the
+    last materialization verified, or when a declared max_age window has
+    elapsed. NEVER_MATERIALIZED is its own verdict, not a kind of stale —
+    the caller may need to distinguish 'run it the first time' from 're-run
+    it'. FRESH means re-running would reach quipu's idempotent `unchanged`
+    outcome for the same bytes, which is also why over-triggering remap is
+    harmless."""
+    if materialization is None:
+        return {"verdict": "never_materialized", "current_hash": current_hash}
+    result = {
+        "current_hash": current_hash,
+        "materialized_hash": materialization.get("verified_hash"),
+        "materialized_at": materialization.get("timestamp"),
+        "materialized_tx": materialization.get("tx"),
+    }
+    if materialization.get("verified_hash") != current_hash:
+        return {"verdict": "stale", "reason": "source_hash_changed", **result}
+    if _window_elapsed(plan.freshness, materialization.get("timestamp"), now):
+        return {"verdict": "stale", "reason": "window_elapsed", **result}
+    return {"verdict": "fresh", **result}
+
+
 def auth_token() -> str | None:
     """Resolve Quipu write auth without placing credentials in mapping data."""
     if os.environ.get("QUIPU_AUTH_TOKEN"):
@@ -505,7 +576,7 @@ def auth_token() -> str | None:
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description=__doc__)
-    result.add_argument("command", choices=("validate", "execute"))
+    result.add_argument("command", choices=("validate", "execute", "freshness", "remap"))
     result.add_argument("triples_map_iri")
     result.add_argument("--mapping-file", type=Path)
     result.add_argument("--source-file", type=Path)
@@ -530,6 +601,26 @@ def main(argv=None) -> int:
         else:
             raise RmlExecutionError("mapping_not_found: --mapping-file or --server is required")
         output = {"phase": "validated", "mapping": str(plan.mapping_iri), "mapping_hash": plan.mapping_hash}
+        if args.command in ("freshness", "remap"):
+            if not args.server:
+                raise RmlExecutionError("freshness_indeterminate: --server is required")
+            if not args.source_file:
+                raise RmlExecutionError("source_policy_refused: --source-file is required")
+            import datetime as _dt
+
+            source = load_source(plan, args.source_file, args.allowed_root or args.source_file.parent)
+            stamp = fetch_materialization(args.server, plan.target_graph)
+            verdict = freshness_verdict(
+                plan, source.source_hash, stamp, _dt.datetime.now(_dt.timezone.utc)
+            )
+            output.update(phase="freshness", **verdict)
+            if args.command == "freshness" or verdict["verdict"] == "fresh":
+                # remap on a fresh mapping is a deliberate no-op: the same
+                # bytes would only reach quipu's idempotent `unchanged`.
+                print(json.dumps(output, sort_keys=True))
+                return 0
+            # remap on stale/never_materialized falls through to execute.
+            args.command = "execute"
         if args.command == "execute":
             if not args.source_file:
                 raise RmlExecutionError("source_policy_refused: --source-file is required")

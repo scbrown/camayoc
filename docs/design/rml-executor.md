@@ -202,7 +202,21 @@ The first CLI surface is intentionally narrow:
 scripts/rml_executor.py validate <triples-map-iri> [--mapping-file FILE]
 scripts/rml_executor.py execute <triples-map-iri> --source-file FILE [--mapping-file FILE] [--dry-run]
     [--parent-source-file <logical-source-iri>=<path>]...
+scripts/rml_executor.py freshness <triples-map-iri> --source-file FILE --server URL
+scripts/rml_executor.py remap     <triples-map-iri> --source-file FILE --server URL [--actor A] [--dry-run]
 ```
+
+`freshness` (quipu-212) reads the target graph's last-materialization stamp
+from quipu's `GET /graphs` (served from transaction provenance, so it cannot
+drift from what committed) and judges: `never_materialized`, `stale`
+(`source_hash_changed`, or `window_elapsed` when the declared
+`aegis:freshness` is a machine-readable `max_age(N[smhd])` — any other
+declaration contributes nothing and the hash comparison stands alone), or
+`fresh`. `remap` acts on the verdict: fresh is a deliberate no-op (the same
+bytes would only reach quipu's idempotent `unchanged`), stale or
+never-materialized falls through to the ordinary execute path — which is
+what makes over-triggering remap harmless. The verdict is a read-time
+judgment; the executor still never invents "now" for materialized output.
 
 Production mode resolves mapping RDF from Quipu. `--mapping-file` exists for
 conformance tests and bootstrap before the RML shapes are loaded; non-dry-run

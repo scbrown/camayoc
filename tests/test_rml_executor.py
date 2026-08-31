@@ -172,6 +172,72 @@ class RmlExecutorTests(unittest.TestCase):
         with self.assertRaisesRegex(self.module.RmlExecutionError, "cannot also carry a constructor"):
             self.module.compile_mapping_data(data, "https://example.invalid/rml/orders")
 
+    def test_freshness_verdicts_cover_all_three_arms(self):
+        # quipu-212: never_materialized / stale / fresh are distinct verdicts;
+        # 'no record' must not read as either fresh or stale.
+        from datetime import datetime, timezone
+        plan = self.module.compile_mapping(
+            ROOT / "tests/fixtures/rml/valid.ttl", "https://example.invalid/rml/map"
+        )
+        now = datetime(2026, 8, 31, tzinfo=timezone.utc)
+        h = "sha256:" + "a" * 64
+        self.assertEqual(
+            "never_materialized",
+            self.module.freshness_verdict(plan, h, None, now)["verdict"],
+        )
+        stamp = {"verified_hash": h, "timestamp": "2026-08-30T00:00:00Z", "tx": 7}
+        self.assertEqual(
+            "fresh", self.module.freshness_verdict(plan, h, stamp, now)["verdict"]
+        )
+        stale = self.module.freshness_verdict(plan, "sha256:" + "b" * 64, stamp, now)
+        self.assertEqual("stale", stale["verdict"])
+        self.assertEqual("source_hash_changed", stale["reason"])
+
+    def test_a_declared_max_age_window_elapses(self):
+        # Only max_age(N[smhd]) is machine-readable; snapshot(fixture) — the
+        # plan's actual declaration — contributes nothing, so the elapsed
+        # check is exercised directly.
+        from datetime import datetime, timezone
+        now = datetime(2026, 8, 31, tzinfo=timezone.utc)
+        elapsed = self.module._window_elapsed("max_age(1h)", "2026-08-30T00:00:00Z", now)
+        self.assertTrue(elapsed)
+        inside = self.module._window_elapsed("max_age(2d)", "2026-08-30T12:00:00Z", now)
+        self.assertFalse(inside)
+        opaque = self.module._window_elapsed("snapshot(fixture)", "2020-01-01T00:00:00Z", now)
+        self.assertFalse(opaque, "a non-machine-readable freshness never elapses")
+
+    def test_fetch_materialization_reads_the_graphs_listing(self):
+        class Response(io.BytesIO):
+            def __enter__(self): return self
+            def __exit__(self, *_args): return False
+
+        listing = {
+            "graphs": [
+                {"iri": "https://example.invalid/rml/other", "g": 3},
+                {
+                    "iri": "https://example.invalid/rml/target",
+                    "g": 4,
+                    "materialization": {"verified_hash": "sha256:cc", "tx": 9},
+                },
+            ]
+        }
+
+        def opener(req, timeout):
+            self.assertTrue(req.full_url.endswith("/graphs"))
+            return Response(json.dumps(listing).encode())
+
+        stamp = self.module.fetch_materialization(
+            "https://example.invalid", "https://example.invalid/rml/target", opener=opener
+        )
+        self.assertEqual("sha256:cc", stamp["verified_hash"])
+        # A graph with no stamp — and a graph not listed — both return None.
+        self.assertIsNone(self.module.fetch_materialization(
+            "https://example.invalid", "https://example.invalid/rml/other", opener=opener
+        ))
+        self.assertIsNone(self.module.fetch_materialization(
+            "https://example.invalid", "https://example.invalid/rml/missing", opener=opener
+        ))
+
     def test_invalid_mapping_refuses_before_source_access(self):
         with self.assertRaises(self.module.RmlExecutionError):
             self.module.compile_mapping(
