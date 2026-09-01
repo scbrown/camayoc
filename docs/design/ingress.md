@@ -193,7 +193,15 @@ reaches the whole surface.
 A tracker or harness with its own records can be backfilled and corroborated
 by a deterministic parser translating records → episodes tagged `observed`:
 
-- **Beads (`bd`)** is the cleanest such source: agent-first, JSON out, and a
+**Implemented for beads/st: `scripts/ingest_work_items.py`.** It consumes the
+public `br show <id> --json` record, reuses the existing `WorkItem` class, and
+routes an ordinary governed episode to `crew:records`. The stable tracker id is
+both the node name and `aegis:identifier`, so lookup works from record to graph
+and from graph back to record. `--about <IRI>` records explicit WorkItem →
+Directive/entity mappings without minting a tracker-specific class. Quipu owns
+none of this translation: it only stores the episode Camayoc produces.
+
+- **Beads (`br`)** is the cleanest such source: agent-first, JSON out, and a
   bead *is* a `WorkItem` record — id, status, dependencies, lifecycle — so
   the parse is nearly a projection. Where beads is st's tracker backend, one
   parser covers both.
