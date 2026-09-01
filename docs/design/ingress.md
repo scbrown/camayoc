@@ -199,7 +199,11 @@ routes an ordinary governed episode to `crew:records`. The stable tracker id is
 both the node name and `aegis:identifier`, so lookup works from record to graph
 and from graph back to record. `--about <IRI>` records explicit WorkItem →
 Directive/entity mappings without minting a tracker-specific class. Quipu owns
-none of this translation: it only stores the episode Camayoc produces.
+none of this translation: it only stores the episode Camayoc produces. Mutable
+record versions are immutable `Observation` nodes keyed by a content digest;
+the WorkItem projection is byte-identical on every run. A failed record is
+printed as `outcome=parked` with exit 2 so batch callers can continue instead
+of head-of-line blocking the lane.
 
 - **Beads (`br`)** is the cleanest such source: agent-first, JSON out, and a
   bead *is* a `WorkItem` record — id, status, dependencies, lifecycle — so

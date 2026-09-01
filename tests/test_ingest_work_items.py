@@ -35,6 +35,7 @@ class WorkItemIngressTests(unittest.TestCase):
         self.assertEqual("WorkItem", node["type"])
         self.assertEqual("observed", node["properties"]["sourceKind"])
         self.assertEqual(ingest.planes.plane_for("observed"), body["graph"])
+        self.assertEqual("Observation", body["nodes"][1]["type"])
         self.assertNotIn("Bead", str(body))
 
     def test_stable_identifier_is_the_bidirectional_lookup_key(self):
@@ -45,26 +46,30 @@ class WorkItemIngressTests(unittest.TestCase):
     def test_directive_mapping_is_an_about_edge(self):
         iri = f"{ingest.BASE_NS}directive-one"
         body = self.body(about=[iri, iri])
-        self.assertEqual([{"source": "aegis-abc123", "target": "directive-one", "relation": "about"}], body["edges"])
+        self.assertIn(
+            {"source": "aegis-abc123", "target": "directive-one", "relation": "about"},
+            body["edges"],
+        )
 
     def test_external_about_iri_is_refused_not_minted_as_a_wrong_local_node(self):
         with self.assertRaisesRegex(ingest.WorkItemError, "safe local entity"):
             self.body(about=["http://example.test/directive/one"])
 
-    def test_open_status_is_not_stored_as_a_decaying_judgment(self):
+    def test_status_is_an_immutable_observation_not_a_work_item_judgment(self):
         props = self.body()["nodes"][0]["properties"]
         self.assertNotIn("status", props)
         self.assertNotIn("outcome", props)
+        self.assertIn('"status":"in_progress"', self.body()["nodes"][1]["properties"]["observedValue"])
 
-    def test_close_is_a_durable_done_outcome(self):
-        record = {**OPEN, "status": "closed", "closed_at": "2026-09-02T00:00:00Z"}
-        props = self.body(record)["nodes"][0]["properties"]
-        self.assertEqual("done", props["outcome"])
-        self.assertEqual("2026-09-02T00:00:00Z", props["closedAt"])
+    def test_changed_record_mints_a_new_observation_but_identical_work_item(self):
+        first = self.body()
+        changed = self.body({**OPEN, "title": "Corrected title", "updated_at": "2026-09-02T00:00:00Z"})
+        self.assertEqual(first["nodes"][0], changed["nodes"][0])
+        self.assertNotEqual(first["nodes"][1]["name"], changed["nodes"][1]["name"])
+        self.assertNotEqual(first["name"], changed["name"])
 
-    def test_closed_without_timestamp_is_refused(self):
-        with self.assertRaisesRegex(ingest.WorkItemError, "closed_at"):
-            self.body({**OPEN, "status": "closed"})
+    def test_identical_record_is_byte_stable(self):
+        self.assertEqual(self.body(), self.body())
 
     def test_br_one_element_array_is_accepted(self):
         self.assertEqual("aegis-abc123", self.body([OPEN])["nodes"][0]["name"])

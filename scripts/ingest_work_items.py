@@ -15,6 +15,7 @@ that exact body through Camayoc's ingress helper.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -53,9 +54,10 @@ def _record(payload: object) -> dict:
 def episode_for(payload: object, *, actor: str, source: str, about: list[str] | None = None) -> dict:
     """Return the governed episode for one tracker record.
 
-    Mutable tracker status is deliberately not copied.  Open/in-progress is a
-    read-time judgment; only a recorded close becomes the durable ``done``
-    outcome required by the WorkItem model.
+    Mutable tracker fields become an immutable Observation keyed by a digest
+    of the record version.  The WorkItem itself is re-emitted byte-identically,
+    so a title/status/assignee change cannot append a second functional
+    ``rdfs:comment`` and poison the ingress lane.
     """
     record = _record(payload)
     item_id = record.get("id")
@@ -64,23 +66,34 @@ def episode_for(payload: object, *, actor: str, source: str, about: list[str] | 
     if not all(isinstance(v, str) and v.strip() for v in (item_id, title, created)):
         raise WorkItemError("tracker record needs non-empty id, title, and created_at")
 
+    updated = record.get("updated_at") or created
+    if not isinstance(updated, str) or not updated.strip():
+        raise WorkItemError("tracker record needs a non-empty updated_at or created_at")
+
     properties: dict[str, str] = {
         "sourceKind": SOURCE_KIND,
         "identifier": item_id,
         "createdAt": created,
     }
-    if record.get("status") == "closed":
-        closed = record.get("closed_at")
-        if not isinstance(closed, str) or not closed.strip():
-            raise WorkItemError("closed tracker record needs closed_at; refusing to invent it")
-        properties.update({"closedAt": closed, "outcome": "done"})
 
-    edges = [
+    snapshot = {
+        "id": item_id,
+        "title": title,
+        "status": record.get("status"),
+        "assignee": record.get("assignee"),
+        "updated_at": updated,
+        "closed_at": record.get("closed_at"),
+    }
+    canonical = json.dumps(snapshot, sort_keys=True, separators=(",", ":"))
+    version = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    observation = f"tracker-observation-{item_id}-{version}"
+
+    edges = [{"source": item_id, "target": observation, "relation": "observes"}, *[
         {"source": item_id, "target": _entity_name(iri), "relation": "about"}
         for iri in sorted(set(about or []))
-    ]
+    ]]
     body = {
-        "name": f"tracker-work-item:{item_id}",
+        "name": f"tracker-work-item:{item_id}:{version}",
         "graph": planes.plane_for(SOURCE_KIND),
         "episode_body": f"Deterministic tracker projection for {item_id}",
         "source": source,
@@ -88,8 +101,17 @@ def episode_for(payload: object, *, actor: str, source: str, about: list[str] | 
         "nodes": [{
             "name": item_id,
             "type": "WorkItem",
-            "description": title,
+            "description": item_id,
             "properties": properties,
+        }, {
+            "name": observation,
+            "type": "Observation",
+            "description": canonical,
+            "properties": {
+                "sourceKind": SOURCE_KIND,
+                "observedAt": updated,
+                "observedValue": canonical,
+            },
         }],
         "edges": edges,
     }
@@ -110,7 +132,13 @@ def main() -> int:
     record = _record(payload)
     source = args.source or f"br:{quote(str(record.get('id', '')), safe='-')}"
     body = episode_for(record, actor=args.actor, source=source, about=args.about)
-    result = planes._post("/episode", body) if args.post else body
+    try:
+        result = planes._post("/episode", body) if args.post else body
+    except Exception as exc:
+        # One bad record must not head-of-line block a batch.  The caller gets
+        # a structured park record and a non-zero status, then can continue.
+        print(json.dumps({"outcome": "parked", "id": record.get("id"), "error": str(exc)}))
+        return 2
     print(json.dumps(result, sort_keys=True))
     return 0
 
