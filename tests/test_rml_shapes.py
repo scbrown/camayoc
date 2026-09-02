@@ -8,18 +8,55 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-QUIPU = shutil.which("quipu")
-IN_CI = os.environ.get("CI", "").lower() in {"1", "true", "yes"}
+
+# `QUIPU_BIN` is a PROMISE by the job that set it: "I fetched a quipu CLI and put
+# it here." It is the same idiom `test_metrics_slice.py` already uses for
+# `QUIPU_SERVER_BIN`, and the `integration` arm of ci.yml writes both from the
+# release tarball, which ships `quipu` next to `quipu-server`.
+QUIPU = os.environ.get("QUIPU_BIN") or shutil.which("quipu")
+
+# WHY THIS NO LONGER KEYS ON `CI` (camayoc CI red on main 2026-08-31 -> 2026-09-02,
+# surfaced by aegis-anb66y's owner-routed CI watcher).
+#
+# This gate was written in the shape of `tests/rdflib_guard.py` — skip for a human,
+# refuse for a machine — and that shape is right THERE, because the `test` job
+# `pip install rdflib`s: the refusal names a dependency the workflow genuinely
+# provides, so it can only fire on a real regression.
+#
+# Copied here, the same shape asserts something that was never true: that every CI
+# job provides a quipu CLI. None did. So `setUpClass` raised on every run of every
+# job, main went red on the commit that added this file and stayed red — 360 tests
+# passing behind one unconditional error — and the gate itself has never executed
+# anywhere, on any machine. A gate that cannot pass is not stricter than one that
+# skips; it is a gate nobody can read, which is the same green-check-over-an-unrun-
+# suite failure in the other direction.
+#
+# So the refusal now keys on the PROMISE rather than on the runner. If a job set
+# `QUIPU_BIN` and the binary is not there, that job is broken and this goes red.
+# If nothing promised a quipu, this skips and says where the gate does run. The
+# integration arm is what makes that honest: it fetches the CLI, so the shapes are
+# now actually validated on every push for the first time.
+_PROMISED = "QUIPU_BIN" in os.environ
+
+_WHERE = (
+    "The RML shape gate needs the quipu CLI. It runs in the `integration` job of "
+    ".github/workflows/ci.yml, which fetches it from the quipu release tarball and "
+    "exports QUIPU_BIN. To run it here, put a `quipu` on PATH or set QUIPU_BIN."
+)
 
 
 class RmlShapeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        if QUIPU:
+        if QUIPU and Path(QUIPU).exists():
             return
-        if IN_CI:
-            raise RuntimeError("quipu CLI is required to execute the RML shape gate in CI")
-        raise unittest.SkipTest("quipu CLI is required to execute the RML shape gate")
+        if _PROMISED:
+            raise RuntimeError(
+                f"QUIPU_BIN is set to {os.environ['QUIPU_BIN']!r} but no CLI is there. "
+                "The job that set it did not deliver it; this is that job's fault, not "
+                "a missing optional dependency."
+            )
+        raise unittest.SkipTest(_WHERE)
 
     @staticmethod
     def validate(fixture: str) -> subprocess.CompletedProcess[str]:

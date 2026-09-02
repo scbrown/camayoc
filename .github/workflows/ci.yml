@@ -70,6 +70,12 @@ jobs:
             "https://github.com/scbrown/quipu/releases/download/${tag}/${asset}"
           tar -xzf "$asset"
           echo "QUIPU_SERVER_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu-server" >> "$GITHUB_ENV"
+          # The tarball ships the CLI next to the server. Exporting it is what
+          # makes tests/test_rml_shapes.py actually EXECUTE — before this line the
+          # RML shape gate had never run on any machine: it demanded a `quipu` on
+          # PATH whenever CI was set, and no job had ever put one there, so it
+          # raised on every run of every job instead of validating anything.
+          echo "QUIPU_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu" >> "$GITHUB_ENV"
       - name: Install just
         run: |
           sudo apt-get update -qq
