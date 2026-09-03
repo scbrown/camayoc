@@ -92,6 +92,14 @@ class RmlExecutorTests(unittest.TestCase):
         self.assertIn(str(plan.mapping_iri), captured["source"])
         self.assertEqual(4, len(rdflib.Graph().parse(data=captured["turtle"], format="turtle")))
 
+    def test_nquads_conversion_keeps_the_dataset_not_parse_return_value(self):
+        nquads = (
+            '<https://example.invalid/s> <https://example.invalid/p> "value" '
+            '<https://example.invalid/g> .\n'
+        )
+        turtle = self.module.nquads_to_turtle(nquads)
+        self.assertEqual(1, len(rdflib.Graph().parse(data=turtle, format="turtle")))
+
     def test_same_source_join_emits_edges_and_counts_unmatched(self):
         # camayoc-5bf: the FK-shaped edge. Order "b" names a customer that no
         # row carries... except every row IS a customer row here (same source),

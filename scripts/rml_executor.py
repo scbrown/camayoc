@@ -443,7 +443,10 @@ def materialize(plan: Plan, records: Sequence[dict], parent_records: dict | None
 def nquads_to_turtle(nquads: str) -> str:
     """Strip the already-validated common graph term for a graph-scoped `/knot` write."""
     graph = Graph()
-    dataset = Dataset().parse(data=nquads, format="nquads")
+    dataset = Dataset()
+    # Graph.parse returns the context it parsed into, not necessarily `self`.
+    # Keep the Dataset reference because only Dataset exposes quads().
+    dataset.parse(data=nquads, format="nquads")
     for subject, predicate, obj, _context in dataset.quads((None, None, None, None)):
         graph.add((subject, predicate, obj))
     return graph.serialize(format="turtle")
