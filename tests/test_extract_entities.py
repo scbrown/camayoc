@@ -132,10 +132,12 @@ class StubbedCase(unittest.TestCase):
 
 class GazetteerTests(StubbedCase):
     def test_labels_map_to_their_single_entity(self):
-        self.serve()
+        handler = self.serve()
         gazetteer, _stats = extract.fetch_gazetteer()
         self.assertEqual(QUIPU_IRI, gazetteer["Quipu"])
         self.assertEqual(BOBBIN_IRI, gazetteer["Bobbin"])
+        query = next(body for path, body in handler.seen if path == "/query")
+        self.assertIs(query["verbose"], True)
 
     def test_an_ambiguous_label_matches_for_nobody(self):
         """'Indexer' names two entities. Picking one would attach prose to

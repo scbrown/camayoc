@@ -145,7 +145,9 @@ def fetch_gazetteer() -> tuple[dict[str, str], dict]:
     that silently dropped half its labels would make thin coverage look like
     clean prose.
     """
-    answer = _call("/query", {"query": GAZETTEER_QUERY})
+    # Mention triples must carry absolute entity IRIs. Quipu's compact default
+    # returns CURIEs for known namespaces, so request expanded row values here.
+    answer = _call("/query", {"query": GAZETTEER_QUERY, "verbose": True})
     rows = answer.get("rows") if isinstance(answer, dict) else None
     if not isinstance(rows, list):
         raise ExtractError(
