@@ -43,6 +43,7 @@ still the current implementation" — those are read-time questions.
 from __future__ import annotations
 
 import argparse
+import time
 import re
 import subprocess
 import sys
@@ -204,6 +205,7 @@ def ingest(repo: Path, since: str | None, limit: int, out: list[str],
 
 
 def main() -> int:
+    started = time.time()
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("repos", nargs="+", type=Path)
     ap.add_argument("--since", help="git --since (e.g. '6 months ago')")
@@ -253,6 +255,26 @@ def main() -> int:
               f"from this is a floor. If that share looks high, check --project "
               f"before concluding the commits are unlabelled.",
               file=sys.stderr)
+
+    # FUNCTIONAL COUNTERS (aegis-gmseol). These are the totals just printed for a
+    # human, pushed unchanged — not a second count computed beside the work. A
+    # counter derived independently of the thing it measures can drift from it,
+    # and then the metric is measuring the metric.
+    #
+    # camayoc has no server to scrape, so the run reports itself; see
+    # scripts/camayoc_metrics.py for why that is a pushgateway and not a daemon.
+    # It never raises and never fails the ingest: the ingest is the point and the
+    # metric is the observation of it.
+    try:
+        from camayoc_metrics import report
+        report("git_provenance", {
+            "camayoc_ingest_commits_scanned": totals["commits"],
+            "camayoc_ingest_items_linked": totals["linked"],
+            "camayoc_ingest_commits_unlinked": totals["unlinked"],
+            "camayoc_ingest_edges_written": totals["edges"],
+        }, started=started)
+    except Exception as e:                                   # noqa: BLE001
+        print(f"metrics: not reported ({e})", file=sys.stderr)
     return 0
 
 
