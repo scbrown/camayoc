@@ -79,6 +79,22 @@ their edges stated:
   caveat to state is deployment-shaped, not mechanism-shaped: it requires a
   quipu with the `/graph/create` + `/graph/label` routes, and the failure
   against an older store is a refusal, which is the honest direction.
+
+> **Cross-repo blocker, as of 2026-09-05 (muldoon).** These two rows depend on
+> quipu, and a row whose truth lives in a sibling repo goes stale without anyone
+> here touching anything — this banner's trigger is *drafting*, which never
+> fires on a dependency. So the blocker carries its OWN date, separate from the
+> re-measure date above:
+>
+> | quipu-side mechanism | as of 2026-09-05 | evidence |
+> |---|---|---|
+> | quarantined materialisation | **BUILT** (landed 2026-08-27, `df36f72`) | `src/store/inferred.rs`, 17,732 bytes, 13 functions; companion inferred graphs + write guard |
+> | governed promotion | **NOT built** | `grep -ci promote src/store/inferred.rs` -> `0`; quipu's `entailment-regime.md` still lists it under REMAINING |
+>
+> The first half cleared **two days after** the 2026-08-25 re-measure above, so
+> that re-measure was correct when taken and wrong eleven days later. That is
+> the failure mode this table exists to make visible, not a lapse.
+
 - *Governed promotion* is claimable as **built, both halves**: the governance
   half — authority-gated, self-promotion-refused, upward-only,
   provenance-recorded, with fifteen tests that are almost all refusals — and,
