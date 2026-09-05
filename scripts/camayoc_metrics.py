@@ -86,8 +86,26 @@ def exposition(metrics: list[tuple[str, dict, float]]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def push(job: str, body: str, url: str | None = None) -> tuple[bool, str]:
-    """Send exposition to the gateway. -> (ok, why). NEVER raises."""
+def push(job: str, body: str, url: str | None = None,
+         grouping: dict[str, str] | None = None) -> tuple[bool, str]:
+    """Send exposition to the gateway. -> (ok, why). NEVER raises.
+
+    `grouping` becomes extra /label/value segments in the URL — the pushgateway
+    GROUPING KEY — and this is not a stylistic choice.
+
+    A pushgateway group is REPLACED WHOLESALE by each push to the same grouping
+    key. So a distinguishing label carried in the BODY does not partition
+    anything: the second adapter to push destroys the first adapter's series and
+    the gateway reports success to both. Measured live by gennaro on the sibling
+    desire-path collector, which I wrote the same way on the same night: pushing
+    `source=claude-code` then `source=codex` left only codex, of four plugins,
+    and the surviving total was 4 where the truth was 2214. The old number was
+    WRONG, not stale — which is the dangerous kind, because a plausible small
+    number invites no investigation.
+
+    Anything that must produce its own independent series belongs here, in the
+    key. Anything that merely annotates one series belongs in the body.
+    """
     url = (url if url is not None else os.environ.get(ENV, "")).strip()
     if not url:
         return False, f"{ENV} is unset — nothing pushed (set it to enable metrics)"
@@ -100,6 +118,8 @@ def push(job: str, body: str, url: str | None = None) -> tuple[bool, str]:
 
     netloc = parsed.hostname + (f":{parsed.port}" if parsed.port else "")
     path = parsed.path.rstrip("/") + f"/metrics/job/{urllib.parse.quote(job, safe='')}"
+    for k, v in (grouping or {}).items():
+        path += f"/{urllib.parse.quote(k, safe='')}/{urllib.parse.quote(str(v), safe='')}"
     target = urllib.parse.urlunparse((parsed.scheme or "http", netloc, path, "", "", ""))
 
     req = urllib.request.Request(target, data=body.encode(), method="POST")
@@ -128,9 +148,16 @@ def report(adapter: str, samples: dict[str, float], *, started: float,
     report to a human. Reusing them is deliberate: a counter derived separately
     from the work can drift from it, and then the metric is measuring the metric.
     """
-    labels = {"adapter": adapter}
+    # adapter (and instance) PARTITION the series, so they are grouping-key
+    # segments, not body labels. As body labels every adapter would push into one
+    # group and each push would wipe the previous adapter's numbers — see push().
+    # Today only one adapter calls this, so the defect is latent rather than
+    # live; it would first appear as the SECOND adapter silently deleting the
+    # first, which is exactly how it is hardest to notice.
+    grouping = {"adapter": adapter}
     if instance:
-        labels["instance"] = instance
+        grouping["instance"] = instance
+    labels: dict[str, str] = {}
     now = time.time()
 
     # The producer group goes out on EVERY run, including a failed one — its
@@ -139,7 +166,7 @@ def report(adapter: str, samples: dict[str, float], *, started: float,
         ("camayoc_producer_run_timestamp_seconds", labels, round(now, 3)),
         ("camayoc_producer_duration_seconds", labels, round(now - started, 3)),
         ("camayoc_producer_exit_status", labels, status),
-    ]))
+    ]), grouping=grouping)
     print(f"metrics: {why}", file=sys.stderr)
 
     if status != 0:
@@ -149,5 +176,6 @@ def report(adapter: str, samples: dict[str, float], *, started: float,
               "(the producer group carries the failure)", file=sys.stderr)
         return
     ok, why = push(JOB_SAMPLES, exposition(
-        [(name, labels, value) for name, value in sorted(samples.items())]))
+        [(name, labels, value) for name, value in sorted(samples.items())]),
+        grouping=grouping)
     print(f"metrics: {why}", file=sys.stderr)
