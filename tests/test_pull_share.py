@@ -22,9 +22,16 @@ sys.modules["pull_share"] = pull_share
 SPEC.loader.exec_module(pull_share)
 
 
-def stub(path: Path, body: str) -> str:
-    """A fake quipu. A fresh regular file — never a link to the real one."""
-    path.write_text("#!/usr/bin/env bash\n" + body)
+def stub(path: Path, body: str, log: Path | None = None) -> str:
+    """A fake quipu. A fresh regular file — never a link to the real one.
+
+    With `log`, it records every invocation's argv. That is what lets a test
+    assert `quipu shapes load` was NEVER CALLED, rather than assert that the
+    verdict says it was not — the report is a field the function fills in about
+    itself, so asserting it proves the report and not the behaviour (malcolm).
+    """
+    rec = f'printf "%s\\n" "$*" >> {log}\n' if log else ""
+    path.write_text("#!/usr/bin/env bash\n" + rec + body)
     path.chmod(path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
     return str(path)
 
@@ -72,7 +79,7 @@ class QuarantineIsSuccess(unittest.TestCase):
     silent vocabulary widening quarantine exists to prevent.
     """
 
-    def _quarantining_quipu(self, t: Path) -> str:
+    def _quarantining_quipu(self, t: Path, log: Path | None = None) -> str:
         return stub(t / "quipu", f'''
 case "$1" in
   --version) echo "quipu 0.3.36" ;;
@@ -83,7 +90,7 @@ case "$1" in
                              "resolution": {"unmatched": ["ex:alpha"]}})}' ;;
   *) exit 0 ;;
 esac
-''')
+''', log=log)
 
     def test_a_quarantined_pull_exits_zero(self):
         with tempfile.TemporaryDirectory() as td:
@@ -113,6 +120,90 @@ esac
             self.assertIsNone(v["next"])
             self.assertIn("EMPTY shapes.ttl", v["next_reason"])
 
+    def test_pull_NEVER_invokes_shapes_load_without_the_flag(self):
+        """The load-bearing rule, pinned by invocation rather than by report.
+
+        Before this, moving the `if do_adopt:` guard — or defaulting it to
+        true — passed the whole suite: the no-adopt path was exercised and
+        nothing asserted about it (malcolm's reader pass).
+        """
+        with tempfile.TemporaryDirectory() as td:
+            t = Path(td); log = t / "calls.log"
+            q = self._quarantining_quipu(t, log=log)
+            pull_share.pull(str(share_dir(t, shapes="ex:S a sh:NodeShape .")),
+                            str(t / "x.db"), q, False)
+            calls = log.read_text().splitlines() if log.exists() else []
+            self.assertTrue(calls, "the stub recorded nothing — the log is not wired")
+            self.assertFalse([c for c in calls if c.startswith("shapes load")],
+                             f"pull WIDENED the vocabulary without --adopt-shapes: {calls}")
+
+    def test_pull_DOES_invoke_shapes_load_with_the_flag(self):
+        """The other half of the pair: proves the assertion above can fail."""
+        with tempfile.TemporaryDirectory() as td:
+            t = Path(td); log = t / "calls.log"
+            q = self._quarantining_quipu(t, log=log)
+            pull_share.pull(str(share_dir(t, shapes="ex:S a sh:NodeShape .")),
+                            str(t / "x.db"), q, True)
+            calls = log.read_text().splitlines()
+            self.assertTrue([c for c in calls if c.startswith("shapes load")],
+                            f"--adopt-shapes did not reach `quipu shapes load`: {calls}")
+
+    def test_next_names_the_binary_that_WORKED_not_a_literal_quipu(self):
+        """wu's finding, and it breaks in exactly the case the version guard exists for.
+
+        A caller only reaches here with --quipu-bin because the PATH quipu was
+        refused as too old. Emitting a literal `quipu` hands them a command
+        that dies `unrecognized subcommand`.
+        """
+        with tempfile.TemporaryDirectory() as td:
+            t = Path(td)
+            q = stub(t / "newer-quipu", f'''
+case "$1" in
+  --version) echo "quipu 0.3.36" ;;
+  import) echo '{json.dumps({"outcome": "staged", "share_id": "sha256:" + "d"*64,
+                             "triples": {"accepted": 6, "quarantined": 0}})}' ;;
+  *) exit 0 ;;
+esac
+''')
+            v = pull_share.pull(str(share_dir(t)), str(t / "x.db"), q, False)
+            self.assertIn(q, v["next"], "next must name the binary that actually works")
+            self.assertFalse(v["next"].startswith("quipu "),
+                             "next hardcoded a bare `quipu` the caller was just refused")
+
+    def test_the_emitted_next_actually_RUNS_with_a_non_default_binary(self):
+        """wu asked for this arm specifically, and it is the one that would have
+        caught the defect: asserting the string CONTAINS the binary is weaker
+        than running it. My own pre-merge acceptance ran the emitted command as
+        ${NEXT/#quipu/$Q} — I substituted the binary by hand, which is exactly
+        the bug, performed instead of detected."""
+        import shlex, subprocess
+        with tempfile.TemporaryDirectory() as td:
+            t = Path(td); log = t / "calls.log"
+            q = stub(t / "newer-quipu", f'''
+printf "%s\\n" "$*" >> {log}
+case "$1" in
+  --version) echo "quipu 0.3.36" ;;
+  import) echo '{json.dumps({"outcome": "staged", "share_id": "sha256:" + "e"*64,
+                             "triples": {"accepted": 6, "quarantined": 0}})}' ;;
+  *) exit 0 ;;
+esac
+''')
+            v = pull_share.pull(str(share_dir(t)), str(t / "x.db"), q, False)
+            r = subprocess.run(shlex.split(v["next"]), capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0,
+                             f"the emitted next did not run: {r.stderr.strip()!r}")
+            self.assertIn("import promote", log.read_text(),
+                          "next ran, but not against the binary we were told to use")
+
+    def test_the_adopt_shapes_retry_also_names_the_binary(self):
+        with tempfile.TemporaryDirectory() as td:
+            t = Path(td)
+            q = self._quarantining_quipu(t)
+            v = pull_share.pull(str(share_dir(t, shapes="ex:S a sh:NodeShape .")),
+                                str(t / "x.db"), q, False)
+            self.assertIn("--adopt-shapes", v["next"])
+            self.assertIn(f"--quipu-bin {q}", v["next"])
+
     def test_promote_command_is_emitted_once_nothing_blocks(self):
         with tempfile.TemporaryDirectory() as td:
             t = Path(td)
@@ -125,7 +216,7 @@ case "$1" in
 esac
 ''')
             v = pull_share.pull(str(share_dir(t)), str(t / "x.db"), q, False)
-            self.assertEqual(v["next"], f"quipu import promote sha256:{'c'*64} --db {t / 'x.db'}")
+            self.assertEqual(v["next"], f"{q} import promote sha256:{'c'*64} --db {t / 'x.db'}")
 
 
 class VerificationFailsLoudly(unittest.TestCase):

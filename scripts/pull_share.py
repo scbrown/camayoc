@@ -185,16 +185,22 @@ def next_step(v: dict, path: Path, db: str, binary: str) -> dict:
     Never emit an invocation that would not work: a discovery tool that hands
     you an action contradicting its own finding is worse than one that offers
     none (wu, citing aegis-sosiaa / quipu #151).
+
+    `binary` is threaded through for the reason the version guard exists. On a
+    host whose PATH `quipu` is too old, the caller reaches this code ONLY by
+    passing --quipu-bin — so emitting a literal `quipu` hands them a command
+    that fails `unrecognized subcommand`, in exactly the situation the guard
+    was written to detect. The suggestion has to name the binary that worked.
     """
     if v["outcome"] == "loaded" or not v["blockers"]:
         if v.get("share_id"):
-            return {"next": f"quipu import promote {v['share_id']} --db {db}"}
+            return {"next": f"{binary} import promote {v['share_id']} --db {db}"}
         return {"next": None, "next_reason": "nothing staged to promote"}
 
     if "off_vocabulary" in v["blockers"]:
         shapes = path / "shapes.ttl"
         if v["shapes"].get("adopted"):
-            return {"next": f"quipu import promote {v['share_id']} --db {db}"}
+            return {"next": f"{binary} import promote {v['share_id']} --db {db}"}
         if not shapes.is_file() or shapes.stat().st_size == 0:
             return {
                 "next": None,
@@ -204,7 +210,8 @@ def next_step(v: dict, path: Path, db: str, binary: str) -> dict:
                     "this store first, or ask the publisher to share with shapes."
                 ),
             }
-        return {"next": f"{Path(__file__).name} {v['source']} --db {db} --adopt-shapes"}
+        return {"next": f"{Path(__file__).name} {v['source']} --db {db} "
+                        f"--quipu-bin {binary} --adopt-shapes"}
 
     return {"next": None,
             "next_reason": f"blocked on {v['blockers']}, which this verb has no automatic remedy for"}
