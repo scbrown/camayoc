@@ -287,3 +287,120 @@ class AdoptShapesIsExplicit(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReshareLineage(unittest.TestCase):
+    """Delta re-sharing (aegis-khpfwh / aegis-ltaypw.3).
+
+    A share that came from someone else and goes back out changed is a DELTA,
+    and a delta that does not name its parent has lost the only thing that makes
+    it one. The parent is DERIVED from the staged graph's own IRI so that
+    forgetting is structurally difficult rather than merely discouraged.
+    """
+
+    HASH = "a350c7a72df0a95b6286b12c8bc75ce7826d53e221db4a4dd1684474acb59f6d"
+
+    def test_a_pulled_graph_yields_the_share_it_came_from(self):
+        for prefix in pull_share.STAGING_PREFIXES:
+            self.assertEqual(
+                pull_share.parent_of(f"{prefix}{self.HASH}"),
+                f"sha256:{self.HASH}",
+                "a graph quipu named after a share must recover that share",
+            )
+
+    def test_a_graph_that_is_not_a_pulled_share_yields_no_parent(self):
+        """The half that matters more.
+
+        Every case here would otherwise publish a manifest asserting a lineage
+        that does not exist. The last two carry the right prefix and a wrong
+        body — exactly what a truncated or hand-edited IRI looks like.
+        """
+        for graph in (
+            "urn:quipu:align:abc",
+            "https://camayoc.local/window/shuttle/runs/2026-09",
+            "",
+            "urn:quipu:import:staging:",
+            "urn:quipu:import:staging:a350c7a7",
+            "urn:quipu:import:quarantine:" + "z" * 64,
+        ):
+            self.assertIsNone(
+                pull_share.parent_of(graph),
+                f"{graph!r} is not a pulled share and must not be given a parent",
+            )
+
+    def test_the_derivation_agrees_with_yupanas(self):
+        """The two consumers must derive the SAME parent from the same IRI.
+
+        If they disagree, a delta means different things depending on which
+        consumer emitted it, and the lineage stops being a shared fact. The
+        rule is pinned here as the literal contract — quipu's staged-graph
+        naming, `urn:quipu:import:{staging,quarantine}:<64 hex>` — so a change
+        to either side has to change this test and be noticed.
+        """
+        self.assertEqual(
+            sorted(pull_share.STAGING_PREFIXES),
+            ["urn:quipu:import:quarantine:", "urn:quipu:import:staging:"],
+        )
+
+    def _reshare(self, tmp, graph, extra_args, share_body):
+        binv = Path(tmp) / "quipu"
+        stub(binv, share_body)
+        out = str(Path(tmp) / "bundle")
+        return pull_share.reshare(graph, out, "c.db", str(binv), *extra_args)
+
+    def test_a_pulled_graph_reshares_as_a_delta_naming_its_parent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            graph = f"urn:quipu:import:quarantine:{self.HASH}"
+            body = (
+                'if [ "$1" = "--version" ]; then echo "quipu 0.3.36"; exit 0; fi\n'
+                'out=""; while [ $# -gt 0 ]; do [ "$1" = "--output" ] && out="$2"; shift; done\n'
+                'mkdir -p "$out"\n'
+                'printf \'{"share_id":"sha256:new","parent_share":"sha256:%s"}\' '
+                f'{self.HASH} > "$out/manifest.json"\n'
+            )
+            v = self._reshare(tmp, graph, (None, False, True), body)
+            self.assertEqual(v["parent_share"], f"sha256:{self.HASH}")
+            self.assertEqual(v["derived_parent"], f"sha256:{self.HASH}")
+            self.assertFalse(v["published_as_root"])
+
+    def test_a_manifest_that_does_not_record_the_parent_is_refused(self):
+        """Read the lineage back OUT OF THE MANIFEST.
+
+        A command reporting a parent it set is not evidence the manifest records
+        one, and the manifest is what a downstream consumer actually reads. This
+        is the arm that would catch quipu silently dropping `--parent-share`.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            graph = f"urn:quipu:import:staging:{self.HASH}"
+            body = (
+                'if [ "$1" = "--version" ]; then echo "quipu 0.3.36"; exit 0; fi\n'
+                'out=""; while [ $# -gt 0 ]; do [ "$1" = "--output" ] && out="$2"; shift; done\n'
+                'mkdir -p "$out"\n'
+                'printf \'{"share_id":"sha256:new"}\' > "$out/manifest.json"\n'
+            )
+            with self.assertRaises(pull_share.PullError) as caught:
+                self._reshare(tmp, graph, (None, False, True), body)
+            self.assertIn("lineage it does not have", str(caught.exception))
+
+    def test_root_publishes_a_new_lineage_and_sends_no_parent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            graph = f"urn:quipu:import:quarantine:{self.HASH}"
+            argv_log = Path(tmp) / "argv.log"
+            binv = Path(tmp) / "quipu"
+            stub(
+                binv,
+                'if [ "$1" = "--version" ]; then echo "quipu 0.3.36"; exit 0; fi\n'
+                'out=""; while [ $# -gt 0 ]; do [ "$1" = "--output" ] && out="$2"; shift; done\n'
+                'mkdir -p "$out"\n'
+                'printf \'{"share_id":"sha256:new"}\' > "$out/manifest.json"\n',
+                log=argv_log,
+            )
+            out = str(Path(tmp) / "bundle")
+            v = pull_share.reshare(graph, out, "c.db", str(binv), None, True, True)
+            self.assertIsNone(v["parent_share"])
+            self.assertTrue(v["published_as_root"])
+            # The lineage is still REPORTED as discarded, so an operator can see
+            # what --root threw away.
+            self.assertEqual(v["derived_parent"], f"sha256:{self.HASH}")
+            # Assert on the INVOCATION: --parent-share must never have been sent.
+            self.assertNotIn("--parent-share", argv_log.read_text())

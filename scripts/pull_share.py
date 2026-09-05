@@ -221,6 +221,69 @@ def next_step(v: dict, path: Path, db: str, binary: str) -> dict:
             "next_reason": f"blocked on {v['blockers']}, which this verb has no automatic remedy for"}
 
 
+STAGING_PREFIXES = ("urn:quipu:import:staging:", "urn:quipu:import:quarantine:")
+
+
+def parent_of(graph: str) -> str | None:
+    """The share id a pulled graph came from, or None if it is not one.
+
+    Quipu names a staged graph after the share it came from, so the lineage is
+    already written on the graph IRI and a re-share can recover it without being
+    told. That makes the iv3df7.5 delta discipline the DEFAULT rather than
+    something the operator has to remember.
+
+    Deliberately narrow. Inventing a parent for a local graph is a worse failure
+    than omitting one — a false lineage claim gets published in a manifest and
+    believed downstream — so a truncated IRI, or one with the right prefix and a
+    non-hex body, yields None rather than a guess. Same rule as yupana's
+    `share_reshare::parent_of`; the two must agree or a delta means different
+    things depending on which consumer emitted it.
+    """
+    for prefix in STAGING_PREFIXES:
+        if graph.startswith(prefix):
+            digest = graph[len(prefix):]
+            if len(digest) == 64 and all(c in "0123456789abcdefABCDEF" for c in digest):
+                return f"sha256:{digest}"
+            return None
+    return None
+
+
+def reshare(graph: str, out: str, db: str, binary: str, parent: str | None,
+            root: bool, no_shapes: bool) -> dict:
+    """Publish a graph back out as a share bundle, naming its parent when it has one."""
+    require_quipu(binary)
+    derived = parent_of(graph)
+    chosen = None if root else (parent or derived)
+    cmd = [binary, "share", "--output", out, "--graph", graph, "--db", db]
+    if no_shapes:
+        cmd.append("--no-shapes")
+    if chosen:
+        cmd += ["--parent-share", chosen]
+    rc, stdout, err = run(cmd)
+    if rc != 0:
+        raise PullError(f"share failed: {(err or stdout).strip()}")
+    manifest_path = Path(out) / "manifest.json"
+    if not manifest_path.is_file():
+        raise PullError(f"quipu reported success but wrote no {manifest_path}")
+    manifest = json.loads(manifest_path.read_text())
+    # Read the lineage back OUT OF THE MANIFEST. A command reporting a parent it
+    # set is not evidence the manifest records one, and the manifest is what a
+    # downstream consumer actually reads.
+    recorded = manifest.get("parent_share")
+    if chosen and recorded != chosen:
+        raise PullError(
+            f"asked for parent {chosen} but the manifest records {recorded!r} — "
+            f"the delta would claim a lineage it does not have"
+        )
+    return {
+        "share_id": manifest.get("share_id"),
+        "output": out,
+        "parent_share": recorded,
+        "derived_parent": derived,
+        "published_as_root": bool(root),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="pull_share.py",
@@ -234,13 +297,50 @@ def main(argv: list[str] | None = None) -> int:
                          "promotion passes for exactly the types the publisher governs. A "
                          "separate, explicit act: without it nothing about your vocabulary changes.")
     ap.add_argument("--json", action="store_true", help="emit the verdict as JSON")
+    ap.add_argument("--reshare", metavar="OUTDIR",
+                    help="instead of pulling, publish SOURCE (a graph IRI) back out as a share "
+                         "bundle written to OUTDIR. A graph you PULLED re-shares as a DELTA "
+                         "naming the share it came from, derived from the graph's own IRI.")
+    ap.add_argument("--parent", help="with --reshare: name this parent instead of the derived one")
+    ap.add_argument("--root", action="store_true",
+                    help="with --reshare: publish as a NEW lineage, naming no parent, even for a "
+                         "pulled graph. Deliberate: it discards a lineage the tool could see.")
+    ap.add_argument("--no-shapes", action="store_true",
+                    help="with --reshare: explicitly produce a shapes-free share")
     a = ap.parse_args(argv)
 
+    if a.reshare and a.parent and a.root:
+        print("pull refused: --parent and --root cannot both be given; a lineage claim "
+              "cannot be both absent and specified", file=sys.stderr)
+        return 2
+
     try:
-        verdict = pull(a.source, a.db, a.quipu_bin, a.adopt_shapes)
+        if a.reshare:
+            verdict = reshare(a.source, a.reshare, a.db, a.quipu_bin,
+                              a.parent, a.root, a.no_shapes)
+        else:
+            verdict = pull(a.source, a.db, a.quipu_bin, a.adopt_shapes)
     except PullError as exc:
         print(f"pull refused: {exc}", file=sys.stderr)
         return 2
+
+    if a.reshare:
+        if a.json:
+            print(json.dumps(verdict, indent=2))
+        else:
+            print(f"shared {verdict['share_id']}")
+            print(f"  output: {verdict['output']}")
+            if verdict["parent_share"]:
+                how = ("derived from the pulled graph's own IRI"
+                       if verdict["parent_share"] == verdict["derived_parent"]
+                       else "named explicitly")
+                print(f"  parent: {verdict['parent_share']} (delta — {how})")
+            elif verdict["published_as_root"] and verdict["derived_parent"]:
+                print(f"  parent: NONE — published as a new lineage with --root, "
+                      f"discarding {verdict['derived_parent']}")
+            else:
+                print("  parent: none (this graph was not pulled from a share)")
+        return 0
 
     if a.json:
         print(json.dumps(verdict, indent=2))
