@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-import hashlib, importlib.util, json, shutil, sqlite3, subprocess, sys, tempfile, unittest
+import hashlib, importlib.util, json, sqlite3, subprocess, sys, tempfile, unittest
 from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+from quipu_bin_guard import QUIPU, requires_quipu
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("certify_pack", ROOT / "scripts/certify_pack.py")
@@ -95,7 +97,7 @@ class CertificationEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(certify_pack.PackCertificationError, "requires a frozen-window"):
             certify_pack.build_envelope(self.manifest, claim)
 
-    @unittest.skipUnless(shutil.which("quipu"), "quipu CLI is required for SHACL integration")
+    @requires_quipu
     def test_static_and_window_envelopes_conform_and_bad_evidence_refuses(self):
         shapes = ROOT / "tests/fixtures/certified-pack.shapes.ttl"
         registrations = """
@@ -111,7 +113,7 @@ class CertificationEvidenceTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory:
                 data = Path(directory) / "envelope.ttl"; data.write_text(turtle)
                 good = subprocess.run(
-                    ["quipu", "validate", "--shapes", str(shapes), "--data", str(data)],
+                    [QUIPU, "validate", "--shapes", str(shapes), "--data", str(data)],
                     capture_output=True, text=True,
                 )
                 self.assertEqual(0, good.returncode, good.stdout + good.stderr)
@@ -121,7 +123,7 @@ class CertificationEvidenceTests(unittest.TestCase):
                 ):
                     data.write_text(broken)
                     bad = subprocess.run(
-                        ["quipu", "validate", "--shapes", str(shapes), "--data", str(data)],
+                        [QUIPU, "validate", "--shapes", str(shapes), "--data", str(data)],
                         capture_output=True, text=True,
                     )
                     self.assertNotEqual(0, bad.returncode, bad.stdout + bad.stderr)

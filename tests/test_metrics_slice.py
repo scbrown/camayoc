@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import os
-import shutil
 import socket
 import subprocess
 import sys
@@ -16,10 +14,11 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from quipu_bin_guard import QUIPU_SERVER as QUIPU_SERVER_BIN, requires_quipu_server
+
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "prometheus-rules.yml"
-QUIPU_SERVER_BIN = os.environ.get("QUIPU_SERVER_BIN") or shutil.which("quipu-server")
 
 
 def load_script(name: str):
@@ -84,7 +83,7 @@ class MetricsUnitTests(unittest.TestCase):
         self.assertNotIn("healthy", json.dumps(unreachable).lower())
 
 
-@unittest.skipUnless(QUIPU_SERVER_BIN, "quipu-server is required for named-query integration")
+@requires_quipu_server
 class NamedQueryIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
