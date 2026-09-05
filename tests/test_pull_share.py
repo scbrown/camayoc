@@ -195,7 +195,16 @@ esac
             self.assertIn("import promote", log.read_text(),
                           "next ran, but not against the binary we were told to use")
 
-    def test_the_adopt_shapes_retry_also_names_the_binary(self):
+    def test_the_adopt_shapes_retry_RUNS_from_an_unrelated_directory(self):
+        """The retry suggestion is a command, so run it — from somewhere else.
+
+        Two defects hid behind contains-checks here (wu, on #5): the command
+        was emitted as `Path(__file__).name`, a bare filename that resolves
+        only from scripts/, and this file did not carry the exec bit. Either
+        alone makes the suggestion unrunnable, and asserting that the string
+        contains `--adopt-shapes` and `--quipu-bin` passes under both.
+        """
+        import shlex, subprocess
         with tempfile.TemporaryDirectory() as td:
             t = Path(td)
             q = self._quarantining_quipu(t)
@@ -203,6 +212,18 @@ esac
                                 str(t / "x.db"), q, False)
             self.assertIn("--adopt-shapes", v["next"])
             self.assertIn(f"--quipu-bin {q}", v["next"])
+            # cwd is deliberately NOT the repo: a bare filename dies here.
+            r = subprocess.run(shlex.split(v["next"]), capture_output=True,
+                               text=True, cwd=t)
+            self.assertEqual(r.returncode, 0,
+                             f"the emitted retry did not run from {t}: {r.stderr.strip()!r}")
+            self.assertIn("quarantined", r.stdout + r.stderr)
+
+    def test_the_script_is_executable_so_the_emitted_retry_can_run(self):
+        """An absolute path is not enough if the file cannot be exec'd."""
+        self.assertTrue(os.access(ROOT / "scripts/pull_share.py", os.X_OK),
+                        "scripts/pull_share.py lost its exec bit; the retry command "
+                        "it emits would die 'Permission denied'")
 
     def test_promote_command_is_emitted_once_nothing_blocks(self):
         with tempfile.TemporaryDirectory() as td:

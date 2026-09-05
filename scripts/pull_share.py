@@ -210,7 +210,11 @@ def next_step(v: dict, path: Path, db: str, binary: str) -> dict:
                     "this store first, or ask the publisher to share with shapes."
                 ),
             }
-        return {"next": f"{Path(__file__).name} {v['source']} --db {db} "
+        # An ABSOLUTE path, and this file carries the exec bit. `Path(__file__).name`
+        # emitted a bare filename that ran only from scripts/ — the same defect as
+        # the literal `quipu` one branch over: a suggestion that is correct prose
+        # and not a runnable command (wu, on #5).
+        return {"next": f"{Path(__file__).resolve()} {v['source']} --db {db} "
                         f"--quipu-bin {binary} --adopt-shapes"}
 
     return {"next": None,
