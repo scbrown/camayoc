@@ -5,8 +5,10 @@ read back from Prometheus (docs/metrics.md), and a test that reached the gateway
 would pass or fail on the state of the machine it ran on — the wrong property for
 a regression guarding a text format and a URL shape.
 """
+import os
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -52,11 +54,7 @@ class PushRefusals(unittest.TestCase):
         self.assertIn("unreachable", why)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
-class TestGroupingKeyPartitionsSeries:
+class GroupingKeyPartitionsSeries(unittest.TestCase):
     """A pushgateway group is REPLACED WHOLESALE on every push to the same key.
 
     So a distinguishing label carried in the BODY partitions nothing: the second
@@ -69,57 +67,87 @@ class TestGroupingKeyPartitionsSeries:
 
     These pin the URL, because the URL is where the partition lives. Asserting on
     the body would have passed for the broken version.
+
+    ⚠ unittest.TestCase and mock.patch, NOT a bare class with pytest fixtures.
+    `just test` runs `python3 -m unittest discover`, which collects only
+    TestCase subclasses — and CI installs no pytest. The first version of this
+    class was a bare `Test*` class taking `monkeypatch`, so all five tests were
+    SILENTLY NOT COLLECTED and the `test` job passed green having checked
+    nothing about the URL. Measured before merge: 7 tests from this module
+    collected, 0 from that class. A test that does not run is the same defect
+    as the one this file is about — a success reported by something that did
+    no work — one level up.
     """
 
-    def _target(self, monkeypatch, **kw):
+    def _target(self, **kw):
         seen = {}
 
         class _Resp:
             status = 200
-            def __enter__(self): return self
-            def __exit__(self, *a): return False
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
 
         def fake_urlopen(req, timeout=None):
             seen["url"] = req.full_url
             seen["body"] = req.data.decode()
             return _Resp()
 
-        monkeypatch.setattr(m.urllib.request, "urlopen", fake_urlopen)
-        m.push("camayoc", "x 1\n", url="http://gw.example/", **kw)
+        with mock.patch.object(m.urllib.request, "urlopen", fake_urlopen):
+            m.push("camayoc", "x 1\n", url="http://gw.example/", **kw)
         return seen
 
-    def test_adapter_is_a_url_segment_not_a_body_label(self, monkeypatch):
-        seen = self._target(monkeypatch, grouping={"adapter": "git-provenance"})
-        assert seen["url"].endswith("/metrics/job/camayoc/adapter/git-provenance")
+    def test_adapter_is_a_url_segment_not_a_body_label(self):
+        seen = self._target(grouping={"adapter": "git-provenance"})
+        self.assertTrue(
+            seen["url"].endswith("/metrics/job/camayoc/adapter/git-provenance"),
+            seen["url"],
+        )
 
-    def test_two_adapters_address_two_different_groups(self, monkeypatch):
-        a = self._target(monkeypatch, grouping={"adapter": "alpha"})["url"]
-        b = self._target(monkeypatch, grouping={"adapter": "beta"})["url"]
+    def test_two_adapters_address_two_different_groups(self):
+        a = self._target(grouping={"adapter": "alpha"})["url"]
+        b = self._target(grouping={"adapter": "beta"})["url"]
         # THE regression. Equal URLs mean one group, and one group means the
         # second push silently deletes the first adapter's series.
-        assert a != b, "both adapters push to ONE group — the second wipes the first"
+        self.assertNotEqual(
+            a, b, "both adapters push to ONE group — the second wipes the first"
+        )
 
-    def test_a_grouping_value_cannot_escape_its_path_segment(self, monkeypatch):
-        seen = self._target(monkeypatch, grouping={"adapter": "a/b?c#d"})
-        assert "/metrics/job/camayoc/adapter/a%2Fb%3Fc%23d" in seen["url"]
+    def test_a_grouping_value_cannot_escape_its_path_segment(self):
+        seen = self._target(grouping={"adapter": "a/b?c#d"})
+        self.assertIn("/metrics/job/camayoc/adapter/a%2Fb%3Fc%23d", seen["url"])
 
-    def test_no_grouping_is_the_bare_job_url(self, monkeypatch):
-        seen = self._target(monkeypatch)
-        assert seen["url"].endswith("/metrics/job/camayoc")
+    def test_no_grouping_is_the_bare_job_url(self):
+        seen = self._target()
+        self.assertTrue(seen["url"].endswith("/metrics/job/camayoc"), seen["url"])
 
-    def test_report_partitions_by_adapter(self, monkeypatch):
+    def test_report_partitions_by_adapter(self):
         urls = []
-        monkeypatch.setenv(m.ENV, "http://gw.example/")
 
         class _Resp:
             status = 200
-            def __enter__(self): return self
-            def __exit__(self, *a): return False
 
-        monkeypatch.setattr(m.urllib.request, "urlopen",
-                            lambda req, timeout=None: (urls.append(req.full_url), _Resp())[1])
-        m.report("alpha", {"camayoc_things_total": 1}, started=0.0)
-        m.report("beta", {"camayoc_things_total": 2}, started=0.0)
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake_urlopen(req, timeout=None):
+            urls.append(req.full_url)
+            return _Resp()
+
+        with mock.patch.dict(os.environ, {m.ENV: "http://gw.example/"}):
+            with mock.patch.object(m.urllib.request, "urlopen", fake_urlopen):
+                m.report("alpha", {"camayoc_things_total": 1}, started=0.0)
+                m.report("beta", {"camayoc_things_total": 2}, started=0.0)
         # every URL carries its adapter, and the two adapters never collide
-        assert all("/adapter/" in u for u in urls), urls
-        assert len({u for u in urls if "/job/camayoc/" in u}) == 2, urls
+        self.assertTrue(all("/adapter/" in u for u in urls), urls)
+        self.assertEqual(len({u for u in urls if "/job/camayoc/" in u}), 2, urls)
+
+
+if __name__ == "__main__":
+    unittest.main()
