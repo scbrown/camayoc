@@ -82,4 +82,19 @@ jobs:
           sudo apt-get install -y just \
             || curl -sfL https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
           just --version
-      - run: just test
+      # Captured rather than merely printed. `unittest` exits 0 when every test
+      # skips, so this job's own output was the only thing that could tell
+      # ran-and-passed from skipped-everything, and nothing read it.
+      - name: Run the suite
+        run: just test 2>&1 | tee integration-suite.log; exit "${PIPESTATUS[0]}"
+
+      # `if: always()` is load-bearing. The failure this guards against starts
+      # at the fetch step — a quipu release with a missing binary asset, which
+      # has already shipped once (v0.3.32 had no wasm asset) — and a failed step
+      # SKIPS every later step, so the suite never runs at all. Without
+      # always(), the verdict would be skipped by exactly the event it exists to
+      # report. It writes a GitHub annotation, which surfaces on the run page
+      # even though this job is continue-on-error and therefore green.
+      - name: Say whether integration actually ran
+        if: always()
+        run: python3 scripts/integration_verdict.py integration-suite.log
