@@ -250,13 +250,35 @@ demonstrable, not merely motivated.
 
 From [`implemented-set.md`](implemented-set.md), which is authoritative:
 
-- **Quarantined inference and governed promotion are NOT built.** D discloses
-  them as the primary contemplated embodiment. Zero non-doc references exist:
-  an inferred-tagged node lands exactly where an observed one does, and
-  quarantine is skill discipline only. They go in **future work with the
-  blocker named** (`camayoc-s0h` carries measured citations to two specific
-  quipu gaps). A paper that inherits D's framing describes a system that does
-  not exist.
+- **Quarantined inference and governed promotion are BUILT; one quipu-side
+  mechanism is not.** This bullet said the opposite until 2026-09-05, and was
+  contradicting the very document it cites as authoritative — see the note
+  below, which is kept because how it went stale is the reusable part.
+  Re-measured 2026-09-05:
+  - *Quarantined inference* — built on both sides. Camayoc routes inferred
+    facts to a distinct named graph labelled low in the trust lattice
+    (`scripts/planes.py`, 13 tests) since 2026-08-18; quipu materialises into
+    companion inferred graphs with a write guard (`src/store/inferred.rs`,
+    17,732 bytes, 13 functions) since 2026-08-27, `df36f72`.
+  - *Governed promotion* — camayoc's half is built (`scripts/promote_plane.py`,
+    15 tests, authority-gated and self-promotion-refused, move half since
+    2026-08-24). **Quipu's promotion mechanism is not**: `grep -ci promote
+    src/store/inferred.rs` -> `0`, and quipu's own `entailment-regime.md` still
+    lists *"REMAINING under quipu-0b6: the promotion mechanism (§3 —
+    authority-gated…)"*.
+
+  So future work names **one** blocker, not two, and it is quipu-side rather
+  than camayoc-side.
+
+  > **How this went stale, recorded because the mechanism is the point.** The
+  > claim was true when written (2026-08-22). `implemented-set.md` re-measured
+  > on 2026-08-25 and moved both aspects to Built; quipu's half landed
+  > 2026-08-27. This bullet moved on neither date, and for fourteen days
+  > asserted "NOT built" while naming as authoritative a document that said
+  > "Built" — a contradiction inside one repo, which no cross-repo watch would
+  > have caught. `tests/test_paper_claims.py` now fails on exactly that shape.
+  > It also carried a falsifiable claim, *"Zero non-doc references exist"*,
+  > which was false by two scripts and 28 tests.
 - **Tier-honest serving is yupana's.** Camayoc defines and mandates the tag;
   yupana serves under it. Claim the vocabulary, not the serving.
 - **Typed non-answers: one instance, not a taxonomy.** `NO COVERAGE` on the
@@ -313,4 +335,6 @@ From [`implemented-set.md`](implemented-set.md), which is authoritative:
 - Not a store paper. Quipu's is submitted and its evaluation is spent.
 - Not a guard paper. Yupana owns the action boundary and the non-answer
   taxonomy.
-- Not a claim that quarantined inference works. It is not built.
+- Not a claim that quipu-side *promotion* of quarantined facts is built — it is
+  not (see §6). Quarantined inference itself is built and claimable; this line
+  said otherwise until 2026-09-05.
