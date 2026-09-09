@@ -94,6 +94,28 @@ class IriLaneTests(unittest.TestCase):
 
     ONTO = "http://aegis.gastown.local/ontology/"
 
+    def test_linked_work_items_satisfy_the_core_type_and_trust_contract(self):
+        lines = []
+        mod.emit("example", "abc123", ["example-123"], ["src/main.py"], lines)
+        turtle = "\n".join(lines)
+        item = next(line for line in lines if line.startswith(
+            f'<{mod.iri("bead", "example-123")}> a '))
+        self.assertIn(f'a <{mod.ONTOLOGY}WorkItem>', item)
+        self.assertIn('rdfs:label "example-123"', item)
+        self.assertIn(f'<{mod.ONTOLOGY}sourceKind> "observed"', item)
+        self.assertNotIn(f'<{mod.ONTOLOGY}Bead>', turtle)
+
+    def test_module_range_nodes_have_required_metadata_and_escaped_literals(self):
+        lines = []
+        mod.emit('a"repo', "abc123", ["example-123"], ['src/a"file.py', 'data.bin'], lines)
+        modules = [line for line in lines if f'a <{mod.ONTOLOGY}CodeModule>' in line]
+        self.assertEqual(len(modules), 2)
+        self.assertIn('rdfs:label "a\\"file.py"', modules[0])
+        self.assertIn(f'<{mod.ONTOLOGY}filePath> "src/a\\"file.py"', modules[0])
+        self.assertIn(f'<{mod.ONTOLOGY}repo> "a\\"repo"', modules[0])
+        self.assertIn(f'<{mod.ONTOLOGY}language> "python"', modules[0])
+        self.assertIn(f'<{mod.ONTOLOGY}language> "unknown"', modules[1])
+
     def test_a_module_iri_is_the_one_the_live_code_graph_uses(self):
         self.assertEqual(
             mod.iri("bobbin", "src/lib.rs"),

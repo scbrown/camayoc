@@ -43,6 +43,7 @@ still the current implementation" — those are read-time questions.
 from __future__ import annotations
 
 import argparse
+import json
 import time
 import re
 import subprocess
@@ -163,7 +164,7 @@ def commits(repo: Path, since: str | None, limit: int):
 def emit(repo_name: str, sha: str, items: list[str], paths: list[str], out: list[str]) -> None:
     commit_iri = iri(repo_name, "commit", sha)
     out.append(f"<{commit_iri}> a <{ONTOLOGY}GitCommit> ;")
-    out.append(f'    rdfs:label "{repo_name}@{sha[:12]}" ;')
+    out.append(f'    rdfs:label {json.dumps(f"{repo_name}@{sha[:12]}")} ;')
     out.append(f'    <{ONTOLOGY}sourceKind> "observed" ;')
     for item in items:
         out.append(f'    <{ONTOLOGY}implements> <{iri("bead", item)}> ;')
@@ -175,15 +176,25 @@ def emit(repo_name: str, sha: str, items: list[str], paths: list[str], out: list
         # items but no interesting paths still records the linkage.
         out[-1] = out[-1].rstrip(" ;") + " ."
     out.append("")
-    # The bead and the module must exist as typed nodes or the range shapes
+    # The work item and the module must exist as typed nodes or the range shapes
     # have nothing to check. Repeated across commits, which is fine — Turtle
     # is a set, and quipu's fact log is idempotent on identical assertions.
     for item in items:
-        out.append(f'<{iri("bead", item)}> a <{ONTOLOGY}Bead> ; '
+        # Preserve the identity lane; Bead is retired as a governed class.
+        # Core WorkItem requires both a label and an explicit trust tag.
+        out.append(f'<{iri("bead", item)}> a <{ONTOLOGY}WorkItem> ; '
+                   f'rdfs:label "{item}" ; '
+                   f'<{ONTOLOGY}sourceKind> "observed" ; '
                    f'<{ONTOLOGY}identifier> "{item}" .')
     for path in paths:
+        # Match the code seed's labels/languages; history-only paths of other
+        # kinds have unknown language rather than an invented classification.
+        language = {".rs": "rust", ".py": "python"}.get(Path(path).suffix, "unknown")
         out.append(f'<{iri(repo_name, path)}> a <{ONTOLOGY}CodeModule> ; '
-                   f'<{ONTOLOGY}filePath> "{path}" .')
+                   f'rdfs:label {json.dumps(Path(path).name)} ; '
+                   f'<{ONTOLOGY}filePath> {json.dumps(path)} ; '
+                   f'<{ONTOLOGY}repo> {json.dumps(repo_name)} ; '
+                   f'<{ONTOLOGY}language> "{language}" .')
     out.append("")
 
 
