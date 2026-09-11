@@ -96,7 +96,11 @@ def push(job: str, body: str, url: str | None = None,
     `grouping` becomes extra /label/value segments in the URL — the pushgateway
     GROUPING KEY — and this is not a stylistic choice.
 
-    A pushgateway group is REPLACED WHOLESALE by each push to the same grouping
+    PUT replaces the complete group, so a metric omitted from the next
+    successful run disappears. POST would retain retired metric names. Each
+    adapter owns its group; producer and sample jobs remain separate.
+
+    A pushgateway group is REPLACED WHOLESALE by each PUT to the same grouping
     key. So a distinguishing label carried in the BODY does not partition
     anything: the second adapter to push destroys the first adapter's series and
     the gateway reports success to both. Measured live by gennaro on the sibling
@@ -125,7 +129,7 @@ def push(job: str, body: str, url: str | None = None,
         path += f"/{urllib.parse.quote(k, safe='')}/{urllib.parse.quote(str(v), safe='')}"
     target = urllib.parse.urlunparse((parsed.scheme or "http", netloc, path, "", "", ""))
 
-    req = urllib.request.Request(target, data=body.encode(), method="POST")
+    req = urllib.request.Request(target, data=body.encode(), method="PUT")
     req.add_header("Content-Type", "text/plain; version=0.0.4")
     password = parsed.password or ""
     password_file = os.environ.get(PASSWORD_FILE_ENV, "").strip()

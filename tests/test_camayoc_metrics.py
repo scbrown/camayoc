@@ -150,6 +150,7 @@ class GroupingKeyPartitionsSeries(unittest.TestCase):
                 return False
 
         def fake_urlopen(req, timeout=None):
+            seen["method"] = req.get_method()
             seen["url"] = req.full_url
             seen["body"] = req.data.decode()
             return _Resp()
@@ -157,6 +158,16 @@ class GroupingKeyPartitionsSeries(unittest.TestCase):
         with mock.patch.object(m.urllib.request, "urlopen", fake_urlopen):
             m.push("camayoc", "x 1\n", url="http://gw.example/", **kw)
         return seen
+
+    def test_push_replaces_the_complete_adapter_group(self):
+        self.assertEqual(self._target(grouping={"adapter": "alpha"})["method"], "PUT")
+
+    def test_failed_run_keeps_previous_sample_group(self):
+        with mock.patch.object(m, "push", return_value=(True, "accepted")) as send:
+            m.report("alpha", {"partial": 1}, started=0.0, status=1)
+        self.assertEqual(send.call_count, 1)
+        self.assertEqual(send.call_args.args[0], m.JOB_PRODUCER)
+        self.assertEqual(send.call_args.kwargs["grouping"], {"adapter": "alpha"})
 
     def test_adapter_is_a_url_segment_not_a_body_label(self):
         seen = self._target(grouping={"adapter": "git-provenance"})

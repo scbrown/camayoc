@@ -36,6 +36,12 @@ which is the `up=1`-while-dead class this exists to close, and which this fleet
 has been bitten by (a watcher sat `up=1` for three hours observing a store nobody
 was writing to).
 
+Each adapter (and optional instance) has its own grouping key. Pushes use PUT
+to replace that complete group: a metric name omitted from the next successful
+run disappears. POST would retain that retired name indefinitely. The producer
+and sample jobs are separate, so updating one leaves the other untouched. A
+failed run updates only the producer group and retains the last good samples.
+
 ## Why these counters and not `up`
 
 `up 1` says a scrape succeeded. It is true of a tool that has done nothing for a
@@ -80,3 +86,9 @@ read back from Prometheus, not from the pushing script:
 
 A moving value read from the scrape target is the claim; a push returning 200 is
 not, and neither is a gauge that is always 0.
+
+2026-09-11, isolated adapter groups on a live gateway: PUT of A+B followed by A
+left A present and B absent. The POST control retained B after the same pair of
+pushes. The sibling producer group's scraped lines stayed byte-identical in
+both arms. Both probe groups were deleted and read back as absent. The PUT arm
+used `push()` with a password file and a username-only gateway URL.
