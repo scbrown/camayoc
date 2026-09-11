@@ -26,6 +26,7 @@ from __future__ import annotations
 import re
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 DOCS = Path(__file__).resolve().parents[1] / "docs" / "design"
 LEDGER = DOCS / "implemented-set.md"
@@ -82,11 +83,9 @@ class PaperDoesNotContradictTheLedger(unittest.TestCase):
                 for denial in DENIALS:
                     if denial.lower() not in low:
                         continue
-                    # A paragraph that RECORDS a corrected denial is not itself a
-                    # denial. The correction has to be allowed to describe what
-                    # it corrected, or fixing the bug re-triggers the test.
-                    if "until 2026-" in low or "said the opposite" in low:
-                        continue
+                    # Historical markers must not exempt neighbouring claims.
+                    # The existing correction prose passes this check without
+                    # an exemption; preserve that as the positive control.
                     offences.append((aspect, denial, para.strip()[:160]))
         self.assertEqual(
             offences,
@@ -95,3 +94,31 @@ class PaperDoesNotContradictTheLedger(unittest.TestCase):
             "itself names as authoritative — marks as Built:\n"
             + "\n".join(f"  {a!r} via {d!r}: {p}…" for a, d, p in offences),
         )
+
+
+class PaperClaimGuardRegression(unittest.TestCase):
+    def test_denial_in_the_real_corrected_paragraph_is_rejected(self):
+        paper = PAPER.read_text(encoding="utf-8")
+        paragraphs = paper.split("\n\n")
+        corrected = next(
+            para for para in paragraphs
+            if "This bullet said the opposite until 2026-09-05" in para
+        )
+        self.assertIn("Quarantined inference", corrected)
+        for denial in ("is not built", "are NOT built"):
+            with self.subTest(denial=denial):
+                mutated = paper.replace(
+                    corrected,
+                    corrected + "\n  Quarantined inference " + denial + ".",
+                    1,
+                )
+                with patch(__name__ + ".PAPER") as source:
+                    source.read_text.return_value = mutated
+                    guard = PaperDoesNotContradictTheLedger(
+                        "test_the_paper_does_not_deny_an_aspect_the_ledger_calls_built"
+                    )
+                    result = unittest.TestResult()
+                    guard.run(result)
+                self.assertEqual(result.errors, [])
+                self.assertEqual(len(result.failures), 1, "mutated denial escaped guard")
+                self.assertIn("Quarantined inference", result.failures[0][1])
