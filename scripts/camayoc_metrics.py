@@ -41,17 +41,19 @@ happen says so on stderr, because a metrics pipeline that quietly does nothing i
 the thing being guarded against.
 
 CONFIGURATION. `CAMAYOC_METRICS_PUSHGATEWAY` holds the whole address including
-any credential, the same contract creel uses:
+an optional inline credential:
 
     CAMAYOC_METRICS_PUSHGATEWAY=http://[user:pass@]host[:port]
 
-The credential arrives at run time and is never written to the repo: the variable
-carries it, an operator's secret store supplies it, and nothing here logs it.
+Prefer CAMAYOC_METRICS_PASSWORD_FILE with a user-only URL. The file overrides
+an inline password. An unreadable or empty configured file refuses the push
+without falling back to the URL credential. Secrets are never logged.
 """
 from __future__ import annotations
 
 import base64
 import os
+from pathlib import Path
 import sys
 import time
 import urllib.error
@@ -59,6 +61,7 @@ import urllib.parse
 import urllib.request
 
 ENV = "CAMAYOC_METRICS_PUSHGATEWAY"
+PASSWORD_FILE_ENV = "CAMAYOC_METRICS_PASSWORD_FILE"
 JOB_SAMPLES = "camayoc"
 JOB_PRODUCER = "camayoc_producer"
 TIMEOUT_S = 10
@@ -124,8 +127,19 @@ def push(job: str, body: str, url: str | None = None,
 
     req = urllib.request.Request(target, data=body.encode(), method="POST")
     req.add_header("Content-Type", "text/plain; version=0.0.4")
+    password = parsed.password or ""
+    password_file = os.environ.get(PASSWORD_FILE_ENV, "").strip()
+    if password_file:
+        if not parsed.username:
+            return False, f"{PASSWORD_FILE_ENV} requires a URL username — nothing pushed"
+        try:
+            password = Path(password_file).expanduser().read_text(encoding="utf-8").strip()
+        except (OSError, ValueError):
+            return False, f"{PASSWORD_FILE_ENV} cannot be read — nothing pushed"
+        if not password:
+            return False, f"{PASSWORD_FILE_ENV} is empty — nothing pushed"
     if parsed.username:
-        cred = f"{parsed.username}:{parsed.password or ''}"
+        cred = f"{parsed.username}:{password}"
         req.add_header("Authorization",
                        "Basic " + base64.b64encode(cred.encode()).decode())
     try:

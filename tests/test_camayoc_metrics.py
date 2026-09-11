@@ -5,7 +5,9 @@ read back from Prometheus (docs/metrics.md), and a test that reached the gateway
 would pass or fail on the state of the machine it ran on — the wrong property for
 a regression guarding a text format and a URL shape.
 """
+import base64
 import os
+import tempfile
 import sys
 import unittest
 from unittest import mock
@@ -52,6 +54,62 @@ class PushRefusals(unittest.TestCase):
         ok, why = m.push("j", "x 1\n", url="http://127.0.0.1:1/")
         self.assertFalse(ok)
         self.assertIn("unreachable", why)
+
+
+class PasswordFile(unittest.TestCase):
+    def setUp(self):
+        self.env = mock.patch.dict(os.environ, {}, clear=True)
+        self.env.start()
+        self.addCleanup(self.env.stop)
+
+    def test_file_supplies_password_and_overrides_inline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "password"
+            path.write_text("file-password\n", encoding="utf-8")
+            for url in ("http://user@gw.example", "http://user:inline@gw.example"):
+                with self.subTest(url=url), mock.patch.dict(
+                    os.environ, {m.PASSWORD_FILE_ENV: str(path)}
+                ), mock.patch.object(m.urllib.request, "urlopen") as send:
+                    send.return_value.__enter__.return_value.status = 200
+                    ok, why = m.push("j", "x 1\n", url=url)
+                    self.assertTrue(ok, why)
+                    request = send.call_args.args[0]
+                    expected = base64.b64encode(b"user:file-password").decode()
+                    self.assertEqual(request.get_header("Authorization"), "Basic " + expected)
+                    self.assertNotIn("file-password", request.full_url + why)
+
+    def test_bad_file_refuses_without_network_or_inline_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "password"
+            for content in (None, b" \n", b"\xff"):
+                if content is not None:
+                    path.write_bytes(content)
+                with self.subTest(content=content), mock.patch.dict(
+                    os.environ, {m.PASSWORD_FILE_ENV: str(path)}
+                ), mock.patch.object(m.urllib.request, "urlopen") as send:
+                    ok, why = m.push("j", "x 1\n", url="http://user:secret@gw.example")
+                    self.assertFalse(ok)
+                    self.assertIn(m.PASSWORD_FILE_ENV, why)
+                    self.assertNotIn("secret", why)
+                    send.assert_not_called()
+
+    def test_file_requires_username(self):
+        with mock.patch.dict(os.environ, {m.PASSWORD_FILE_ENV: "unused"}), \
+                mock.patch.object(m.urllib.request, "urlopen") as send:
+            ok, why = m.push("j", "x 1\n", url="http://gw.example")
+            self.assertFalse(ok)
+            self.assertIn("username", why)
+            send.assert_not_called()
+
+    def test_inline_and_unauthenticated_urls_still_work(self):
+        for url, credential in (("http://user:inline@gw.example", b"user:inline"),
+                                ("http://gw.example", None)):
+            with self.subTest(url=url), mock.patch.object(m.urllib.request, "urlopen") as send:
+                send.return_value.__enter__.return_value.status = 200
+                self.assertTrue(m.push("j", "x 1\n", url=url)[0])
+                header = send.call_args.args[0].get_header("Authorization")
+                expected = "Basic " + base64.b64encode(credential).decode() if credential else None
+                self.assertEqual(header, expected)
 
 
 class GroupingKeyPartitionsSeries(unittest.TestCase):

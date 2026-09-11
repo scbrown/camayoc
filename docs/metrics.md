@@ -47,7 +47,8 @@ then the metric is measuring the metric.
 
 ## Running it
 
-    CAMAYOC_METRICS_PUSHGATEWAY=http://[user:pass@]host[:port] \
+    CAMAYOC_METRICS_PUSHGATEWAY=http://user@host[:port] \
+    CAMAYOC_METRICS_PASSWORD_FILE=/path/to/password-file \
       python3 scripts/ingest_git_provenance.py <repo> --project <prefix>
 
 Unset the variable and nothing is pushed — the ingest is unaffected and says
@@ -56,6 +57,10 @@ deliberate: the ingest is the point and the metric is the observation of it, so 
 missing gateway must never fail a run. It is never SILENT about it either, because
 a metrics pipeline that quietly does nothing is the thing being guarded against.
 
+The password file takes precedence over an inline URL password. An unreadable
+or empty configured file refuses the push without falling back to the inline
+credential. The URL must include a username when using a password file. Without
+the file setting, inline credentials and unauthenticated gateways still work.
 The credential arrives at run time and is never written to the repo.
 
 ## Verified
