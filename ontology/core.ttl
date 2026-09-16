@@ -558,3 +558,39 @@ camayoc:sourceLeftOpen a rdf:Property ;
     rdfs:label "source left open" ;
     rdfs:comment "Whether the source-plane interval was left open. false: the source episode was closed, a bitemporal interval close and never a delete, so the original stays visible as-of its write time. true: the promoter could not name the source episode, and the record says so out loud rather than implying a close that never happened — the fact is then readable in two planes at different trust, which is recoverable and visible instead of silent. The exact cell Q13 asks for. (Q13)" ;
     rdfs:range xsd:boolean .
+
+# Q16 per-request breakdown; no second consumption total.
+aegis:inputTokensUncached a rdf:Property ;
+    rdfs:label "inputTokensUncached" ;
+    rdfs:comment "Input tokens excluding cache reads and cache writes." ;
+    rdfs:range xsd:integer .
+
+aegis:cacheReadInputTokens a rdf:Property ;
+    rdfs:label "cacheReadInputTokens" ;
+    rdfs:comment "Input tokens served from cache." ;
+    rdfs:range xsd:integer .
+
+aegis:cacheWriteInputTokens a rdf:Property ;
+    rdfs:label "cacheWriteInputTokens" ;
+    rdfs:comment "Input tokens written to cache." ;
+    rdfs:range xsd:integer .
+
+aegis:outputTokens a rdf:Property ;
+    rdfs:label "outputTokens" ;
+    rdfs:comment "Output tokens including any reasoning subset." ;
+    rdfs:range xsd:integer .
+
+aegis:usageModel a rdf:Property ;
+    rdfs:label "usageModel" ;
+    rdfs:comment "Per-request model identifier recorded by the harness." ;
+    rdfs:range xsd:string .
+
+aegis:usageHarness a rdf:Property ;
+    rdfs:label "usageHarness" ;
+    rdfs:comment "Harness that wrote the request record." ;
+    rdfs:range xsd:string .
+
+aegis:usageModelSource a rdf:Property ;
+    rdfs:label "usageModelSource" ;
+    rdfs:comment "Field provenance distinguishing declared model from billed model." ;
+    rdfs:range xsd:string .

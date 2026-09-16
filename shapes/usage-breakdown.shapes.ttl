@@ -1,0 +1,11 @@
+@prefix a: <http://aegis.gastown.local/ontology/> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+a:UsageBreakdownShape a sh:NodeShape ; sh:targetClass a:UsageRecord ;
+    sh:property [ sh:path a:inputTokensUncached ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:property [ sh:path a:cacheReadInputTokens ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:property [ sh:path a:cacheWriteInputTokens ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:property [ sh:path a:outputTokens ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:property [ sh:path a:usageModel ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path a:usageHarness ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+    sh:property [ sh:path a:usageModelSource ; sh:maxCount 1 ; sh:datatype xsd:string ] .

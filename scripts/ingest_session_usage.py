@@ -34,25 +34,20 @@ requestId. Summing per entry reports 39,467,766 tokens where the session
 consumed 15,653,391 — a 2.5x overcount, in the flattering direction for
 anyone reporting throughput and the punishing one for anyone reporting spend.
 
-So the record is keyed by `requestId` and the first entry for each wins. An
+The record is keyed by `requestId`; identical repeats are deduplicated and
+conflicting counts are abstained. An
 entry carrying usage but **no** requestId cannot be deduplicated against its
 siblings and is therefore ABSTAINED — counted in the summary, never emitted.
 A dropped request understates a total visibly; a triple-counted one corrupts
 every rate built on it.
 
-ABSTAIN, NEVER GUESS — WHICH IS WHY CODEX IS NOT PARSED HERE
-============================================================
+MEASURED CODEX ACCOUNTING
+========================
 
-competency/verification-and-liveness.md §D names two harnesses. Only the
-claude layout was verifiable against a real on-disk record when this was
-written; no `~/.codex/sessions/**/rollout-*.jsonl` was available to measure.
-Its field names are recorded in the competency suite as prose, and a parser
-written from prose is a guess wearing a parser's clothes — the requestId
-finding above is exactly what prose does not tell you. Codex files are
-therefore counted as UNRECOGNISED in the denominator and emit nothing. Adding
-the reader is a small change (`READERS` below) once a real rollout file can
-be measured; inventing it now would put wrong integers into the graph tagged
-`observed`.
+Codex response records are verified against real rollout thread-ledger deltas.
+They include compaction requests that legacy token_count snapshots omit. Unknown
+models or breakdown fields remain unknown; conflicting repeated identities are
+abstained instead of accepting whichever row happened to arrive first.
 
 Q19 IS WHY EVERY SESSION IS EMITTED
 ===================================
@@ -67,9 +62,8 @@ ONE QUANTITY, NOT THE BREAKDOWN
 ===============================
 
 `aegis:tokensConsumed` is total consumption: input + cache-creation +
-cache-read + output. The per-harness breakdown stays unmodelled because no §D
-question needs it and competency-before-classes says the finer terms wait for
-a question that does. Consumption only — never remaining quota, which comes
+cache-read + output. The reader also retains the disjoint breakdown and model for per-work
+retrieval; the legacy Turtle interface retains its existing total vocabulary. Consumption only — never remaining quota, which comes
 from a different source and whose conflation with consumption cost this crew
 a closed investigation (§D's own note).
 
@@ -90,88 +84,146 @@ BASE = "http://aegis.gastown.local/cost/"
 ONTOLOGY = "http://aegis.gastown.local/ontology/"
 
 
-def _total(usage: dict) -> int | None:
-    """Total tokens for one request, or None if the record is not countable.
+KINDS = ("input_uncached", "cache_read_input", "cache_write_input", "output")
 
-    Only the top-level fields are summed. The claude `usage` object also
-    carries an `iterations` list that RESTATES the same counts; adding both
-    double-counts every request. A record missing the mandatory halves is not
-    a zero — it is unknown, and returns None so the caller abstains.
-    """
-    try:
-        inp = usage["input_tokens"]
-        out = usage["output_tokens"]
-    except (KeyError, TypeError):
+
+def _integer(value):
+    return type(value) is int and value >= 0
+
+
+def _counts(usage, fmt):
+    """Disjoint quantities; absent fields stay unknown, not free consumption."""
+    if not isinstance(usage, dict):
         return None
-    extra = 0
-    for key in ("cache_creation_input_tokens", "cache_read_input_tokens"):
-        value = usage.get(key, 0)
-        if not isinstance(value, int):
+    inp, out = usage.get("input_tokens"), usage.get("output_tokens")
+    if not _integer(inp) or not _integer(out):
+        return None
+    read = usage.get("cached_input_tokens" if fmt == "codex" else "cache_read_input_tokens")
+    write = usage.get("cache_write_input_tokens" if fmt == "codex" else "cache_creation_input_tokens")
+    if any(v is not None and not _integer(v) for v in (read, write)):
+        return None
+    if fmt == "codex":
+        if read is not None and write is not None and read + write > inp:
             return None
-        extra += value
-    if not isinstance(inp, int) or not isinstance(out, int):
-        return None
-    return inp + out + extra
+        uncached = inp - read - write if read is not None and write is not None else None
+        total = inp + out
+    else:
+        uncached = inp
+        total = inp + out + read + write if read is not None and write is not None else None
+    return dict(zip(KINDS, (uncached, read, write, out))), total
 
 
-def read_claude(path: Path) -> tuple[str, list[dict], int] | None:
-    """The claude harness layout: ~/.claude/projects/<slug>/<session>.jsonl.
+def _total(usage):
+    result = _counts(usage, "claude")
+    return result[1] if result else None
 
-    Returns (session id, requests, abstained) or None if the file is not this
-    format.
-    Recognition is by SHAPE — a line carrying both `sessionId` and a
-    `message.usage` — not by filename, because the same suffix is used by
-    every other JSONL producer on the machine, this repo's own tracker
-    included.
-    """
-    session_id = None
-    requests: dict[str, dict] = {}
-    unkeyed = 0
-    uncountable = 0
-    recognised = False
 
+def _rows(path):
+    # A partial trailing write is unknown evidence; it is counted by each reader.
     for line in path.read_text(errors="replace").splitlines():
-        line = line.strip()
-        if not line:
+        if not line.strip():
             continue
         try:
-            entry = json.loads(line)
-        except json.JSONDecodeError:
+            value = json.loads(line)
+            yield value if isinstance(value, dict) else None
+        except ValueError:
+            yield None
+
+
+def _put(requests, conflicts, record):
+    key = record["id"]
+    if key in conflicts:
+        return
+    previous = requests.get(key)
+    if previous:
+        # Content blocks repeat counts but can have different receipt timestamps.
+        fields = ("tokens", "counts", "model", "model_source", "detail")
+        if any(previous[k] != record[k] for k in fields):
+            conflicts.add(key)
+            del requests[key]
+        elif record["at"] < previous["at"]:
+            requests[key] = record
+    else:
+        requests[key] = record
+
+
+def read_claude(path):
+    session_id, requests, conflicts, abstained = None, {}, set(), 0
+    for entry in _rows(path):
+        if entry is None:
+            abstained += 1
             continue
-        if not isinstance(entry, dict) or "sessionId" not in entry:
+        if "sessionId" not in entry:
             continue
-        recognised = True
-        session_id = session_id or entry.get("sessionId")
-        usage = (entry.get("message") or {}).get("usage")
+        sid = entry.get("sessionId")
+        if not sid:
+            continue
+        if session_id and session_id != sid:
+            raise ValueError("mixed session identities in one transcript")
+        session_id = sid
+        message = entry.get("message") or {}
+        usage = message.get("usage")
         if not isinstance(usage, dict):
             continue
-        key = entry.get("requestId")
-        if not key:
-            # Cannot be deduplicated against its siblings. See the module note.
-            unkeyed += 1
+        key, stamp = entry.get("requestId"), entry.get("timestamp")
+        parsed = _counts(usage, "claude")
+        if not key or not stamp or not parsed or parsed[1] is None:
+            abstained += 1
             continue
-        if key in requests:
-            continue
-        total = _total(usage)
-        if total is None:
-            uncountable += 1
-            continue
-        stamp = entry.get("timestamp")
-        if not stamp:
-            uncountable += 1
-            continue
-        requests[key] = {"id": key, "tokens": total, "at": stamp}
-
-    if not recognised or not session_id:
+        _put(requests, conflicts, {"id": key, "tokens": parsed[1], "at": stamp,
+             "counts": parsed[0], "model": message.get("model"),
+             "model_source": "message.model", "harness": "claude",
+             "detail": {"cache_creation": usage.get("cache_creation"),
+                        "reasoning_output": (usage.get("output_tokens_details") or {}).get("thinking_tokens")}})
+    if not session_id:
         return None
-    ordered = sorted(requests.values(), key=lambda r: (r["at"], r["id"]))
-    return session_id, ordered, unkeyed + uncountable
+    return session_id, sorted(requests.values(), key=lambda r: (r["at"], r["id"])), abstained + len(conflicts)
 
 
-#: format name -> (reader, provider). Adding a harness means adding a reader
-#: that was verified against one of its real files — never one written from a
-#: description of the format.
-READERS = {"claude": (read_claude, "anthropic")}
+def read_codex(path):
+    """Use measured per-response accounting, including compaction calls.
+
+    event_msg/token_count snapshots omit compaction usage. Never sum them with
+    response records or silently present that fallback as a complete count.
+    """
+    session_id, model, requests, conflicts, abstained = None, None, {}, set(), 0
+    legacy = False
+    for entry in _rows(path):
+        if entry is None:
+            abstained += 1
+            continue
+        kind, payload = entry.get("type"), entry.get("payload") or {}
+        if not isinstance(payload, dict):
+            continue
+        if kind == "session_meta":
+            sid = payload.get("id")
+            if session_id and sid and session_id != sid:
+                raise ValueError("mixed session identities in one transcript")
+            session_id = sid or session_id
+        elif kind == "turn_context":
+            model = payload.get("model")
+        elif kind == "event_msg" and payload.get("type") == "token_count":
+            legacy = True
+        elif kind == "token_usage_record":
+            sid = payload.get("session_id") or payload.get("thread_id")
+            if session_id and sid and session_id != sid:
+                raise ValueError("mixed session identities in one transcript")
+            session_id = sid or session_id
+            key, stamp = payload.get("response_id"), entry.get("timestamp")
+            parsed = _counts(payload.get("usage"), "codex")
+            if not key or not stamp or not parsed:
+                abstained += 1
+                continue
+            _put(requests, conflicts, {"id": key, "tokens": parsed[1], "at": stamp,
+                 "counts": parsed[0], "model": model,
+                 "model_source": "turn_context.model (declared)", "harness": "codex",
+                 "detail": {"reasoning_output": payload["usage"].get("reasoning_output_tokens")}})
+    if not session_id:
+        return None
+    return session_id, sorted(requests.values(), key=lambda r: (r["at"], r["id"])), abstained + len(conflicts) + int(legacy and not requests)
+
+
+READERS = {"claude": (read_claude, "anthropic"), "codex": (read_codex, "openai")}
 
 
 def esc(text: str) -> str:
@@ -283,12 +335,8 @@ def main() -> int:
               f"requestId to deduplicate by, or an incomplete count. The total "
               f"above is a FLOOR, not a measurement.", file=sys.stderr)
     if stats["unrecognised"]:
-        print(f"NOTE: {stats['unrecognised']} file(s) matched no reader in "
-              f"{sorted(READERS)} and emitted nothing. Codex rollouts land here "
-              f"on purpose: no real rollout file was available to verify a reader "
-              f"against, and a parser written from a format description is a "
-              f"guess. Their consumption is ABSENT from the total above, not "
-              f"zero.", file=sys.stderr)
+        print(f"NOTE: {stats['unrecognised']} file(s) matched no verified reader in "
+              f"{sorted(READERS)}. Their consumption is ABSENT, not zero.", file=sys.stderr)
     return 0
 
 

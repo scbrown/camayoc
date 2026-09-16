@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_work_item_usage_records",
+  "description": "Q16 request evidence by model and harness, with disjoint counts. Missing fields remain unbound, never zero. This is observed coverage, not proof of lifetime completeness.",
+  "template": "PREFIX a: <http://aegis.gastown.local/ontology/> SELECT ?record ?session ?tokens ?model ?harness ?input ?cacheRead ?cacheWrite ?output WHERE { ?record a a:UsageRecord ; a:attributedTo <{workitem}> ; a:inSession ?session ; a:tokensConsumed ?tokens . OPTIONAL { ?record a:usageModel ?model } OPTIONAL { ?record a:usageHarness ?harness } OPTIONAL { ?record a:inputTokensUncached ?input } OPTIONAL { ?record a:cacheReadInputTokens ?cacheRead } OPTIONAL { ?record a:cacheWriteInputTokens ?cacheWrite } OPTIONAL { ?record a:outputTokens ?output } }",
+  "params": [
+    {
+      "name": "workitem",
+      "type": "iri",
+      "required": true,
+      "description": "Canonical tracker WorkItem IRI."
+    }
+  ]
+}

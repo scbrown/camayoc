@@ -20,6 +20,12 @@ def execute(method: dict[str, Any], timeout: float = 5.0) -> dict[str, Any]:
     params = method.get("params") or {}
     if not system or not query:
         return {"status": "invalid", "error": "method requires system and query"}
+    if system == "session_usage" and query == "work_cost":
+        from work_cost import retrieve
+        try:
+            return {"status": "retrieved", "system": system, "result": retrieve(params)}
+        except (ValueError, TypeError, KeyError) as exc:
+            return {"status": "invalid", "system": system, "error": str(exc)}
     if system != "prometheus":
         return {"status": "unsupported", "system": system}
     endpoint = params.get("endpoint")

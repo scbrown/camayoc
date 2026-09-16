@@ -153,7 +153,7 @@ class AbstentionTests(unittest.TestCase):
         description is a guess, and the requestId defect above is exactly what
         a description does not tell you. When a rollout can be measured, this
         assertion is what should change first."""
-        self.assertEqual(["claude"], sorted(mod.READERS))
+        self.assertEqual(["claude", "codex"], sorted(mod.READERS))
 
 
 class EmissionTests(unittest.TestCase):

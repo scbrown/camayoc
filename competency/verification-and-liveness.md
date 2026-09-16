@@ -148,6 +148,8 @@ that was declared impossible.
 Questions:
 
 16. What did `<work-item>` cost, in tokens, across every principal that touched it?
+    Break this down by harness, request model and disjoint uncached input,
+    cache-read input, cache-write input and output; unknown fields stay absent.
 17. What has `<principal>` consumed in `<time-window>`, by provider?
 18. What is the work-per-token of `<principal>` or `<provider>` — items closed,
     or decisions recorded, per unit of consumption?
