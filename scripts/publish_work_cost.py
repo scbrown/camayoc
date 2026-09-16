@@ -92,6 +92,9 @@ def publish(result, actor, state_path, *, push_status=False):
         previous = json.loads(receipt_path.read_text()) if receipt_path.exists() else {}
         if previous.get('next_request_after', 0) > time.time():
             receipt['next_request_after'] = previous['next_request_after']
+            for field in ('items_per_snapshot', 'records_per_snapshot', 'body_bytes_per_snapshot'):
+                receipt[field] = previous.get(field, [])
+            receipt['dimensions_source'] = 'previous_attempt'
             raise OperatorAction('BACKOFF: previous request budget cooldown has not elapsed')
         answer = _publish(result, actor, state_path, receipt)
         receipt['status'] = 'OK'
@@ -126,9 +129,15 @@ def publish(result, actor, state_path, *, push_status=False):
             _atomic(history_path, json.dumps(history, sort_keys=True))
             receipt['budget_history'] = history
         _atomic(receipt_path, json.dumps(receipt, sort_keys=True))
+        history_path = state_path.with_suffix('.budget.json')
+        history = json.loads(history_path.read_text()) if history_path.exists() else {'runs': 0}
         metrics = '\n'.join([
             '# TYPE camayoc_cost_projection_stalled gauge',
             f'camayoc_cost_projection_stalled{{reason="{reason}"}} {int(reason in {"pending", "budget", "error"})}', 
+            '# TYPE camayoc_cost_preflight_runs gauge',
+            f"camayoc_cost_preflight_runs {history['runs']}",
+            '# TYPE camayoc_cost_budget_review_due gauge',
+            f"camayoc_cost_budget_review_due {int(history['runs'] >= 20)}",
             '# TYPE camayoc_cost_projection_ok gauge',
             f"camayoc_cost_projection_ok {int(receipt['status'] == 'OK')}",
             '# TYPE camayoc_cost_projection_last_attempt_timestamp_seconds gauge',
