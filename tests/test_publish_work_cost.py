@@ -78,7 +78,7 @@ class ProjectionTests(unittest.TestCase):
              patch('publish_work_cost.snapshots', return_value=[(body, [record])]), \
              patch('publish_work_cost.time.sleep'), \
              patch('publish_work_cost.planes._post', side_effect=[
-                 {'rows': [{'item': ONTOLOGY+'p-new'}]}, {'tx_id': 1},
+                 {'rows': [{'item': 'aegis:p-new'}]}, {'tx_id': 1},
                  {'rows': [{'n': '10', 'item': ONTOLOGY+'p-new'}, {'n': '10', 'item': ONTOLOGY+'p-old'}]}]):
             path = Path(directory)/'state.json'
             with self.assertRaisesRegex(ValueError, 'attribution read-back differs'):
@@ -149,3 +149,17 @@ class ResilienceTests(unittest.TestCase):
         import planes
         with self.assertRaises(TypeError):
             planes._post('/query', {})
+
+    def test_compacted_item_names_pass_preflight_and_sample(self):
+        import json
+        record = {'bead':'p-new','attribution':'attributed','session':'s','id':'r','tokens':10}
+        with TemporaryDirectory() as directory, \
+             patch('publish_work_cost.snapshots', return_value=[({'snapshot':'s'}, [record])]), \
+             patch('publish_work_cost.time.sleep'), \
+             patch('publish_work_cost.planes._post', side_effect=[
+                 {'rows':[{'item':'aegis:p-new'}]}, {'tx_id':1},
+                 {'rows':[{'n':'10','item':'aegis:p-new'}]}]):
+            path=Path(directory)/'state.json'
+            self.assertEqual(publish({},'worker',path),[1])
+            self.assertFalse(path.with_suffix('.pending.json').exists())
+            self.assertEqual(json.loads(path.with_suffix('.receipt.json').read_text())['requests'],3)

@@ -66,6 +66,12 @@ def snapshots(result, actor):
                'shapes': (Path(__file__).resolve().parents[1] / 'shapes/usage-breakdown.shapes.ttl').read_text()}, records
 
 
+def expand_item(value):
+    # The query endpoint compacts this registered namespace on the wire.
+    # Normalize only the namespace we own; unknown prefixes stay mismatches.
+    return ONTOLOGY + value[len('aegis:'):] if value.startswith('aegis:') else value
+
+
 class OperatorAction(ValueError):
     """A reviewed budget requires narrower operator-selected sources."""
 
@@ -175,7 +181,7 @@ def _publish(result, actor, state_path, receipt):
                           f'?item a ?t . FILTER(?t = <{ONTOLOGY}WorkItem>) }}'})
             if not isinstance(check.get('rows'), list):
                 raise ValueError('INDETERMINATE: canonical preflight returned no rows field')
-            found = {row['item'] for row in check['rows'] if row.get('item')}
+            found = {expand_item(row['item']) for row in check['rows'] if row.get('item')}
             expected = {ONTOLOGY + item for item in items}
             if not found:
                 control = post('/query', {'query': f'SELECT ?t WHERE {{ <{ONTOLOGY}{items[0]}> a ?t . '
@@ -205,7 +211,7 @@ def _publish(result, actor, state_path, receipt):
         rows = check.get('rows', [])
         if not any(str(row.get('n')) == str(record['tokens']) for row in rows):
             raise ValueError('cost snapshot accepted but read-back unproven')
-        items_seen = {row['item'] for row in rows if row.get('item')}
+        items_seen = {expand_item(row['item']) for row in rows if row.get('item')}
         expected = {ONTOLOGY + record['bead']} if record['attribution'] == 'attributed' else set()
         if items_seen != expected:
             raise ValueError('cost snapshot attribution read-back differs; reconcile pending snapshot')
