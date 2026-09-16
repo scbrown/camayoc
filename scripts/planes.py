@@ -88,11 +88,11 @@ class PlaneError(RuntimeError):
     """A plane operation failed. Never swallowed into a silent ROOT write."""
 
 
-def _post(path: str, body: dict) -> dict:
+def _post(path: str, body: dict, *, client: str = "ingest-cron") -> dict:
     req = urllib.request.Request(
         f"{SERVER}{path}",
         data=json.dumps(body).encode(),
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "X-Quipu-Client": client},
         method="POST",
     )
     if AUTH:

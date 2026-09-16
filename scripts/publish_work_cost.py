@@ -12,11 +12,17 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+import time
 from urllib.parse import quote
 
 from ingest_session_usage import BASE, ONTOLOGY, READERS, emit
 import planes
 from work_cost import retrieve
+
+MAX_SNAPSHOTS = 1
+MAX_WORK_ITEMS = 8
+MAX_RECORDS = 1000
+MAX_BODY_BYTES = 4 * 1024 * 1024
 
 PROPERTIES = {'input_uncached': 'inputTokensUncached', 'cache_read_input': 'cacheReadInputTokens',
               'cache_write_input': 'cacheWriteInputTokens', 'output': 'outputTokens'}
@@ -63,16 +69,42 @@ def snapshots(result, actor):
 def publish(result, actor, state_path):
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
     transactions = []
+    pending = []
     for body, records in snapshots(result, actor):
-        digest = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
-        key = body['snapshot']
-        if state.get(key) == digest:
+        encoded = json.dumps(body, sort_keys=True)
+        digest = hashlib.sha256(encoded.encode()).hexdigest()
+        if state.get(body['snapshot']) == digest:
             continue
-        # Refuse dangling cost edges: the tracker owns canonical WorkItems.
-        # A missing or failed read is not authority to mint a competing twin.
-        for item in sorted({r['bead'] for r in records if r['attribution'] == 'attributed'}):
-            check = planes._post('/query', {'query':
-                f'ASK {{ <{ONTOLOGY}{item}> a ?type . FILTER(?type = <{ONTOLOGY}WorkItem>) }}'})
+        items = sorted({r['bead'] for r in records if r['attribution'] == 'attributed'})
+        if (len(items) > MAX_WORK_ITEMS or len(records) > MAX_RECORDS
+                or len(encoded.encode()) > MAX_BODY_BYTES):
+            raise ValueError('cost snapshot exceeds reviewed item/record/byte budget; narrow sources')
+        pending.append((body, records, digest, items))
+    if len(pending) > MAX_SNAPSHOTS:
+        raise ValueError('cost run exceeds reviewed snapshot budget; narrow sources')
+    # Preflight the complete invocation BEFORE any network access. Backfills
+    # must be explicitly partitioned; no N-session query burst or partial run.
+    last_request = None
+
+    def post(endpoint, body):
+        nonlocal last_request
+        if last_request is not None:
+            time.sleep(max(0, 1 - (time.monotonic() - last_request)))
+        last_request = time.monotonic()
+        return planes._post(endpoint, body, client='camayoc-cost')
+
+    for body, records, digest, items in pending:
+        key = body['snapshot']
+        marker = state_path.with_suffix('.pending.json')
+        if marker.exists():
+            raise ValueError('previous graph write indeterminate; reconcile pending snapshot before retry')
+        if items:
+            # One anchored, bounded conjunction. Every item must be DIRECTLY
+            # typed: constant-type patterns infer and would weaken this gate.
+            patterns = ' '.join(f'<{ONTOLOGY}{item}> a ?t{i} . '
+                                f'FILTER(?t{i} = <{ONTOLOGY}WorkItem>)'
+                                for i, item in enumerate(items))
+            check = post('/query', {'query': 'ASK { ' + patterns + ' }'})
             if check.get('result') is not True:
                 raise ValueError('canonical WorkItem unavailable; run tracker ingress first')
         # Store an indeterminate marker BEFORE sending. A failed write is not
@@ -82,17 +114,21 @@ def publish(result, actor, state_path):
         if marker.exists():
             raise ValueError('previous graph write indeterminate; reconcile pending snapshot before retry')
         marker.write_text(json.dumps(body, sort_keys=True))
-        response = planes._post('/knot', body)
+        response = post('/knot', body)
         if response.get('conforms') is False or not response.get('tx_id'):
             raise ValueError('graph refused cost snapshot')
         # A response proves acceptance; separately check one exact request's
         # total before advancing the cursor. No blind retry on failure.
         record = records[-1]
         iri = f'{BASE}session/{quote(record["session"], safe="")}/usage/{quote(record["id"], safe="")}'
-        check = planes._post('/query', {'query': f'SELECT ?n WHERE {{ <{iri}> <{ONTOLOGY}tokensConsumed> ?n }}'})
+        check = post('/query', {'query': f'SELECT ?n ?item WHERE {{ <{iri}> <{ONTOLOGY}tokensConsumed> ?n . OPTIONAL {{ <{iri}> <{ONTOLOGY}attributedTo> ?item }} }}'})
         rows = check.get('rows', [])
         if not any(str(row.get('n')) == str(record['tokens']) for row in rows):
             raise ValueError('cost snapshot accepted but read-back unproven')
+        items_seen = {row['item'] for row in rows if row.get('item')}
+        expected = {ONTOLOGY + record['bead']} if record['attribution'] == 'attributed' else set()
+        if items_seen != expected:
+            raise ValueError('cost snapshot attribution read-back differs; reconcile pending snapshot')
         state[key] = digest
         temporary = state_path.with_suffix('.tmp')
         temporary.write_text(json.dumps(state, sort_keys=True))

@@ -41,3 +41,46 @@ class ProjectionTests(unittest.TestCase):
             self.assertEqual(post.call_args.args[0], '/query')
             self.assertFalse(state.exists())
             self.assertFalse(state.with_suffix('.pending.json').exists())
+
+    def test_over_budget_does_not_issue_any_request(self):
+        rows = [{'bead': f'p-{i}', 'attribution': 'attributed'} for i in range(9)]
+        with TemporaryDirectory() as directory, \
+             patch('publish_work_cost.snapshots', return_value=[({'snapshot': 's'}, rows)]), \
+             patch('publish_work_cost.planes._post') as post:
+            with self.assertRaisesRegex(ValueError, 'budget'):
+                publish({}, 'worker', Path(directory)/'state.json')
+            post.assert_not_called()
+
+    def test_one_asserted_preflight_for_multiple_items(self):
+        rows = [{'bead': f'p-{i}', 'attribution': 'attributed'} for i in range(8)]
+        with TemporaryDirectory() as directory, \
+             patch('publish_work_cost.snapshots', return_value=[({'snapshot': 's'}, rows)]), \
+             patch('publish_work_cost.planes._post', return_value={'result': False}) as post:
+            with self.assertRaisesRegex(ValueError, 'canonical WorkItem'):
+                publish({}, 'worker', Path(directory)/'state.json')
+            self.assertEqual(post.call_count, 1)
+            self.assertEqual(post.call_args.args[1]['query'].count('FILTER('), 8)
+            self.assertEqual(post.call_args.kwargs['client'], 'camayoc-cost')
+
+    def test_transport_sends_stable_client_header(self):
+        import io
+        from planes import _post
+        with patch('planes.urllib.request.urlopen', return_value=io.BytesIO(b'{}')) as request:
+            _post('/query', {}, client='camayoc-cost')
+            self.assertEqual(dict(request.call_args.args[0].header_items())['X-quipu-client'], 'camayoc-cost')
+
+    def test_stale_attribution_edge_refuses_readback(self):
+        record = {'bead': 'p-new', 'attribution': 'attributed', 'session': 's', 'id': 'r', 'tokens': 10}
+        body = {'snapshot': 's', 'turtle': 'fixture'}
+        from publish_work_cost import ONTOLOGY
+        with TemporaryDirectory() as directory, \
+             patch('publish_work_cost.snapshots', return_value=[(body, [record])]), \
+             patch('publish_work_cost.time.sleep'), \
+             patch('publish_work_cost.planes._post', side_effect=[
+                 {'result': True}, {'tx_id': 1},
+                 {'rows': [{'n': '10', 'item': ONTOLOGY+'p-new'}, {'n': '10', 'item': ONTOLOGY+'p-old'}]}]):
+            path = Path(directory)/'state.json'
+            with self.assertRaisesRegex(ValueError, 'attribution read-back differs'):
+                publish({}, 'worker', path)
+            self.assertTrue(path.with_suffix('.pending.json').exists())
+            self.assertFalse(path.exists())

@@ -29,3 +29,20 @@ not estimated without a governed applicable price record.
 
 Rollback disables the scheduled projection and retains evidence. It does not
 rewrite tracker close reasons or silently delete prior cost observations.
+
+## First-rollout load budget
+
+Each invocation permits at most one changed session snapshot, eight distinct
+attributed WorkItems, 1,000 requests and 4 MiB of serialized snapshot body.
+Exceeding any limit refuses before network access; partition backfills explicitly.
+Unchanged snapshots issue no request. The changed snapshot makes at most three
+requests: one bounded conjunctive ASK preserving asserted-only FILTERs, one
+snapshot write, one read-back. Starts are spaced at least one second apart.
+The initial schedule must be no more frequent than once per minute. Every cost
+request carries `X-Quipu-Client: camayoc-cost`; other plane helper callers use
+`ingest-cron`. Raising these limits requires a reviewed load budget.
+
+Read-back checks the sampled request's exact attribution set as well as its total,
+so a corrected focus retaining an old WorkItem edge leaves the pending marker
+unresolved instead of reporting success. This samples one request, not the entire
+snapshot; rollout acceptance must include a deliberately re-attributed request.
