@@ -99,7 +99,6 @@ Narrow sources when a snapshot exceeds eight items, one thousand requests or
 four MiB; do not silently drop records to fit. Report the first scheduled run's
 actual items-per-snapshot distribution before asking to enlarge that budget.
 
-
 ### Twenty-run budget review
 
 Receipts always carry `items_per_snapshot`, `records_per_snapshot` and
