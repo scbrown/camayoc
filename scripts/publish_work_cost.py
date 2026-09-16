@@ -76,7 +76,7 @@ def _atomic(path, text):
     temporary.replace(path)
 
 
-def publish(result, actor, state_path):
+def publish(result, actor, state_path, *, push_status=False):
     """Every attempt leaves a receipt and status metrics, including failures."""
     receipt_path = state_path.with_suffix('.receipt.json')
     receipt = {'attempted_at': time.time(), 'status': 'UNKNOWN', 'requests': 0,
@@ -113,6 +113,12 @@ def publish(result, actor, state_path):
             f"camayoc_cost_projection_last_attempt_timestamp_seconds {receipt['attempted_at']}", ''])
         _atomic(state_path.with_suffix('.prom'), metrics)
         print('cost publication receipt: ' + json.dumps(receipt, sort_keys=True), file=sys.stderr)
+        if push_status:
+            from camayoc_metrics import push
+            ok, why = push('camayoc_cost_projection', metrics, grouping={'producer': actor})
+            print('cost status metrics: ' + why, file=sys.stderr)
+            if not ok:
+                raise RuntimeError('cost status metrics were not delivered: ' + why)
 
 
 def _publish(result, actor, state_path, receipt):
@@ -218,16 +224,17 @@ def main():
     ap.add_argument('--actor', required=True)
     ap.add_argument('--state', type=Path, required=True)
     ap.add_argument('--post', action='store_true')
+    ap.add_argument('--publish-status', action='store_true', help='push attempt status, including stalled attempts')
     args = ap.parse_args()
     try:
         method = json.loads(args.method.read_text())
         if method.get('system') != 'session_usage' or method.get('query') != 'work_cost':
             raise ValueError('expected session_usage/work_cost method')
         result = retrieve(method['params'])
-        answer = publish(result, args.actor, args.state) if args.post else [b for b, _ in snapshots(result, args.actor)]
+        answer = publish(result, args.actor, args.state, push_status=args.publish_status) if args.post else [b for b, _ in snapshots(result, args.actor)]
         print(json.dumps(answer, sort_keys=True))
         return 0
-    except (OSError, ValueError, planes.PlaneError) as exc:
+    except (OSError, ValueError, RuntimeError) as exc:
         print(f'cost publication UNKNOWN: {exc}', file=sys.stderr)
         return 2
 
