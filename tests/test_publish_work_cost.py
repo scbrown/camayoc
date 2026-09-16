@@ -8,6 +8,50 @@ from tempfile import TemporaryDirectory
 
 
 class ProjectionTests(unittest.TestCase):
+    def test_read_authority_refuses_before_any_network_or_cursor_change(self):
+        import json
+        invalid = [{}, {'another_consumer.py': ['read:crew:records']},
+                   {'publish_work_cost.py': ['crew:records']},
+                   {'publish_work_cost.py': ['read:crew:inferred']},
+                   {'publish_work_cost.py': 'read:crew:records'},
+                   {'publish_work_cost.py': ['read:crew:records', None]}, []]
+        with TemporaryDirectory() as directory:
+            authority = Path(directory) / 'authority.json'
+            state = Path(directory) / 'state.json'
+            state.write_text('{"existing":"cursor"}')
+            for raw in [None, '{invalid', *map(json.dumps, invalid)]:
+                with self.subTest(raw=raw):
+                    if raw is not None:
+                        authority.write_text(raw)
+                    with patch.dict('os.environ', {'CAMAYOC_AUTHORITY': str(authority)}), \
+                         patch('publish_work_cost.planes._post') as post:
+                        with self.assertRaisesRegex(ValueError, 'refusing publication'):
+                            publish({'errors': [], 'records': []}, 'st-cost', state)
+                        post.assert_not_called()
+                        self.assertEqual(state.read_text(), '{"existing":"cursor"}')
+                        self.assertFalse(state.with_suffix('.pending.json').exists())
+                        receipt = json.loads(state.with_suffix('.receipt.json').read_text())
+                        self.assertEqual(receipt['status'], 'UNKNOWN')
+                        self.assertEqual(receipt['requests'], 0)
+
+    def test_explicit_consumer_read_grant_allows_publication(self):
+        import json
+        record = {'bead': 'p-one', 'attribution': 'attributed',
+                  'session': 's', 'id': 'r', 'tokens': 10}
+        with TemporaryDirectory() as directory:
+            authority = Path(directory) / 'authority.json'
+            authority.write_text(json.dumps({'publish_work_cost.py': ['read:crew:records']}))
+            with patch.dict('os.environ', {'CAMAYOC_AUTHORITY': str(authority)}), \
+                 patch('publish_work_cost.snapshots', return_value=[({'snapshot': 's'}, [record])]), \
+                 patch('publish_work_cost.time.sleep'), \
+                 patch('publish_work_cost.planes._post', side_effect=[
+                     {'rows': [{'item': 'aegis:p-one'}]}, {'tx_id': 7},
+                     {'rows': [{'n': '10', 'item': 'aegis:p-one'}]}]) as post:
+                self.assertEqual(publish({}, 'st-cost', Path(directory)/'state.json'), [7])
+                self.assertEqual(post.call_count, 3)
+                for call in (post.call_args_list[0], post.call_args_list[2]):
+                    self.assertTrue(call.args[1]['graph'].endswith('/crew/records'))
+
     def test_projection_keeps_request_identity_and_existing_item(self):
         record = {'id': 'response/1', 'session': 'session/1', 'harness': 'codex',
                   'agent': 'worker', 'at': '2026-09-14T01:00:00Z', 'tokens': 12,

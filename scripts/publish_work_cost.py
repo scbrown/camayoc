@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import time
@@ -23,6 +24,27 @@ MAX_SNAPSHOTS = 1
 MAX_WORK_ITEMS = 8
 MAX_RECORDS = 1000
 MAX_BODY_BYTES = 4 * 1024 * 1024
+CONSUMER = 'publish_work_cost.py'
+READ_GRANT = 'read:crew:records'
+
+
+def require_read_grant():
+    """Observed WorkItems are usable only by an explicitly authorized consumer.
+
+    This grants a read, not a graph move or authority to promote inferred facts.
+    The source plane stays intact and the cost actor cannot supply its own grant.
+    """
+    path = Path(os.environ.get('CAMAYOC_AUTHORITY',
+                Path(__file__).resolve().parents[1] / 'config/plane-authority.json'))
+    try:
+        grants = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        raise ValueError('observed WorkItem read authority unavailable; refusing publication') from exc
+    if (not isinstance(grants, dict)
+            or not isinstance(grants.get(CONSUMER), list)
+            or any(not isinstance(v, str) for v in grants[CONSUMER])
+            or READ_GRANT not in grants[CONSUMER]):
+        raise ValueError(f'{CONSUMER} lacks {READ_GRANT}; refusing publication')
 
 PROPERTIES = {'input_uncached': 'inputTokensUncached', 'cache_read_input': 'cacheReadInputTokens',
               'cache_write_input': 'cacheWriteInputTokens', 'output': 'outputTokens'}
@@ -163,6 +185,7 @@ def publish(result, actor, state_path, *, push_status=False):
 
 
 def _publish(result, actor, state_path, receipt):
+    require_read_grant()
     if state_path.with_suffix('.pending.json').exists():
         raise ValueError('previous graph write indeterminate; reconcile pending snapshot before retry')
     state = json.loads(state_path.read_text()) if state_path.exists() else {}

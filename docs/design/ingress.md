@@ -307,3 +307,22 @@ moves. See [entity-mentions.md](entity-mentions.md).
   lessons §1.5 inherits.
 - quipu `docs/design/graph-labels.md` — the lattice that makes quarantine
   enforceable rather than aspirational.
+
+## Observed WorkItem consumer authority
+
+The cost publisher reads deterministic tracker WorkItems from `crew:records`.
+This is an explicitly granted read of observed evidence, not a move into ROOT
+and not promotion of inferred facts. `publish_work_cost.py` requires the
+`read:crew:records` capability under its own consumer name in
+`config/plane-authority.json` before any graph access, including unchanged
+snapshot runs. A missing, malformed, or unrelated grant refuses publication
+and leaves the successful cursor intact. The actor argument cannot confer it.
+
+The administrator authorized this grant on 2026-09-16 (aegis-trgavj). The
+human-maintained file remains the authority; `CAMAYOC_AUTHORITY` selects an
+operator-provisioned alternative, as for plane promotion. This is an
+application policy gate, not an operating-system sandbox against a principal
+that can modify the executable or its environment. Read capabilities never
+satisfy the separate plane-promotion checks. Source facts remain in their
+observed graph; the publisher still checks direct WorkItem typing before it
+writes usage and verifies attribution in the same graph afterward.
