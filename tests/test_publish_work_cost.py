@@ -3,8 +3,84 @@ from pathlib import Path
 from unittest.mock import patch
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from publish_work_cost import snapshots, publish, ONTOLOGY
+from publish_work_cost import snapshots, publish, record_budget, ONTOLOGY
 from tempfile import TemporaryDirectory
+
+
+class DistinctBudgetTests(unittest.TestCase):
+    def measurement(self, records=221, *, reached=True):
+        return {'attempted_at': 100, 'preflight_reached': reached,
+                'items_per_snapshot': [3], 'records_per_snapshot': [records],
+                'body_bytes_per_snapshot': [528011]}
+
+    def test_repeated_shape_does_not_satisfy_review(self):
+        history = {}
+        for _ in range(100):
+            record_budget(history, self.measurement())
+        self.assertEqual(history['runs'], 100)
+        self.assertEqual(len(history['samples']), 20)
+        self.assertEqual(history['distinct_shapes'], 1)
+        self.assertFalse(history['review_due'])
+
+    def test_twenty_distinct_shapes_satisfy_review_and_storage_is_bounded(self):
+        history = {}
+        for records in range(1, 20):
+            record_budget(history, self.measurement(records))
+        self.assertFalse(history['review_due'])
+        record_budget(history, self.measurement(20))
+        self.assertTrue(history['review_due'])
+        for records in range(21, 101):
+            record_budget(history, self.measurement(records))
+        self.assertEqual(history['distinct_shapes'], 20)
+        self.assertTrue(history['distinct_shapes_saturated'])
+        self.assertEqual(history['max_records'], 100)
+        self.assertEqual([x['records'] for x in history['distinct_samples']], list(range(1, 21)))
+
+    def test_legacy_samples_migrate_without_inventing_missing_shapes(self):
+        import copy
+        samples = [{'run': n, 'attempted_at': n, 'items': 3,
+                    'records': 221, 'body_bytes': 528011} for n in range(3, 23)]
+        history = {'runs': 371, 'samples': copy.deepcopy(samples),
+                   'max_records': 999, 'review_due': True}
+        empty = {'records_per_snapshot': []}
+        record_budget(history, empty)
+        self.assertEqual(history['runs'], 371)
+        self.assertEqual(history['samples'], samples)
+        self.assertEqual(history['max_records'], 999)
+        self.assertEqual(history['distinct_shapes'], 1)
+        self.assertFalse(history['review_due'])
+        before = copy.deepcopy(history)
+        record_budget(history, empty)
+        self.assertEqual(history, before)
+        # An entirely different shape still gets sampled when the old run
+        # sample list was already full before migration.
+        record_budget(history, self.measurement(222))
+        self.assertEqual(history['distinct_shapes'], 2)
+        self.assertEqual(history['samples'], samples)
+
+    def test_refusals_preserve_extremes_without_counting_as_preflight(self):
+        history = {'runs': 2, 'max_records': 170}
+        record_budget(history, self.measurement(1001, reached=False))
+        self.assertEqual(history['max_records'], 1001)
+        self.assertEqual(history['runs'], 2)
+        self.assertEqual(history['distinct_shapes'], 0)
+        self.assertFalse(history['review_due'])
+
+    def test_unchanged_tick_migrates_history_and_emits_distinct_gate(self):
+        import json
+        with TemporaryDirectory() as directory, \
+             patch('publish_work_cost.snapshots', return_value=[]), \
+             patch('publish_work_cost.planes._post') as post:
+            state = Path(directory) / 'state.json'
+            state.with_suffix('.budget.json').write_text(json.dumps({
+                'runs': 371, 'review_due': True,
+                'samples': [{'items': 3, 'records': 221, 'body_bytes': 528011}]*20}))
+            self.assertEqual(publish({}, 'st-cost', state), [])
+            post.assert_not_called()
+            metrics = state.with_suffix('.prom').read_text()
+            self.assertIn('camayoc_cost_preflight_runs 371\n', metrics)
+            self.assertIn('camayoc_cost_distinct_shapes 1\n', metrics)
+            self.assertIn('camayoc_cost_budget_review_due 0\n', metrics)
 
 
 class ProjectionTests(unittest.TestCase):

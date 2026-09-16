@@ -26,6 +26,7 @@ MAX_RECORDS = 1000
 MAX_BODY_BYTES = 4 * 1024 * 1024
 CONSUMER = 'publish_work_cost.py'
 READ_GRANT = 'read:crew:records'
+REVIEW_SHAPES = 20
 
 
 def require_read_grant():
@@ -104,6 +105,42 @@ def _atomic(path, text):
     temporary.replace(path)
 
 
+def record_budget(history, receipt):
+    """Preserve lifetime maxima and retain the first twenty distinct shapes.
+
+    Legacy run samples remain intact. Only their measured tuples seed the
+    distinct population; maxima cannot reconstruct missing historical samples.
+    After saturation the distinct count is a lower bound, with bounded storage.
+    """
+    history.setdefault('runs', 0)
+    samples = history.setdefault('samples', [])
+    candidate = None
+    if receipt['records_per_snapshot']:
+        reached = bool(receipt.get('preflight_reached'))
+        history['runs'] += int(reached)
+        for key in ('items', 'records', 'body_bytes'):
+            history['max_' + key] = max(history.get('max_' + key, 0),
+                                      *receipt[key + '_per_snapshot'], 0)
+        if reached:
+            candidate = {'run': history['runs'], 'attempted_at': receipt['attempted_at'],
+                         **{key: max(receipt[key + '_per_snapshot'], default=0)
+                            for key in ('items', 'records', 'body_bytes')}}
+            if len(samples) < REVIEW_SHAPES:
+                samples.append(candidate)
+    distinct = history.setdefault('distinct_samples', [])
+    shape = lambda sample: tuple(sample[key] for key in ('items', 'records', 'body_bytes'))
+    seen = {shape(sample) for sample in distinct}
+    for sample in [*samples, *([candidate] if candidate else [])]:
+        key = shape(sample)
+        if key not in seen and len(distinct) < REVIEW_SHAPES:
+            distinct.append(dict(sample))
+            seen.add(key)
+    history['distinct_shapes'] = len(distinct)
+    history['distinct_shapes_saturated'] = len(distinct) >= REVIEW_SHAPES
+    history['review_due'] = history['distinct_shapes_saturated']
+    return history
+
+
 def publish(result, actor, state_path, *, push_status=False):
     """Every attempt leaves a receipt and status metrics, including failures."""
     receipt_path = state_path.with_suffix('.receipt.json')
@@ -140,36 +177,22 @@ def publish(result, actor, state_path, *, push_status=False):
                   'budget' if receipt['status'] == 'OPERATOR_ACTION' else
                   'error' if receipt['status'] == 'UNKNOWN' else 'none')
         receipt['reason'] = reason
-        if receipt['records_per_snapshot']:
-            history_path = state_path.with_suffix('.budget.json')
-            history = json.loads(history_path.read_text()) if history_path.exists() else {'runs': 0}
-            history['runs'] += int(bool(receipt.get('preflight_reached')))
-            for key in ('items', 'records', 'body_bytes'):
-                field = key + '_per_snapshot'
-                history['max_' + key] = max(history.get('max_' + key, 0), *receipt[field], 0)
-            # Retain measured runs for the later min/median/max review. Older
-            # histories may have only maxima: never invent their missing samples.
-            samples = history.setdefault('samples', [])
-            if receipt.get('preflight_reached') and len(samples) < 20:
-                samples.append({
-                    'run': history['runs'],
-                    'attempted_at': receipt['attempted_at'],
-                    **{key: max(receipt[key + '_per_snapshot'], default=0)
-                       for key in ('items', 'records', 'body_bytes')},
-                })
-            history['review_due'] = history['runs'] >= 20
-            _atomic(history_path, json.dumps(history, sort_keys=True))
-            receipt['budget_history'] = history
-        _atomic(receipt_path, json.dumps(receipt, sort_keys=True))
         history_path = state_path.with_suffix('.budget.json')
         history = json.loads(history_path.read_text()) if history_path.exists() else {'runs': 0}
+        record_budget(history, receipt)
+        _atomic(history_path, json.dumps(history, sort_keys=True))
+        receipt['budget_history'] = history
+        _atomic(receipt_path, json.dumps(receipt, sort_keys=True))
         metrics = '\n'.join([
             '# TYPE camayoc_cost_projection_stalled gauge',
             f'camayoc_cost_projection_stalled{{reason="{reason}"}} {int(reason in {"pending", "budget", "error"})}', 
             '# TYPE camayoc_cost_preflight_runs gauge',
             f"camayoc_cost_preflight_runs {history['runs']}",
+            '# HELP camayoc_cost_distinct_shapes Observed distinct snapshot shapes; lower bound at 20.',
+            '# TYPE camayoc_cost_distinct_shapes gauge',
+            f"camayoc_cost_distinct_shapes {history['distinct_shapes']}",
             '# TYPE camayoc_cost_budget_review_due gauge',
-            f"camayoc_cost_budget_review_due {int(history['runs'] >= 20)}",
+            f"camayoc_cost_budget_review_due {int(history['review_due'])}",
             '# TYPE camayoc_cost_projection_ok gauge',
             f"camayoc_cost_projection_ok {int(receipt['status'] == 'OK')}",
             '# TYPE camayoc_cost_projection_last_attempt_timestamp_seconds gauge',

@@ -99,7 +99,7 @@ Narrow sources when a snapshot exceeds eight items, one thousand requests or
 four MiB; do not silently drop records to fit. Report the first scheduled run's
 actual items-per-snapshot distribution before asking to enlarge that budget.
 
-### Twenty-run budget review
+### Twenty-shape budget review
 
 Receipts always carry `items_per_snapshot`, `records_per_snapshot` and
 `body_bytes_per_snapshot`; empty lists mean no snapshot dimensions were measured,
@@ -112,8 +112,26 @@ intentional cooldown from a successful attempt.
 
 The sibling `.budget.json` retains maximum observed items, records and bytes,
 including budget refusals. Its run count advances only when a changed snapshot
-reaches canonical preflight. At twenty such runs,
-`camayoc_cost_budget_review_due` becomes one; `camayoc_cost_preflight_runs`
-exposes progress. The reviewer re-rules from the **maximum**, never the median.
+reaches canonical preflight. Repeated runs of one shape do not provide a
+distribution: the review becomes due only after twenty distinct
+`(items, records, body_bytes)` tuples have reached preflight.
+`camayoc_cost_preflight_runs` retains the run count;
+`camayoc_cost_distinct_shapes` exposes distinct progress and
+`camayoc_cost_budget_review_due` reports the twenty-shape gate.
+The reviewer re-rules from the **maximum**, never the median.
 A hand-selected two-item pilot proves one input only and does not discharge this
 review. Limits remain enforced until an explicit new budget is reviewed.
+
+The first twenty run `samples` stay unchanged for historical comparison.
+`distinct_samples` retains the first twenty different measured tuples, with
+their first retained run and timestamp. Both collections are bounded; the
+distinct count saturates at twenty and is a lower bound thereafter, explicitly
+marked by `distinct_shapes_saturated`. These are early-life observations, not
+a recent distribution. Lifetime maxima continue increasing after saturation,
+including dimensions from budget refusals. Such refusals do not advance the
+preflight sample population.
+
+Old measured samples seed the distinct collection, but historical maxima cannot
+reconstruct missing samples. Migration also runs on unchanged-snapshot ticks,
+so an old run-based `review_due` cannot remain green indefinitely. This changes
+the follow-up review instrument only, not source selection or publication caps.
