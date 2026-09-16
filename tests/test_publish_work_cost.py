@@ -329,3 +329,39 @@ class UnattributedBudgetTests(unittest.TestCase):
             self.assertEqual(receipt['budget_history']['distinct_samples'][0]['items'], 0)
             self.assertEqual(receipt['requests'], 2)
             self.assertEqual([call.args[0] for call in post.call_args_list], ['/knot', '/query'])
+
+
+class ReviewStatusTests(unittest.TestCase):
+    def test_review_refresh_never_reads_sources_or_calls_graph(self):
+        import json
+        with TemporaryDirectory() as directory:
+            state = Path(directory) / 'state.json'
+            history = {'runs': 20, 'review_due': True, 'samples': [],
+                       'distinct_samples': [{'run': n, 'attempted_at': n,
+                           'items': 0, 'records': n, 'body_bytes': n * 100} for n in range(1, 21)]}
+            state.with_suffix('.budget.json').write_text(json.dumps(history))
+            state.with_suffix('.receipt.json').write_text(json.dumps({'next_request_after': 10**12}))
+            with patch('publish_work_cost.snapshots') as source, \
+                 patch('publish_work_cost.planes._post') as graph:
+                self.assertEqual(publish(None, 'cost', state, review_only=True), [])
+                source.assert_not_called()
+                graph.assert_not_called()
+            receipt = json.loads(state.with_suffix('.receipt.json').read_text())
+            self.assertEqual(receipt['status'], 'OK')
+            self.assertEqual(receipt['requests'], 0)
+            self.assertEqual(receipt['next_request_after'], 10**12)
+            self.assertTrue(receipt['budget_history']['review_due'])
+            self.assertEqual(receipt['budget_history']['runs'], 20)
+            state.with_suffix('.pending.json').write_text('{}')
+            with self.assertRaisesRegex(ValueError, 'indeterminate snapshot'):
+                publish(None, 'cost', state, review_only=True)
+
+    def test_premature_review_status_is_not_healthy(self):
+        import json
+        with TemporaryDirectory() as directory:
+            state = Path(directory) / 'state.json'
+            state.with_suffix('.budget.json').write_text('{}')
+            with self.assertRaisesRegex(ValueError, 'completed bounded population'):
+                publish(None, 'cost', state, review_only=True)
+            receipt = json.loads(state.with_suffix('.receipt.json').read_text())
+            self.assertEqual(receipt['status'], 'UNKNOWN')

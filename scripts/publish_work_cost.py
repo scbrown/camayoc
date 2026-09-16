@@ -141,13 +141,24 @@ def record_budget(history, receipt):
     return history
 
 
-def publish(result, actor, state_path, *, push_status=False):
+def publish(result, actor, state_path, *, push_status=False, review_only=False):
     """Every attempt leaves a receipt and status metrics, including failures."""
     receipt_path = state_path.with_suffix('.receipt.json')
     receipt = {'attempted_at': time.time(), 'status': 'UNKNOWN', 'requests': 0,
                'request_seconds': 0, 'items_per_snapshot': [], 'records_per_snapshot': [],
                'body_bytes_per_snapshot': [], 'readback': 'sampled-last-record'}
     try:
+        if review_only:
+            history = json.loads(state_path.with_suffix('.budget.json').read_text())
+            if not history.get('review_due') or len(history.get('distinct_samples', [])) < REVIEW_SHAPES:
+                raise ValueError('review-only status requires a completed bounded population')
+            if state_path.with_suffix('.pending.json').exists():
+                raise ValueError('indeterminate snapshot requires reconciliation before review')
+            previous = json.loads(receipt_path.read_text()) if receipt_path.exists() else {}
+            if 'next_request_after' in previous:
+                receipt['next_request_after'] = previous['next_request_after']
+            receipt.update(status='OK', detail='review boundary reached; graph publication paused')
+            return []
         previous = json.loads(receipt_path.read_text()) if receipt_path.exists() else {}
         if previous.get('next_request_after', 0) > time.time():
             receipt['next_request_after'] = previous['next_request_after']
@@ -316,13 +327,21 @@ def _publish(result, actor, state_path, receipt):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('method', type=Path)
+    ap.add_argument('method', type=Path, nargs='?')
     ap.add_argument('--actor', required=True)
     ap.add_argument('--state', type=Path, required=True)
-    ap.add_argument('--post', action='store_true')
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument('--post', action='store_true')
+    mode.add_argument('--review-only', action='store_true', help='refresh completed-review status without source or graph access')
     ap.add_argument('--publish-status', action='store_true', help='push attempt status, including stalled attempts')
     args = ap.parse_args()
     try:
+        if args.review_only:
+            answer = publish(None, args.actor, args.state, push_status=args.publish_status, review_only=True)
+            print(json.dumps(answer))
+            return 0
+        if args.method is None:
+            raise ValueError('method is required outside review-only status')
         method = json.loads(args.method.read_text())
         if method.get('system') != 'session_usage' or method.get('query') != 'work_cost':
             raise ValueError('expected session_usage/work_cost method')

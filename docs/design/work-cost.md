@@ -140,3 +140,8 @@ Snapshot budget samples include unattributed request populations: zero proven
 WorkItems is a measured dimension, not zero workload. These snapshots pass the
 same local size caps and have no canonical WorkItem query; their knot/read-back
 requests still count toward the unchanged request and cooldown budgets.
+
+After the bounded population completes, `publish_work_cost.py --review-only`
+refreshes native health/review metrics without reading a method or contacting the
+graph. It refuses an incomplete population or unresolved pending write, and
+preserves the measured history. Display paths never invoke this mode.
