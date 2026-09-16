@@ -86,7 +86,8 @@ def publish(result, actor, state_path, *, push_status=False):
     """Every attempt leaves a receipt and status metrics, including failures."""
     receipt_path = state_path.with_suffix('.receipt.json')
     receipt = {'attempted_at': time.time(), 'status': 'UNKNOWN', 'requests': 0,
-               'request_seconds': 0, 'items_per_snapshot': [], 'readback': 'sampled-last-record'}
+               'request_seconds': 0, 'items_per_snapshot': [], 'records_per_snapshot': [],
+               'body_bytes_per_snapshot': [], 'readback': 'sampled-last-record'}
     try:
         previous = json.loads(receipt_path.read_text()) if receipt_path.exists() else {}
         if previous.get('next_request_after', 0) > time.time():
@@ -109,10 +110,25 @@ def publish(result, actor, state_path, *, push_status=False):
             slow = receipt.get('knot_seconds', 0) > 10 or receipt['request_seconds'] > 15
             receipt['next_request_after'] = receipt['finished_at'] + 900 if slow else receipt['first_request_at'] + 60
             receipt['backoff_seconds'] = 900 if slow else 60
+        reason = ('pending' if receipt['status'] == 'STALLED' else
+                  'backoff' if receipt.get('detail', '').startswith('BACKOFF:') else
+                  'budget' if receipt['status'] == 'OPERATOR_ACTION' else
+                  'error' if receipt['status'] == 'UNKNOWN' else 'none')
+        receipt['reason'] = reason
+        if receipt['records_per_snapshot']:
+            history_path = state_path.with_suffix('.budget.json')
+            history = json.loads(history_path.read_text()) if history_path.exists() else {'runs': 0}
+            history['runs'] += int(bool(receipt.get('preflight_reached')))
+            for key in ('items', 'records', 'body_bytes'):
+                field = key + '_per_snapshot'
+                history['max_' + key] = max(history.get('max_' + key, 0), *receipt[field], 0)
+            history['review_due'] = history['runs'] >= 20
+            _atomic(history_path, json.dumps(history, sort_keys=True))
+            receipt['budget_history'] = history
         _atomic(receipt_path, json.dumps(receipt, sort_keys=True))
         metrics = '\n'.join([
             '# TYPE camayoc_cost_projection_stalled gauge',
-            f"camayoc_cost_projection_stalled {int(receipt['status'] == 'STALLED')}",
+            f'camayoc_cost_projection_stalled{{reason="{reason}"}} {int(reason in {"pending", "budget", "error"})}', 
             '# TYPE camayoc_cost_projection_ok gauge',
             f"camayoc_cost_projection_ok {int(receipt['status'] == 'OK')}",
             '# TYPE camayoc_cost_projection_last_attempt_timestamp_seconds gauge',
@@ -136,10 +152,12 @@ def _publish(result, actor, state_path, receipt):
     for body, records in snapshots(result, actor):
         encoded = json.dumps(body, sort_keys=True)
         digest = hashlib.sha256(encoded.encode()).hexdigest()
-        if state.get(body['snapshot']) == digest:
-            continue
         items = sorted({r['bead'] for r in records if r['attribution'] == 'attributed'})
         receipt['items_per_snapshot'].append(len(items))
+        receipt['records_per_snapshot'].append(len(records))
+        receipt['body_bytes_per_snapshot'].append(len(encoded.encode()))
+        if state.get(body['snapshot']) == digest:
+            continue
         if (len(items) > MAX_WORK_ITEMS or len(records) > MAX_RECORDS
                 or len(encoded.encode()) > MAX_BODY_BYTES):
             raise OperatorAction('cost snapshot exceeds reviewed item/record/byte budget; narrow sources')
@@ -178,6 +196,7 @@ def _publish(result, actor, state_path, receipt):
         if marker.exists():
             raise ValueError('previous graph write indeterminate; reconcile pending snapshot before retry')
         if items:
+            receipt['preflight_reached'] = True
             # Named rows preserve which item is missing; FILTER proves direct
             # typing without inference. No conjunction across distinct items.
             values = ' '.join(f'<{ONTOLOGY}{item}>' for item in items)

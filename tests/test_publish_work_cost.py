@@ -130,7 +130,7 @@ class ResilienceTests(unittest.TestCase):
             post.assert_not_called()
             self.assertEqual(marker.read_bytes(), before)
             self.assertEqual(json.loads(path.with_suffix('.receipt.json').read_text())['status'], 'STALLED')
-            self.assertIn('camayoc_cost_projection_stalled 1', path.with_suffix('.prom').read_text())
+            self.assertIn('camayoc_cost_projection_stalled{reason="pending"} 1', path.with_suffix('.prom').read_text())
 
     def test_slow_indeterminate_write_backs_off_fifteen_minutes(self):
         import json
@@ -164,3 +164,22 @@ class ResilienceTests(unittest.TestCase):
             self.assertEqual(publish({},'worker',path),[1])
             self.assertFalse(path.with_suffix('.pending.json').exists())
             self.assertEqual(json.loads(path.with_suffix('.receipt.json').read_text())['requests'],3)
+
+    def test_budget_refusal_is_visible_and_records_maximum(self):
+        import json
+        rows=[{'bead':f'p-{i}','attribution':'attributed'} for i in range(9)]
+        with TemporaryDirectory() as directory, \
+             patch('publish_work_cost.snapshots', return_value=[({'snapshot':'s'}, rows)]), \
+             patch('publish_work_cost.planes._post') as post:
+            path=Path(directory)/'state.json'
+            with self.assertRaisesRegex(ValueError,'budget'):
+                publish({},'worker',path)
+            post.assert_not_called()
+            receipt=json.loads(path.with_suffix('.receipt.json').read_text())
+            self.assertEqual(receipt['items_per_snapshot'],[9])
+            self.assertEqual(receipt['records_per_snapshot'],[9])
+            self.assertGreater(receipt['body_bytes_per_snapshot'][0],0)
+            self.assertIn('camayoc_cost_projection_stalled{reason="budget"} 1', path.with_suffix('.prom').read_text())
+            history=json.loads(path.with_suffix('.budget.json').read_text())
+            self.assertEqual(history['max_items'],9)
+            self.assertEqual(history['runs'],0)
