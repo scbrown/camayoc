@@ -98,6 +98,7 @@ class ResilienceTests(unittest.TestCase):
             with self.assertRaisesRegex((ValueError, OSError, RuntimeError), expected):
                 publish({}, 'worker', path)
             self.assertTrue(all(call.args[0] == '/query' for call in post.call_args_list))
+            self.assertTrue(all(call.args[1]['graph'].endswith('/crew/records') for call in post.call_args_list))
             self.assertFalse(path.with_suffix('.pending.json').exists())
             return post.call_count
 

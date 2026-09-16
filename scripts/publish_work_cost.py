@@ -152,6 +152,10 @@ def _publish(result, actor, state_path, receipt):
 
     def post(endpoint, body):
         nonlocal last_request
+        if endpoint == '/query':
+            # WorkItem ingress and usage snapshots share this named plane.
+            # An omitted graph queries ROOT and falsely reports them absent.
+            body = {**body, 'graph': planes.plane_for('observed')}
         if last_request is not None:
             time.sleep(max(0, 1 - (time.monotonic() - last_request)))
         last_request = time.monotonic()
