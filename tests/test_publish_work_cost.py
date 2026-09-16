@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import patch
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from publish_work_cost import snapshots, publish
+from publish_work_cost import snapshots, publish, ONTOLOGY
 from tempfile import TemporaryDirectory
 
 
@@ -33,11 +33,11 @@ class ProjectionTests(unittest.TestCase):
         records = [{'bead': 'project-1', 'attribution': 'attributed'}]
         with TemporaryDirectory() as directory, \
              patch('publish_work_cost.snapshots', return_value=[(body, records)]), \
-             patch('publish_work_cost.planes._post', return_value={'result': False}) as post:
+             patch('publish_work_cost.planes._post', return_value={'rows': []}) as post:
             state = Path(directory) / 'state.json'
-            with self.assertRaisesRegex(ValueError, 'canonical WorkItem unavailable'):
+            with self.assertRaisesRegex(ValueError, 'INDETERMINATE'):
                 publish({}, 'worker', state)
-            self.assertEqual(post.call_count, 1)
+            self.assertEqual(post.call_count, 2)
             self.assertEqual(post.call_args.args[0], '/query')
             self.assertFalse(state.exists())
             self.assertFalse(state.with_suffix('.pending.json').exists())
@@ -55,11 +55,12 @@ class ProjectionTests(unittest.TestCase):
         rows = [{'bead': f'p-{i}', 'attribution': 'attributed'} for i in range(8)]
         with TemporaryDirectory() as directory, \
              patch('publish_work_cost.snapshots', return_value=[({'snapshot': 's'}, rows)]), \
-             patch('publish_work_cost.planes._post', return_value={'result': False}) as post:
-            with self.assertRaisesRegex(ValueError, 'canonical WorkItem'):
+             patch('publish_work_cost.planes._post', return_value={'rows': []}) as post:
+            with self.assertRaisesRegex(ValueError, 'INDETERMINATE'):
                 publish({}, 'worker', Path(directory)/'state.json')
-            self.assertEqual(post.call_count, 1)
-            self.assertEqual(post.call_args.args[1]['query'].count('FILTER('), 8)
+            self.assertEqual(post.call_count, 2)
+            self.assertIn('VALUES ?item', post.call_args_list[0].args[1]['query'])
+            self.assertEqual(post.call_args_list[0].args[1]['query'].count('FILTER('), 1)
             self.assertEqual(post.call_args.kwargs['client'], 'camayoc-cost')
 
     def test_transport_sends_stable_client_header(self):
@@ -77,10 +78,74 @@ class ProjectionTests(unittest.TestCase):
              patch('publish_work_cost.snapshots', return_value=[(body, [record])]), \
              patch('publish_work_cost.time.sleep'), \
              patch('publish_work_cost.planes._post', side_effect=[
-                 {'result': True}, {'tx_id': 1},
+                 {'rows': [{'item': ONTOLOGY+'p-new'}]}, {'tx_id': 1},
                  {'rows': [{'n': '10', 'item': ONTOLOGY+'p-new'}, {'n': '10', 'item': ONTOLOGY+'p-old'}]}]):
             path = Path(directory)/'state.json'
             with self.assertRaisesRegex(ValueError, 'attribution read-back differs'):
                 publish({}, 'worker', path)
             self.assertTrue(path.with_suffix('.pending.json').exists())
             self.assertFalse(path.exists())
+
+
+class ResilienceTests(unittest.TestCase):
+    def run_failure(self, replies, expected, rows=None):
+        rows = rows or [{'bead': 'p-one', 'attribution': 'attributed'}]
+        with TemporaryDirectory() as directory, \
+             patch('publish_work_cost.snapshots', return_value=[({'snapshot': 's'}, rows)]), \
+             patch('publish_work_cost.time.sleep'), \
+             patch('publish_work_cost.planes._post', side_effect=replies) as post:
+            path = Path(directory)/'state.json'
+            with self.assertRaisesRegex((ValueError, OSError, RuntimeError), expected):
+                publish({}, 'worker', path)
+            self.assertTrue(all(call.args[0] == '/query' for call in post.call_args_list))
+            self.assertFalse(path.with_suffix('.pending.json').exists())
+            return post.call_count
+
+    def test_partial_rows_name_the_missing_item(self):
+        self.assertEqual(self.run_failure([{'rows': [{'item': ONTOLOGY+'p-one'}]}], 'p-two',
+            [{'bead': b, 'attribution': 'attributed'} for b in ['p-one','p-two']]), 1)
+
+    def test_zero_batch_with_visible_single_item_is_indeterminate(self):
+        self.assertEqual(self.run_failure([{'rows': []}, {'rows': [{'t': ONTOLOGY+'WorkItem'}]}],
+                                         'INDETERMINATE.*present'), 2)
+
+    def test_408_and_timeout_never_reach_knot(self):
+        import planes
+        for error in [planes.PlaneError('/query failed: HTTP 408'), TimeoutError('read timed out')]:
+            with self.subTest(error=error):
+                self.assertEqual(self.run_failure([error], '408|timed out'), 1)
+
+    def test_pending_marker_is_visible_and_preserved(self):
+        import json
+        with TemporaryDirectory() as directory, \
+             patch('publish_work_cost.snapshots', return_value=[({'snapshot': 's'}, [])]), \
+             patch('publish_work_cost.planes._post') as post:
+            path = Path(directory)/'state.json'
+            marker=path.with_suffix('.pending.json')
+            marker.write_text('{"snapshot":"s","turtle":"original bytes"}')
+            before=marker.read_bytes()
+            with self.assertRaisesRegex(ValueError, 'indeterminate'):
+                publish({}, 'worker', path)
+            post.assert_not_called()
+            self.assertEqual(marker.read_bytes(), before)
+            self.assertEqual(json.loads(path.with_suffix('.receipt.json').read_text())['status'], 'STALLED')
+            self.assertIn('camayoc_cost_projection_stalled 1', path.with_suffix('.prom').read_text())
+
+    def test_slow_indeterminate_write_backs_off_fifteen_minutes(self):
+        import json
+        with TemporaryDirectory() as directory, \
+             patch('publish_work_cost.snapshots', return_value=[({'snapshot': 's'}, [])]), \
+             patch('publish_work_cost.time.monotonic', side_effect=[0,0,16]), \
+             patch('publish_work_cost.planes._post', side_effect=TimeoutError('write response lost')) as post:
+            path=Path(directory)/'state.json'
+            with self.assertRaises(TimeoutError):
+                publish({}, 'worker', path)
+            receipt=json.loads(path.with_suffix('.receipt.json').read_text())
+            self.assertEqual(receipt['backoff_seconds'], 900)
+            self.assertEqual(receipt['status'], 'STALLED')
+            self.assertEqual(post.call_count, 1)
+
+    def test_transport_has_no_default_caller(self):
+        import planes
+        with self.assertRaises(TypeError):
+            planes._post('/query', {})

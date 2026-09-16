@@ -66,7 +66,58 @@ def snapshots(result, actor):
                'shapes': (Path(__file__).resolve().parents[1] / 'shapes/usage-breakdown.shapes.ttl').read_text()}, records
 
 
+class OperatorAction(ValueError):
+    """A reviewed budget requires narrower operator-selected sources."""
+
+
+def _atomic(path, text):
+    temporary = path.with_suffix(path.suffix + '.tmp')
+    temporary.write_text(text)
+    temporary.replace(path)
+
+
 def publish(result, actor, state_path):
+    """Every attempt leaves a receipt and status metrics, including failures."""
+    receipt_path = state_path.with_suffix('.receipt.json')
+    receipt = {'attempted_at': time.time(), 'status': 'UNKNOWN', 'requests': 0,
+               'request_seconds': 0, 'items_per_snapshot': [], 'readback': 'sampled-last-record'}
+    try:
+        previous = json.loads(receipt_path.read_text()) if receipt_path.exists() else {}
+        if previous.get('next_request_after', 0) > time.time():
+            receipt['next_request_after'] = previous['next_request_after']
+            raise OperatorAction('BACKOFF: previous request budget cooldown has not elapsed')
+        answer = _publish(result, actor, state_path, receipt)
+        receipt['status'] = 'OK'
+        return answer
+    except OperatorAction as exc:
+        receipt.update(status='STALLED' if state_path.with_suffix('.pending.json').exists() else 'OPERATOR_ACTION',
+                       detail=str(exc))
+        raise
+    except (OSError, ValueError, planes.PlaneError) as exc:
+        receipt.update(status='STALLED' if state_path.with_suffix('.pending.json').exists() else 'UNKNOWN',
+                       detail=str(exc))
+        raise
+    finally:
+        receipt['finished_at'] = time.time()
+        if receipt['requests']:
+            slow = receipt.get('knot_seconds', 0) > 10 or receipt['request_seconds'] > 15
+            receipt['next_request_after'] = receipt['finished_at'] + 900 if slow else receipt['first_request_at'] + 60
+            receipt['backoff_seconds'] = 900 if slow else 60
+        _atomic(receipt_path, json.dumps(receipt, sort_keys=True))
+        metrics = '\n'.join([
+            '# TYPE camayoc_cost_projection_stalled gauge',
+            f"camayoc_cost_projection_stalled {int(receipt['status'] == 'STALLED')}",
+            '# TYPE camayoc_cost_projection_ok gauge',
+            f"camayoc_cost_projection_ok {int(receipt['status'] == 'OK')}",
+            '# TYPE camayoc_cost_projection_last_attempt_timestamp_seconds gauge',
+            f"camayoc_cost_projection_last_attempt_timestamp_seconds {receipt['attempted_at']}", ''])
+        _atomic(state_path.with_suffix('.prom'), metrics)
+        print('cost publication receipt: ' + json.dumps(receipt, sort_keys=True), file=sys.stderr)
+
+
+def _publish(result, actor, state_path, receipt):
+    if state_path.with_suffix('.pending.json').exists():
+        raise ValueError('previous graph write indeterminate; reconcile pending snapshot before retry')
     state = json.loads(state_path.read_text()) if state_path.exists() else {}
     transactions = []
     pending = []
@@ -76,12 +127,13 @@ def publish(result, actor, state_path):
         if state.get(body['snapshot']) == digest:
             continue
         items = sorted({r['bead'] for r in records if r['attribution'] == 'attributed'})
+        receipt['items_per_snapshot'].append(len(items))
         if (len(items) > MAX_WORK_ITEMS or len(records) > MAX_RECORDS
                 or len(encoded.encode()) > MAX_BODY_BYTES):
-            raise ValueError('cost snapshot exceeds reviewed item/record/byte budget; narrow sources')
+            raise OperatorAction('cost snapshot exceeds reviewed item/record/byte budget; narrow sources')
         pending.append((body, records, digest, items))
     if len(pending) > MAX_SNAPSHOTS:
-        raise ValueError('cost run exceeds reviewed snapshot budget; narrow sources')
+        raise OperatorAction('cost run exceeds reviewed snapshot budget; narrow sources')
     # Preflight the complete invocation BEFORE any network access. Backfills
     # must be explicitly partitioned; no N-session query burst or partial run.
     last_request = None
@@ -91,7 +143,18 @@ def publish(result, actor, state_path):
         if last_request is not None:
             time.sleep(max(0, 1 - (time.monotonic() - last_request)))
         last_request = time.monotonic()
-        return planes._post(endpoint, body, client='camayoc-cost')
+        if receipt['requests'] >= 3:
+            raise OperatorAction('cost request budget exhausted')
+        receipt.setdefault('first_request_at', time.time())
+        receipt['requests'] += 1
+        started = time.monotonic()
+        try:
+            return planes._post(endpoint, body, client='camayoc-cost')
+        finally:
+            elapsed = time.monotonic() - started
+            receipt['request_seconds'] += elapsed
+            if endpoint == '/knot':
+                receipt['knot_seconds'] = elapsed
 
     for body, records, digest, items in pending:
         key = body['snapshot']
@@ -99,14 +162,25 @@ def publish(result, actor, state_path):
         if marker.exists():
             raise ValueError('previous graph write indeterminate; reconcile pending snapshot before retry')
         if items:
-            # One anchored, bounded conjunction. Every item must be DIRECTLY
-            # typed: constant-type patterns infer and would weaken this gate.
-            patterns = ' '.join(f'<{ONTOLOGY}{item}> a ?t{i} . '
-                                f'FILTER(?t{i} = <{ONTOLOGY}WorkItem>)'
-                                for i, item in enumerate(items))
-            check = post('/query', {'query': 'ASK { ' + patterns + ' }'})
-            if check.get('result') is not True:
-                raise ValueError('canonical WorkItem unavailable; run tracker ingress first')
+            # Named rows preserve which item is missing; FILTER proves direct
+            # typing without inference. No conjunction across distinct items.
+            values = ' '.join(f'<{ONTOLOGY}{item}>' for item in items)
+            check = post('/query', {'query': f'SELECT ?item WHERE {{ VALUES ?item {{ {values} }} '
+                          f'?item a ?t . FILTER(?t = <{ONTOLOGY}WorkItem>) }}'})
+            if not isinstance(check.get('rows'), list):
+                raise ValueError('INDETERMINATE: canonical preflight returned no rows field')
+            found = {row['item'] for row in check['rows'] if row.get('item')}
+            expected = {ONTOLOGY + item for item in items}
+            if not found:
+                control = post('/query', {'query': f'SELECT ?t WHERE {{ <{ONTOLOGY}{items[0]}> a ?t . '
+                                         f'FILTER(?t = <{ONTOLOGY}WorkItem>) }}'})
+                # Even two zeros cannot establish absence with an unproven
+                # control. Never prescribe re-ingestion on this arm.
+                raise ValueError('INDETERMINATE: zero-of-N canonical preflight; single-item control '
+                                 + ('present' if control.get('rows') else 'unproven'))
+            if found != expected:
+                missing = sorted(item.removeprefix(ONTOLOGY) for item in expected - found)
+                raise ValueError('canonical WorkItem unavailable: ' + ', '.join(missing))
         # Store an indeterminate marker BEFORE sending. A failed write is not
         # retried automatically; the exact snapshot and read-back must be
         # reconciled by the operator before clearing this marker.

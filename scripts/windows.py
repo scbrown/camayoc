@@ -74,7 +74,7 @@ def ensure_window(family: str, yyyymm: str, timestamp: str) -> dict:
     tell a fresh window from an existing one.
     """
     iri = window_iri(family, yyyymm)
-    created = _post("/graph/create", {"graph": iri})
+    created = _post("/graph/create", {"graph": iri}, client="camayoc-planes")
     labelled = _post(
         "/graph/label",
         {
@@ -86,6 +86,7 @@ def ensure_window(family: str, yyyymm: str, timestamp: str) -> dict:
             # per-event signatures instead of a plane-level trust rank.
             "actor": "camayoc-windows",
         },
+        client="camayoc-planes",
     )
     return {
         "iri": iri,

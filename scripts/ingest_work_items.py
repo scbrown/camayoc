@@ -133,7 +133,7 @@ def main() -> int:
     source = args.source or f"br:{quote(str(record.get('id', '')), safe='-')}"
     body = episode_for(record, actor=args.actor, source=source, about=args.about)
     try:
-        result = planes._post("/episode", body) if args.post else body
+        result = planes._post("/episode", body, client="camayoc-ingress") if args.post else body
     except Exception as exc:
         # One bad record must not head-of-line block a batch.  The caller gets
         # a structured park record and a non-zero status, then can continue.

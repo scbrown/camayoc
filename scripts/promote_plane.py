@@ -273,13 +273,13 @@ def main() -> int:
         return 0
 
     try:
-        planes._post("/episode", episode)
+        planes._post("/episode", episode, client="camayoc-planes")
     except planes.PlaneError as exc:
         print(f"PROMOTION FAILED: {exc}", file=sys.stderr)
         return 3
     if close is not None:
         try:
-            planes._post("/episode/retract", close)
+            planes._post("/episode/retract", close, client="camayoc-planes")
         except planes.PlaneError as exc:
             # Assert landed, close did not: readable in two planes, at
             # different trust — visible and recoverable, and said out loud.

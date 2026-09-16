@@ -162,7 +162,8 @@ class MoveRuleCommitOrderTests(unittest.TestCase):
         """
         posted: list[str] = []
 
-        def fake_post(path, body):
+        def fake_post(path, body, *, client):
+            self.assertEqual(client, "camayoc-planes")
             posted.append(path)
             if retract_fails and path == "/episode/retract":
                 # promote_plane loads its OWN planes instance, so the error

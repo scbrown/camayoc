@@ -88,10 +88,10 @@ class PlaneError(RuntimeError):
     """A plane operation failed. Never swallowed into a silent ROOT write."""
 
 
-def _post(path: str, body: dict, *, client: str = "ingest-cron") -> dict:
+def _post(path: str, body: dict, *, client: str) -> dict:
     req = urllib.request.Request(
         f"{SERVER}{path}",
-        data=json.dumps(body).encode(),
+        data=json.dumps(body, sort_keys=True).encode(),
         headers={"Content-Type": "application/json", "X-Quipu-Client": client},
         method="POST",
     )
@@ -123,7 +123,7 @@ def ensure_planes(timestamp: str) -> list[dict]:
     """
     results = []
     for name, spec in PLANES.items():
-        created = _post("/graph/create", {"graph": spec["iri"]})
+        created = _post("/graph/create", {"graph": spec["iri"]}, client="camayoc-planes")
         labelled = _post(
             "/graph/label",
             {
@@ -142,6 +142,7 @@ def ensure_planes(timestamp: str) -> list[dict]:
                 "kind": spec["data_kind"],
                 "actor": "camayoc-planes",
             },
+            client="camayoc-planes",
         )
         results.append(
             {
