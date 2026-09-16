@@ -98,3 +98,23 @@ assigned recovery operator) owns reconciliation:
 Narrow sources when a snapshot exceeds eight items, one thousand requests or
 four MiB; do not silently drop records to fit. Report the first scheduled run's
 actual items-per-snapshot distribution before asking to enlarge that budget.
+
+
+### Twenty-run budget review
+
+Receipts always carry `items_per_snapshot`, `records_per_snapshot` and
+`body_bytes_per_snapshot`; empty lists mean no snapshot dimensions were measured,
+not a zero-sized measured snapshot. During cooldown the prior dimensions are
+retained with `dimensions_source: previous_attempt`. A budget refusal emits
+`camayoc_cost_projection_stalled{reason="budget"} 1`; pending writes use
+`reason="pending"`, transport/preflight failures use `reason="error"`, and normal
+cooldown uses `reason="backoff"` with value zero. `projection_ok` distinguishes
+intentional cooldown from a successful attempt.
+
+The sibling `.budget.json` retains maximum observed items, records and bytes,
+including budget refusals. Its run count advances only when a changed snapshot
+reaches canonical preflight. At twenty such runs,
+`camayoc_cost_budget_review_due` becomes one; `camayoc_cost_preflight_runs`
+exposes progress. The reviewer re-rules from the **maximum**, never the median.
+A hand-selected two-item pilot proves one input only and does not discharge this
+review. Limits remain enforced until an explicit new budget is reviewed.
