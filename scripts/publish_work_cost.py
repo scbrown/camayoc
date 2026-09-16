@@ -260,8 +260,10 @@ def _publish(result, actor, state_path, receipt):
         marker = state_path.with_suffix('.pending.json')
         if marker.exists():
             raise ValueError('previous graph write indeterminate; reconcile pending snapshot before retry')
+        # Unattributed requests still consume a real snapshot workload. The
+        # budget preflight above covers them even without a WorkItem query.
+        receipt['preflight_reached'] = True
         if items:
-            receipt['preflight_reached'] = True
             # Named rows preserve which item is missing; FILTER proves direct
             # typing without inference. No conjunction across distinct items.
             values = ' '.join(f'<{ONTOLOGY}{item}>' for item in items)

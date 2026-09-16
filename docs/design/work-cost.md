@@ -135,3 +135,8 @@ Old measured samples seed the distinct collection, but historical maxima cannot
 reconstruct missing samples. Migration also runs on unchanged-snapshot ticks,
 so an old run-based `review_due` cannot remain green indefinitely. This changes
 the follow-up review instrument only, not source selection or publication caps.
+
+Snapshot budget samples include unattributed request populations: zero proven
+WorkItems is a measured dimension, not zero workload. These snapshots pass the
+same local size caps and have no canonical WorkItem query; their knot/read-back
+requests still count toward the unchanged request and cooldown budgets.

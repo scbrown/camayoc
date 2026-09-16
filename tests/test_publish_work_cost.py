@@ -308,3 +308,24 @@ class ResilienceTests(unittest.TestCase):
             self.assertEqual(history['max_items'],9)
             self.assertEqual(history['runs'],0)
             self.assertEqual(history['samples'],[])
+
+
+class UnattributedBudgetTests(unittest.TestCase):
+    def test_unattributed_snapshot_is_measured_without_inventing_a_work_item(self):
+        import json
+        record = {'bead': 'unattributed', 'attribution': 'no proven focus',
+                  'session': 's', 'id': 'r', 'tokens': 10}
+        body = {'snapshot': 's', 'turtle': 'measured requests', 'graph': 'records'}
+        with TemporaryDirectory() as directory:
+            state = Path(directory) / 'state.json'
+            with patch('publish_work_cost.require_read_grant'), \
+                 patch('publish_work_cost.snapshots', return_value=[(body, [record])]), \
+                 patch('publish_work_cost.time.sleep'), \
+                 patch('publish_work_cost.planes._post', side_effect=[
+                     {'tx_id': 1}, {'rows': [{'n': 10}]}]) as post:
+                self.assertEqual(publish({'errors': []}, 'cost', state), [1])
+            receipt = json.loads(state.with_suffix('.receipt.json').read_text())
+            self.assertEqual(receipt['budget_history']['distinct_shapes'], 1)
+            self.assertEqual(receipt['budget_history']['distinct_samples'][0]['items'], 0)
+            self.assertEqual(receipt['requests'], 2)
+            self.assertEqual([call.args[0] for call in post.call_args_list], ['/knot', '/query'])
