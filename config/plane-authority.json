@@ -1,4 +1,6 @@
 {
   "_comment": "Who may promote facts OUT of crew:inferred and into which plane (camayoc-mip). HUMAN-MAINTAINED — nothing an agent writes may alter this file, and an agent must never add itself. Fails closed: a principal absent here holds no authority, and a malformed file grants nobody. Self-promotion is refused separately, so listing a principal here does not let it promote its own output.",
-  "_format": "principal -> [plane keys], using the keys in scripts/planes.py PLANES"
+  "_format": "principal -> [plane keys] for promotion; consumer script -> [read:<plane key>] for observed-plane reads. Read grants do not authorize promotion.",
+  "_read_grant_source": "Administrator ruling on aegis-trgavj, 2026-09-16: authorize the cost publisher to read observed tracker WorkItems in crew:records; retain source plane and existing scoped preflight.",
+  "publish_work_cost.py": ["read:crew:records"]
 }
