@@ -125,6 +125,16 @@ def publish(result, actor, state_path, *, push_status=False):
             for key in ('items', 'records', 'body_bytes'):
                 field = key + '_per_snapshot'
                 history['max_' + key] = max(history.get('max_' + key, 0), *receipt[field], 0)
+            # Retain measured runs for the later min/median/max review. Older
+            # histories may have only maxima: never invent their missing samples.
+            samples = history.setdefault('samples', [])
+            if receipt.get('preflight_reached') and len(samples) < 20:
+                samples.append({
+                    'run': history['runs'],
+                    'attempted_at': receipt['attempted_at'],
+                    **{key: max(receipt[key + '_per_snapshot'], default=0)
+                       for key in ('items', 'records', 'body_bytes')},
+                })
             history['review_due'] = history['runs'] >= 20
             _atomic(history_path, json.dumps(history, sort_keys=True))
             receipt['budget_history'] = history

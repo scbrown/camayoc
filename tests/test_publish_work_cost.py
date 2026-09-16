@@ -58,6 +58,10 @@ class ProjectionTests(unittest.TestCase):
              patch('publish_work_cost.planes._post', return_value={'rows': []}) as post:
             with self.assertRaisesRegex(ValueError, 'INDETERMINATE'):
                 publish({}, 'worker', Path(directory)/'state.json')
+            import json
+            history=json.loads((Path(directory)/'state.budget.json').read_text())
+            self.assertEqual(history['samples'][0]['items'],8)
+            self.assertEqual(history['samples'][0]['run'],1)
             self.assertEqual(post.call_count, 2)
             self.assertIn('VALUES ?item', post.call_args_list[0].args[1]['query'])
             self.assertEqual(post.call_args_list[0].args[1]['query'].count('FILTER('), 1)
@@ -183,3 +187,4 @@ class ResilienceTests(unittest.TestCase):
             history=json.loads(path.with_suffix('.budget.json').read_text())
             self.assertEqual(history['max_items'],9)
             self.assertEqual(history['runs'],0)
+            self.assertEqual(history['samples'],[])
