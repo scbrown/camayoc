@@ -365,3 +365,103 @@ class ReviewStatusTests(unittest.TestCase):
                 publish(None, 'cost', state, review_only=True)
             receipt = json.loads(state.with_suffix('.receipt.json').read_text())
             self.assertEqual(receipt['status'], 'UNKNOWN')
+
+
+class RefusalAccountingTests(unittest.TestCase):
+    def test_each_limit_refuses_without_network_and_persists_source(self):
+        import json
+        from publish_work_cost import MAX_BODY_BYTES
+        source = {'agent': 'worker', 'harness': 'codex', 'session': 's',
+                  'bead': None, 'attribution': 'unattributed'}
+        arms = {
+            'items': [({'snapshot': 's'}, [{**source, 'bead': f'p-{n}', 'attribution': 'attributed'} for n in range(9)])],
+            'records': [({'snapshot': 's'}, [source] * 1001)],
+            'body_bytes': [({'snapshot': 's', 'turtle': 'x' * MAX_BODY_BYTES}, [source])],
+            'snapshots': [({'snapshot': name}, [source]) for name in ('s', 's2')],
+        }
+        for limit, candidates in arms.items():
+            with self.subTest(limit=limit), TemporaryDirectory() as directory, \
+                 patch('publish_work_cost.snapshots', return_value=candidates), \
+                 patch('publish_work_cost.planes._post') as post:
+                state = Path(directory)/'state.json'
+                for _ in range(2):
+                    with self.assertRaisesRegex(ValueError, 'budget'):
+                        publish({}, 'worker', state)
+                post.assert_not_called()
+                self.assertFalse(state.with_suffix('.pending.json').exists())
+                history = json.loads(state.with_suffix('.budget.json').read_text())
+                accounting = history['refusal_accounting']
+                self.assertEqual((accounting['attempts'], accounting['refusals']), (2, 2))
+                self.assertEqual(accounting['limits'][limit], 2)
+                self.assertEqual(sum(accounting['limits'].values()), 2)
+                self.assertEqual(accounting['recent_refusals'][-1]['sources'][0]['session'], 's')
+                self.assertEqual(history['distinct_shapes'], 0)
+                self.assertEqual(history['runs'], 0)
+                metrics = state.with_suffix('.prom').read_text()
+                self.assertIn('camayoc_cost_budget_refusals_total 2\n', metrics)
+                self.assertIn(f'camayoc_cost_budget_limit_refusals_total{{limit="{limit}"}} 2\n', metrics)
+                self.assertIn('camayoc_cost_budget_window_refusals 2\n', metrics)
+
+    def test_multiple_binding_limits_count_once_and_evidence_is_bounded(self):
+        import json
+        rows = [{'bead': f'p-{n}', 'attribution': 'attributed'} for n in range(1001)]
+        with TemporaryDirectory() as directory, \
+             patch('publish_work_cost.snapshots', return_value=[({'snapshot': 's'}, rows)]), \
+             patch('publish_work_cost.planes._post') as post:
+            state = Path(directory)/'state.json'
+            for _ in range(23):
+                with self.assertRaises(ValueError):
+                    publish({}, 'worker', state)
+            post.assert_not_called()
+            a = json.loads(state.with_suffix('.budget.json').read_text())['refusal_accounting']
+            self.assertEqual(a['refusals'], 23)
+            self.assertEqual(a['attempts'], 23)
+            self.assertEqual(a['limits']['items'], 23)
+            self.assertEqual(a['limits']['records'], 23)
+            self.assertEqual(len(a['recent_refusals']), 20)
+
+    def test_admission_and_backoff_noop_review_are_separate(self):
+        import json
+        row = {'attribution': 'unattributed', 'bead': None, 'session': 's', 'id': 'r', 'tokens': 10}
+        body = {'snapshot': 's'}
+        with TemporaryDirectory() as directory, \
+             patch('publish_work_cost.snapshots', return_value=[(body, [row])]), \
+             patch('publish_work_cost.time.sleep'), \
+             patch('publish_work_cost.planes._post', side_effect=[{'tx_id': 7}, {'rows': [{'n': '10'}]}]) as post:
+            state = Path(directory)/'state.json'
+            self.assertEqual(publish({}, 'worker', state), [7])
+            with self.assertRaisesRegex(ValueError, 'BACKOFF'):
+                publish({}, 'worker', state)
+            # End only the fixture's cooldown; graph cursor is unchanged.
+            receipt = state.with_suffix('.receipt.json')
+            saved = json.loads(receipt.read_text()); saved['next_request_after'] = 0
+            receipt.write_text(json.dumps(saved))
+            self.assertEqual(publish({}, 'worker', state), [])
+            self.assertEqual(post.call_count, 2)
+            history_path = state.with_suffix('.budget.json')
+            history = json.loads(history_path.read_text())
+            self.assertEqual(history['refusal_accounting']['attempts'], 1)
+            self.assertEqual(history['refusal_accounting']['refusals'], 0)
+            self.assertEqual(history['distinct_shapes'], 1)
+            history.update(review_due=True, distinct_samples=[
+                {'items': 0, 'records': n, 'body_bytes': n} for n in range(20)])
+            history_path.write_text(json.dumps(history))
+            self.assertEqual(publish(None, 'worker', state, review_only=True), [])
+            a = json.loads(history_path.read_text())['refusal_accounting']
+            self.assertEqual((a['attempts'], a['refusals']), (1, 0))
+
+    def test_late_install_and_review_reset_do_not_invent_historical_zeros(self):
+        from publish_work_cost import record_refusals
+        history = {'runs': 200, 'review_window_started_at': 50}
+        receipt = {'attempted_at': 100, 'budget_decision': 'admitted'}
+        a = record_refusals(history, receipt)
+        self.assertEqual(a['since'], 100)
+        self.assertEqual(a['window']['started_at'], 50)
+        self.assertEqual(a['window']['observed_since'], 100)
+        self.assertEqual(a['attempts'], 1)
+        history['review_window_started_at'] = 200
+        a = record_refusals(history, {**receipt, 'attempted_at': 210})
+        self.assertEqual(a['since'], 100)
+        self.assertEqual(a['attempts'], 2)
+        self.assertEqual(a['window']['baseline_attempts'], 1)
+        self.assertEqual(a['window']['observed_since'], 210)

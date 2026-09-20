@@ -145,3 +145,47 @@ After the bounded population completes, `publish_work_cost.py --review-only`
 refreshes native health/review metrics without reading a method or contacting the
 graph. It refuses an incomplete population or unresolved pending write, and
 preserves the measured history. Display paths never invoke this mode.
+
+## Refusals and review populations
+
+Budget accounting is stored in `refusal_accounting` in the budget history and
+publication receipt. `attempts` counts one changed invocation reaching a size
+budget decision; `refusals` counts those refused before graph network access.
+Backoff, unchanged snapshots, paused review refreshes, missing authority and
+invalid source reads do not count as size decisions. An admitted decision can
+still fail later on canonical-item lookup, transport or read-back; admission is
+not successful publication.
+
+`limits` counts each binding dimension on the first rejected snapshot (`items`,
+`records`, `body_bytes`), or `snapshots` when the completed candidate collection
+exceeds that cap. A refusal can bind multiple dimensions, so the sum of limit
+counts is not a denominator. No claims are made about unexamined later snapshots.
+The latest twenty refusal receipts retain source agent, harness, session and
+snapshot identity plus measured dimensions. Each retained entry limits source
+and dimension lists to two snapshots and reports source truncation. Lifetime
+counters remain exact for observed decisions even when old detailed evidence
+ages out. Transcript bodies are never retained in this accounting.
+
+Prometheus exposes `camayoc_cost_budget_attempts_total`,
+`camayoc_cost_budget_refusals_total`, and
+`camayoc_cost_budget_limit_refusals_total{limit="..."}`. They are lifetime counters
+for this state file, starting at
+`camayoc_cost_budget_accounting_since_timestamp_seconds`. Historical refusals
+before that timestamp are **unknown**, not zero. Preserve `refusal_accounting`
+when archiving and clearing an accepted bounded shape population.
+
+The existing `review_window_started_at` marker sets the next window boundary.
+On its first observed tick, accounting records lifetime baselines and an
+`observed_since` timestamp; window attempt/refusal gauges subtract those baselines.
+The timestamp gauge `camayoc_cost_budget_window_observed_since_timestamp_seconds`
+is essential when instrumentation began partway through a window. A window whose
+start precedes observed coverage has incomplete refusal evidence; report the gap.
+A deleted state file starts a new lifetime, visible through a new start timestamp
+and counter reset. Refusal totals cannot reconstruct the missing history.
+
+At the next review, read the receipt's budget history alongside the existing
+admitted `distinct_samples`, source rotation evidence and metric timestamps.
+The distribution is censored at the unchanged caps: its maximum describes the
+largest admitted sample, not headroom. Exact shape equivalence remains
+`(items, records, body_bytes)`. Repeated admitted shapes increase attempts without
+necessarily increasing distinct shapes; that alone does not prove pinned input.

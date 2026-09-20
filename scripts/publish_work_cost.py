@@ -27,6 +27,7 @@ MAX_BODY_BYTES = 4 * 1024 * 1024
 CONSUMER = 'publish_work_cost.py'
 READ_GRANT = 'read:crew:records'
 REVIEW_SHAPES = 20
+BUDGET_LIMITS = ('items', 'records', 'body_bytes', 'snapshots')
 
 
 def require_read_grant():
@@ -105,6 +106,33 @@ def _atomic(path, text):
     temporary.replace(path)
 
 
+def record_refusals(history, receipt):
+    """Count decisions since installation; old uncaptured refusals stay unknown."""
+    accounting = history.setdefault('refusal_accounting', {
+        'since': receipt.get('attempted_at'), 'attempts': 0, 'refusals': 0,
+        'limits': dict.fromkeys(BUDGET_LIMITS, 0), 'recent_refusals': []})
+    window = history.get('review_window_started_at')
+    if 'window' not in accounting or accounting['window']['started_at'] != window:
+        accounting['window'] = {'started_at': window, 'observed_since': receipt.get('attempted_at'),
+                                'baseline_attempts': accounting['attempts'],
+                                'baseline_refusals': accounting['refusals']}
+    decision = receipt.get('budget_decision')
+    if decision in ('admitted', 'refused'):
+        accounting['attempts'] += 1
+    if decision == 'refused':
+        accounting['refusals'] += 1
+        for limit in receipt['budget_limits']:
+            accounting['limits'][limit] += 1
+        accounting['recent_refusals'].append({
+            'attempted_at': receipt['attempted_at'], 'limits': receipt['budget_limits'],
+            'sources': receipt.get('budget_sources', [])[:MAX_SNAPSHOTS + 1],
+            'sources_truncated': len(receipt.get('budget_sources', [])) > MAX_SNAPSHOTS + 1,
+            **{key: receipt[key][:MAX_SNAPSHOTS + 1] for key in
+               ('items_per_snapshot', 'records_per_snapshot', 'body_bytes_per_snapshot')}})
+        accounting['recent_refusals'] = accounting['recent_refusals'][-REVIEW_SHAPES:]
+    return accounting
+
+
 def record_budget(history, receipt):
     """Preserve lifetime maxima and retain the first twenty distinct shapes.
 
@@ -112,6 +140,7 @@ def record_budget(history, receipt):
     distinct population; maxima cannot reconstruct missing historical samples.
     After saturation the distinct count is a lower bound, with bounded storage.
     """
+    record_refusals(history, receipt)
     history.setdefault('runs', 0)
     samples = history.setdefault('samples', [])
     candidate = None
@@ -208,6 +237,26 @@ def publish(result, actor, state_path, *, push_status=False, review_only=False):
             f"camayoc_cost_projection_ok {int(receipt['status'] == 'OK')}",
             '# TYPE camayoc_cost_projection_last_attempt_timestamp_seconds gauge',
             f"camayoc_cost_projection_last_attempt_timestamp_seconds {receipt['attempted_at']}", ''])
+        accounting = history['refusal_accounting']
+        metrics += '\n'.join([
+            '# HELP camayoc_cost_budget_attempts_total Changed invocations admitted or refused by size preflight since accounting began.',
+            '# TYPE camayoc_cost_budget_attempts_total counter',
+            f"camayoc_cost_budget_attempts_total {accounting['attempts']}",
+            '# HELP camayoc_cost_budget_refusals_total Invocations refused before graph network access; admitted shapes are censored.',
+            '# TYPE camayoc_cost_budget_refusals_total counter',
+            f"camayoc_cost_budget_refusals_total {accounting['refusals']}",
+            '# HELP camayoc_cost_budget_limit_refusals_total Binding limits at the first refusal; one refusal may bind multiple limits.',
+            '# TYPE camayoc_cost_budget_limit_refusals_total counter',
+            *[f'camayoc_cost_budget_limit_refusals_total{{limit="{limit}"}} {accounting["limits"][limit]}'
+              for limit in BUDGET_LIMITS],
+            '# TYPE camayoc_cost_budget_accounting_since_timestamp_seconds gauge',
+            f"camayoc_cost_budget_accounting_since_timestamp_seconds {accounting['since'] or 0}",
+            '# TYPE camayoc_cost_budget_window_attempts gauge',
+            f"camayoc_cost_budget_window_attempts {accounting['attempts'] - accounting['window']['baseline_attempts']}",
+            '# TYPE camayoc_cost_budget_window_refusals gauge',
+            f"camayoc_cost_budget_window_refusals {accounting['refusals'] - accounting['window']['baseline_refusals']}",
+            '# TYPE camayoc_cost_budget_window_observed_since_timestamp_seconds gauge',
+            f"camayoc_cost_budget_window_observed_since_timestamp_seconds {accounting['window']['observed_since'] or 0}", ''])
         _atomic(state_path.with_suffix('.prom'), metrics)
         print('cost publication receipt: ' + json.dumps(receipt, sort_keys=True), file=sys.stderr)
         if push_status:
@@ -234,12 +283,23 @@ def _publish(result, actor, state_path, receipt):
         receipt['body_bytes_per_snapshot'].append(len(encoded.encode()))
         if state.get(body['snapshot']) == digest:
             continue
-        if (len(items) > MAX_WORK_ITEMS or len(records) > MAX_RECORDS
-                or len(encoded.encode()) > MAX_BODY_BYTES):
+        receipt.setdefault('budget_sources', []).append({
+            'snapshot': body['snapshot'], 'items': len(items),
+            'records': len(records), 'body_bytes': len(encoded.encode()),
+            **{key: records[0].get(key) if records else None
+               for key in ('agent', 'harness', 'session')}})
+        limits = [key for key, measured, cap in (
+            ('items', len(items), MAX_WORK_ITEMS), ('records', len(records), MAX_RECORDS),
+            ('body_bytes', len(encoded.encode()), MAX_BODY_BYTES)) if measured > cap]
+        if limits:
+            receipt.update(budget_decision='refused', budget_limits=limits)
             raise OperatorAction('cost snapshot exceeds reviewed item/record/byte budget; narrow sources')
         pending.append((body, records, digest, items))
     if len(pending) > MAX_SNAPSHOTS:
+        receipt.update(budget_decision='refused', budget_limits=['snapshots'])
         raise OperatorAction('cost run exceeds reviewed snapshot budget; narrow sources')
+    if pending:
+        receipt['budget_decision'] = 'admitted'
     # Preflight the complete invocation BEFORE any network access. Backfills
     # must be explicitly partitioned; no N-session query burst or partial run.
     last_request = None
