@@ -326,3 +326,37 @@ that can modify the executable or its environment. Read capabilities never
 satisfy the separate plane-promotion checks. Source facts remain in their
 observed graph; the publisher still checks direct WorkItem typing before it
 writes usage and verifies attribution in the same graph afterward.
+
+### Standing tracker delivery
+
+`scripts/sync_work_items.py` polls the public `br list --json` interface with
+an explicit `--db`. Its scope is claimed work plus assigned open/blocked work,
+including deferred assignments. It accepts the legacy array or a complete list
+envelope; a truncated response is UNKNOWN. This is independent of cost records:
+only the authoritative tracker can supply canonical WorkItem identity.
+
+Each tick handles one record, at most one episode write and two verification
+reads, with a persisted 60-second minimum interval and a 256-KiB episode cap.
+Current claims win initial ties, then priority and newer creation time. The least
+recently attempted record wins subsequent turns, so a bad record cannot monopolize
+the lane. Initial backlog drains gradually; consumers continue refusing absent
+identities until delivery. This does not enlarge any consumer's request budget.
+
+The existing mapper owns all semantics: stable WorkItem identity and an immutable
+content-addressed Observation in `crew:records`, never ROOT. `--source` names the
+tracker authority and the item ID is appended to it. Exact payloads are persisted
+before writes. Delivery requires a positive same-plane WorkItem control and a
+read-back of the exact direct WorkItem/Observation assertions. Neither `unchanged`
+nor a nonzero transaction count proves delivery. Lost responses keep the payload;
+two separately scheduled controlled absent reads permit a byte-identical retry,
+with at most three write attempts. Further failures stay parked for inspection.
+Changed tracker fields cannot replace an unresolved payload.
+
+Confirmed versions receive a periodic six-hour read-back. Retraction is detected
+and enters the same pending reconciliation path. Receipt and status metrics report
+errors and backlog age; a backlog older than twice its bounded drain interval
+(minimum fifteen minutes) is unhealthy. `--publish-status` emits independent
+`camayoc_workitem_ingress_*` metrics, including timestamp and exit status, on every
+run. Operators must arm status, stale and absent detection with the scheduler.
+The scheduler should run this prerequisite before consumers; consumers retain
+their own canonical-presence checks.
