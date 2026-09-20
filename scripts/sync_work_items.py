@@ -188,7 +188,7 @@ def tick(records, state, path, *, actor, source, now, post):
             entry['not_before'] = now + (900 if entry.get('pending', {}).get('attempts', 0) >= MAX_ATTEMPTS else INTERVAL)
             receipt.update(status='UNKNOWN', error=type(exc).__name__)
     outstanding = [e for i, e in entries.items() if e.get('pending') or
-                   (i in current and e.get('version') != current[i]['name'])]
+                   (i in current and (e.get('version') != current[i]['name'] or e.get('error')))]
     receipt['backlog'] = len(outstanding)
     receipt['oldest_seconds'] = max((now - e.get('due_since', now) for e in outstanding), default=0)
     if (invalid or any(e.get('error') for e in outstanding)

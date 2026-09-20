@@ -132,6 +132,16 @@ class Delivery(unittest.TestCase):
         self.assertEqual(2, self.tick(now=1000 + sync.RECHECK)['requests'])
         self.assertEqual(1, len([p for p, _ in self.calls if p == '/episode']))
 
+    def test_failed_periodic_control_stays_visible_during_other_success(self):
+        self.tick()
+        self.control = False
+        self.tick(now=1000 + sync.RECHECK)
+        self.control = True
+        result = self.tick([RECORD, {**RECORD, 'id': 'proj-b'}], now=1060 + sync.RECHECK)
+        self.assertEqual(1, result['verified'])
+        self.assertEqual('UNKNOWN', result['status'])
+        self.assertEqual(1, result['backlog'])
+
     def test_retraction_does_not_repost_in_same_tick(self):
         self.tick()
         self.present = False
