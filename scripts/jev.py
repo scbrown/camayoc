@@ -40,6 +40,7 @@ import os
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Callable
 
 ENDPOINT = "https://api.typesafe.ai/v1/systemone"
@@ -49,6 +50,60 @@ MAX_CHOICE_OPTIONS = 255
 SCORE_LEVELS = (2, 10)
 #: The option id this module reserves so a `choice` can say "nothing fits".
 NONE_OPTION = "none-of-these"
+
+#: WHERE THE KEY COMES FROM, and why it is a FILE and not the session environment.
+#:
+#: aegis-4hhqoe.1 as filed said "the launcher exports TYPESAFE_API_KEY from
+#: Infisical". That mechanism was DELIBERATELY REMOVED from shantytown on
+#: 2026-09-11 (aegis-6qau3t): codex writes a shell snapshot of its environment
+#: at session start, so any exported bearer is captured into
+#: $CODEX_HOME/shell_snapshots/*.sh on EVERY launch, by construction — measured
+#: at 6 of 6 snapshots across 5 agents. Re-adding a launcher export to feed this
+#: client would re-open that hole for a second secret.
+#:
+#: So the ladder below prefers a 0600 FILE, which is the shape shantytown
+#: settled on (provision/secrets.env, settings/codex/<role>/config.toml) and the
+#: shape the fleet already uses for quipu (~/.config/aegis/quipu_token). The env
+#: var is kept FIRST because a CI run or a human doing a one-off legitimately
+#: holds the value already — it is an override, not the provisioning path.
+KEY_ENV = "TYPESAFE_API_KEY"
+KEY_FILE_ENV = "TYPESAFE_API_KEY_FILE"
+DEFAULT_KEY_FILE = "~/.config/aegis/typesafe_api_key"
+
+NO_KEY_HELP = (
+    "no Jev key. Put it in a 0600 file at ~/.config/aegis/typesafe_api_key "
+    "(or point TYPESAFE_API_KEY_FILE at one):\n"
+    "  install -m 600 /dev/null ~/.config/aegis/typesafe_api_key\n"
+    "  <your secret store> get TYPESAFE_API_KEY > ~/.config/aegis/typesafe_api_key\n"
+    "TYPESAFE_API_KEY in the environment also works and wins, but do NOT export "
+    "it from the launcher: codex snapshots its environment at session start "
+    "(aegis-6qau3t). There is no silent fallback; ask the lexical scorer if that "
+    "is what you want."
+)
+
+
+def resolve_key(env: dict | None = None) -> str:
+    """The key, from the environment override or the first readable key file.
+
+    Returns "" when there is none — callers raise JevUnavailable. Never logs or
+    returns a partial value, and an unreadable file is indistinguishable from an
+    absent one on purpose: a permissions mistake must not read as a missing key
+    with a different remedy.
+    """
+    env = os.environ if env is None else env
+    direct = (env.get(KEY_ENV) or "").strip()
+    if direct:
+        return direct
+    for candidate in (env.get(KEY_FILE_ENV), DEFAULT_KEY_FILE):
+        if not candidate:
+            continue
+        try:
+            text = Path(candidate).expanduser().read_text().strip()
+        except OSError:
+            continue
+        if text:
+            return text
+    return ""
 
 Transport = Callable[[dict, str], dict]
 
@@ -87,15 +142,11 @@ class JevClient:
 
     def __init__(self, api_key: str | None = None, transport: Transport | None = None,
                  model: str = MODEL):
-        self.api_key = api_key if api_key is not None else os.environ.get("TYPESAFE_API_KEY", "")
+        self.api_key = api_key if api_key is not None else resolve_key()
         self.transport = transport or _default_transport
         self.model = model
         if not self.api_key and transport is None:
-            raise JevUnavailable(
-                "TYPESAFE_API_KEY is not set. Put the key in Infisical as TYPESAFE_API_KEY and "
-                "export it: TYPESAFE_API_KEY=$(cd ~/workspace/goldblum && just infisical get TYPESAFE_API_KEY). "
-                "There is no silent fallback; ask the lexical scorer if that is what you want."
-            )
+            raise JevUnavailable(NO_KEY_HELP)
 
     # -- request builders -------------------------------------------------
     @staticmethod
@@ -143,32 +194,63 @@ class JevClient:
         out = self.ask(state, {qid: self.noul_q(instructions, **criteria)})
         return {**out, "noul": out["answers"][qid].get("noul")}
 
+    def score(self, state, instructions: str, levels: list[str], qid: str = "q") -> dict:
+        """One ordered scale, 2..10 levels. The level NAMES are returned beside
+        the answer: a score of 3 means nothing without the ladder it indexes."""
+        out = self.ask(state, {qid: self.score_q(instructions, levels)})
+        a = out["answers"][qid]
+        return {**out, "score": a.get("score"), "levels": list(levels),
+                "probabilities": a.get("probabilities", {}),
+                "confidence": a.get("confidence")}
+
+
+def _build_question(a) -> dict:
+    if a.kind == "choice":
+        crit = dict(o.split("=", 1) for o in a.option)
+        return JevClient.choice_q(a.ask, crit, a.none or None)
+    if a.kind == "score":
+        return JevClient.score_q(a.ask, a.level)
+    return JevClient.noul_q(a.ask)
+
 
 def _main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="kind", required=True)
-    for kind in ("noul", "choice"):
+    for kind in ("noul", "choice", "score"):
         p = sub.add_parser(kind)
         p.add_argument("--state", required=True, help="the text/JSON Jev judges")
         p.add_argument("--ask", required=True, help="the question (instructions)")
+        # --dry-run on EVERY subcommand, not just two. It is the one call that
+        # works with no key, so it is how an operator checks the shape of a
+        # request before spending anything — a kind that lacks it is a kind you
+        # cannot rehearse.
         p.add_argument("--dry-run", action="store_true", help="print the request, send nothing")
         if kind == "choice":
             p.add_argument("--option", action="append", default=[], metavar="ID=TEXT")
-            p.add_argument("--none", default="None of these fit", help="text for the none-of-these option ('' to omit)")
+            p.add_argument("--none", default="None of these fit",
+                           help="text for the none-of-these option ('' to omit)")
+        if kind == "score":
+            p.add_argument("--level", action="append", default=[], metavar="TEXT",
+                           help="one ordered level, lowest first; 2..10 of them")
     a = ap.parse_args(argv)
-    if a.kind == "choice":
-        crit = dict(o.split("=", 1) for o in a.option)
-        q = JevClient.choice_q(a.ask, crit, a.none or None)
-    else:
-        q = JevClient.noul_q(a.ask)
-    body = {"state": a.state, "model": MODEL, "questions": {"q": q}}
+    try:
+        q = _build_question(a)
+    except ValueError as exc:
+        print(f"jev: {exc}", file=sys.stderr)
+        return 2
     if a.dry_run:
-        print(json.dumps(body, indent=2)); return 0
+        print(json.dumps({"state": a.state, "model": MODEL, "questions": {"q": q}}, indent=2))
+        return 0
     try:
         out = JevClient().ask(a.state, {"q": q})
     except JevError as exc:
         print(f"jev: {exc}", file=sys.stderr); return 2
-    print(json.dumps({"answers": out["answers"], "usage": out["usage"], "model": out["model"]}, indent=2))
+    # USAGE IS PART OF THE VERDICT, not a debug extra (design §8.1: "both
+    # surfaces log usage.input_tokens and the model string"). A caller that
+    # cannot see what a decision cost cannot hold the cost line in §8.1 to
+    # account, and the governor is asked to read exactly this.
+    print(json.dumps({"answers": out["answers"], "usage": out["usage"],
+                      "model": out["model"]}, indent=2))
     return 0
 
 
