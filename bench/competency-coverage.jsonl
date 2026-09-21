@@ -1,0 +1,35 @@
+{"state": "what did we decide about the vati reboot, and why?", "expected": "crew-task-lifecycle#1", "kind": "paraphrase", "why": "decision + rationale about a topic"}
+{"state": "why did we go with br instead of bd on the Mac?", "expected": "crew-task-lifecycle#1", "kind": "paraphrase", "why": "'why did we go with' is decide-and-why; the alternative is incidental"}
+{"state": "when we picked the 32W cap, what other options were on the table?", "expected": "crew-task-lifecycle#2", "kind": "paraphrase", "why": "alternatives visible when a decision was made"}
+{"state": "list every decision that came out of aegis-pane50", "expected": "crew-task-lifecycle#3", "kind": "paraphrase", "why": "decisions under a work item"}
+{"state": "has sattler ever ruled on anything about ssh keys, and where?", "expected": "crew-task-lifecycle#4", "kind": "paraphrase", "why": "decisions by a principal and their work items"}
+{"state": "are there two rulings about kota's GPU that contradict each other?", "expected": "crew-task-lifecycle#5", "kind": "paraphrase", "why": "conflicting decisions about an entity"}
+{"state": "what are the standing rules for pushing to camayoc main?", "expected": "crew-task-lifecycle#6", "kind": "paraphrase", "why": "declared conventions for an area"}
+{"state": "which decisions got overturned later and by which ones?", "expected": "crew-task-lifecycle#7", "kind": "paraphrase", "why": "superseded decisions"}
+{"state": "show me everything that touched the quipu-backup service", "expected": "crew-task-lifecycle#8", "kind": "paraphrase", "why": "work items touching a topic/entity"}
+{"state": "walk me through aegis-wo12wn from creation to now", "expected": "crew-task-lifecycle#9", "kind": "paraphrase", "why": "full lifecycle of a work item"}
+{"state": "what was franklin working on last week?", "expected": "crew-task-lifecycle#10", "kind": "paraphrase", "why": "principal's work items in a time window"}
+{"state": "which beads ended up abandoned?", "expected": "crew-task-lifecycle#11", "kind": "paraphrase", "why": "closed with a given outcome"}
+{"state": "is the claim that kota has a 4070 something someone measured, or something a bead said?", "expected": "crew-task-lifecycle#13", "kind": "paraphrase", "why": "source kind of a fact: observed vs declared vs inferred"}
+{"state": "what did we think was true about kota's hardware back on September 1st?", "expected": "crew-task-lifecycle#15", "kind": "paraphrase", "why": "bitemporal replay as of a date"}
+{"state": "which doc is chunk C137 from?", "expected": "document-structure-and-chunks#1", "kind": "paraphrase", "why": "chunk to document"}
+{"state": "give me the chunks of the kota recovery retrospective in reading order", "expected": "document-structure-and-chunks#2", "kind": "paraphrase", "why": "chunks of a document in order"}
+{"state": "what comes right after this chunk, and what came before it?", "expected": "document-structure-and-chunks#4", "kind": "paraphrase", "why": "adjacency"}
+{"state": "where should an agent start reading the 'Hardware Options' section?", "expected": "document-structure-and-chunks#6", "kind": "paraphrase", "why": "first chunk of a section"}
+{"state": "which functions and classes live in provision.py?", "expected": "document-structure-and-chunks#10", "kind": "paraphrase", "why": "symbols defined in a module"}
+{"state": "what did the exemplar runs for this golden path try and give up on?", "expected": "golden-paths#7", "kind": "paraphrase", "why": "dead ends explored by exemplars"}
+{"state": "is this run following the golden path it said it would, and where does it stray?", "expected": "golden-paths#12", "kind": "paraphrase", "why": "conformance to declared path"}
+{"state": "which candidate golden paths are sitting in the queue waiting for a human, and for how long?", "expected": "golden-paths#10", "kind": "paraphrase", "why": "candidates awaiting promotion"}
+{"state": "which metrics can we actually retrieve for kota right now?", "expected": "metrics-and-requirements#7", "kind": "arguable", "why": "'actually retrieve right now' is the fetch question (#7); #1 (what exists) and #8 (unreachable system) are the near-misses. Jev picked #1 at 0.84 on 2026-09-21 — the archetype of confident-but-arguable"}
+{"state": "does the KotaThermalThrottling alert really measure what its requirement says?", "expected": "metrics-and-requirements#4", "kind": "paraphrase", "why": "alert vs requirement validity"}
+{"state": "which promises have no metric behind them?", "expected": "metrics-and-requirements#5", "kind": "paraphrase", "why": "unmeasured requirements"}
+{"state": "which requirements are too vague to ever test?", "expected": "metrics-and-requirements#22", "kind": "paraphrase", "why": "untestable as written"}
+{"state": "what result would have proven this verification wrong?", "expected": "verification-and-liveness#1", "kind": "paraphrase", "why": "the falsifier"}
+{"state": "which beads are blocked on something that's already done?", "expected": "verification-and-liveness#7", "kind": "paraphrase", "why": "blocked on a closed dependency"}
+{"state": "how many tokens did closing aegis-f8efkn burn across everyone who touched it?", "expected": "verification-and-liveness#16", "kind": "paraphrase", "why": "cost of a work item"}
+{"state": "which month windows could be frozen right now?", "expected": "workflow-and-archive#12", "kind": "paraphrase", "why": "freezable windows"}
+{"state": "how do I bake sourdough bread?", "expected": "none-of-these", "kind": "none", "why": "out of domain"}
+{"state": "what's the weather in Gatlinburg this week?", "expected": "none-of-these", "kind": "none", "why": "out of domain"}
+{"state": "write me a python function that parses ISO dates", "expected": "none-of-these", "kind": "none", "why": "a task, not a question about the graph"}
+{"state": "who is the fastest agent on the fleet?", "expected": "none-of-these", "kind": "none-near", "why": "sounds like #18 work-per-token but 'fastest' is undefined; the honest answer is a gap, not a stretch"}
+{"state": "what is the capital of France?", "expected": "none-of-these", "kind": "none", "why": "out of domain"}

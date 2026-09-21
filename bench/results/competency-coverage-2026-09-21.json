@@ -1,0 +1,1607 @@
+[
+ {
+  "arm": "lexical",
+  "n": 35,
+  "agreement": 0.5428571428571428,
+  "conf_agree": null,
+  "conf_miss": null,
+  "abstain_rate": 0.0,
+  "tokens": 0,
+  "rows": [
+   {
+    "state": "what did we decide about the vati reboot, and why?",
+    "expected": "crew-task-lifecycle#1",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#1",
+    "p": 0.5,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#5",
+      0.125
+     ],
+     [
+      "golden-paths#2",
+      0.1
+     ]
+    ]
+   },
+   {
+    "state": "why did we go with br instead of bd on the Mac?",
+    "expected": "crew-task-lifecycle#1",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.0,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "when we picked the 32W cap, what other options were on the table?",
+    "expected": "crew-task-lifecycle#2",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.037,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "list every decision that came out of aegis-pane50",
+    "expected": "crew-task-lifecycle#3",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1111,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "golden-paths#6",
+      0.0714
+     ],
+     [
+      "workflow-and-archive#12",
+      0.0625
+     ]
+    ]
+   },
+   {
+    "state": "has sattler ever ruled on anything about ssh keys, and where?",
+    "expected": "crew-task-lifecycle#4",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#1",
+    "p": 0.125,
+    "coverage": "Partial",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#5",
+      0.0909
+     ],
+     [
+      "golden-paths#2",
+      0.0769
+     ]
+    ]
+   },
+   {
+    "state": "are there two rulings about kota's GPU that contradict each other?",
+    "expected": "crew-task-lifecycle#5",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1111,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#5",
+      0.0833
+     ],
+     [
+      "metrics-and-requirements#1",
+      0.0833
+     ]
+    ]
+   },
+   {
+    "state": "what are the standing rules for pushing to camayoc main?",
+    "expected": "crew-task-lifecycle#6",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#6",
+    "p": 0.125,
+    "coverage": "Partial",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "which decisions got overturned later and by which ones?",
+    "expected": "crew-task-lifecycle#7",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#7",
+    "p": 0.3333,
+    "coverage": "Partial",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#3",
+      0.1429
+     ],
+     [
+      "crew-task-lifecycle#4",
+      0.125
+     ]
+    ]
+   },
+   {
+    "state": "show me everything that touched the quipu-backup service",
+    "expected": "crew-task-lifecycle#8",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#8",
+    "p": 0.1429,
+    "coverage": "Partial",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "metrics-and-requirements#11",
+      0.125
+     ],
+     [
+      "verification-and-liveness#16",
+      0.04
+     ]
+    ]
+   },
+   {
+    "state": "walk me through aegis-wo12wn from creation to now",
+    "expected": "crew-task-lifecycle#9",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "workflow-and-archive#5",
+      0.0833
+     ],
+     [
+      "workflow-and-archive#12",
+      0.0667
+     ]
+    ]
+   },
+   {
+    "state": "what was franklin working on last week?",
+    "expected": "crew-task-lifecycle#10",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "which beads ended up abandoned?",
+    "expected": "crew-task-lifecycle#11",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.0,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "is the claim that kota has a 4070 something someone measured, or something a bead said?",
+    "expected": "crew-task-lifecycle#13",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.0385,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "verification-and-liveness#10",
+      0.037
+     ],
+     [
+      "golden-paths#3",
+      0.0345
+     ]
+    ]
+   },
+   {
+    "state": "what did we think was true about kota's hardware back on September 1st?",
+    "expected": "crew-task-lifecycle#15",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#1",
+    "p": 0.125,
+    "coverage": "Partial",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#5",
+      0.0909
+     ],
+     [
+      "golden-paths#2",
+      0.0769
+     ]
+    ]
+   },
+   {
+    "state": "which doc is chunk C137 from?",
+    "expected": "document-structure-and-chunks#1",
+    "kind": "paraphrase",
+    "picked": "document-structure-and-chunks#1",
+    "p": 0.1667,
+    "coverage": "Partial",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "document-structure-and-chunks#3",
+      0.1429
+     ],
+     [
+      "document-structure-and-chunks#4",
+      0.1429
+     ]
+    ]
+   },
+   {
+    "state": "give me the chunks of the kota recovery retrospective in reading order",
+    "expected": "document-structure-and-chunks#2",
+    "kind": "paraphrase",
+    "picked": "document-structure-and-chunks#2",
+    "p": 0.2,
+    "coverage": "Partial",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "document-structure-and-chunks#5",
+      0.0714
+     ],
+     [
+      "document-structure-and-chunks#6",
+      0.0714
+     ]
+    ]
+   },
+   {
+    "state": "what comes right after this chunk, and what came before it?",
+    "expected": "document-structure-and-chunks#4",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1111,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "document-structure-and-chunks#3",
+      0.1
+     ],
+     [
+      "document-structure-and-chunks#4",
+      0.1
+     ]
+    ]
+   },
+   {
+    "state": "where should an agent start reading the 'Hardware Options' section?",
+    "expected": "document-structure-and-chunks#6",
+    "kind": "paraphrase",
+    "picked": "document-structure-and-chunks#6",
+    "p": 0.5,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "document-structure-and-chunks#5",
+      0.1538
+     ],
+     [
+      "document-structure-and-chunks#7",
+      0.1
+     ]
+    ]
+   },
+   {
+    "state": "which functions and classes live in provision.py?",
+    "expected": "document-structure-and-chunks#10",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.0588,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "what did the exemplar runs for this golden path try and give up on?",
+    "expected": "golden-paths#7",
+    "kind": "paraphrase",
+    "picked": "golden-paths#12",
+    "p": 0.1818,
+    "coverage": "Partial",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "verification-and-liveness#11",
+      0.1818
+     ],
+     [
+      "golden-paths#9",
+      0.1111
+     ]
+    ]
+   },
+   {
+    "state": "is this run following the golden path it said it would, and where does it stray?",
+    "expected": "golden-paths#12",
+    "kind": "paraphrase",
+    "picked": "golden-paths#12",
+    "p": 0.1818,
+    "coverage": "Partial",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "golden-paths#9",
+      0.1111
+     ],
+     [
+      "document-structure-and-chunks#12",
+      0.0909
+     ]
+    ]
+   },
+   {
+    "state": "which candidate golden paths are sitting in the queue waiting for a human, and for how long?",
+    "expected": "golden-paths#10",
+    "kind": "paraphrase",
+    "picked": "golden-paths#10",
+    "p": 0.2778,
+    "coverage": "Partial",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "golden-paths#9",
+      0.2
+     ],
+     [
+      "verification-and-liveness#9",
+      0.0833
+     ]
+    ]
+   },
+   {
+    "state": "which metrics can we actually retrieve for kota right now?",
+    "expected": "metrics-and-requirements#7",
+    "kind": "arguable",
+    "picked": "metrics-and-requirements#7",
+    "p": 0.1818,
+    "coverage": "Partial",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "metrics-and-requirements#1",
+      0.0909
+     ],
+     [
+      "verification-and-liveness#11",
+      0.0769
+     ]
+    ]
+   },
+   {
+    "state": "does the KotaThermalThrottling alert really measure what its requirement says?",
+    "expected": "metrics-and-requirements#4",
+    "kind": "paraphrase",
+    "picked": "metrics-and-requirements#4",
+    "p": 0.1667,
+    "coverage": "Partial",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "metrics-and-requirements#5",
+      0.0909
+     ],
+     [
+      "metrics-and-requirements#6",
+      0.0769
+     ]
+    ]
+   },
+   {
+    "state": "which promises have no metric behind them?",
+    "expected": "metrics-and-requirements#5",
+    "kind": "paraphrase",
+    "picked": "metrics-and-requirements#5",
+    "p": 0.2857,
+    "coverage": "Partial",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "metrics-and-requirements#8",
+      0.0625
+     ],
+     [
+      "metrics-and-requirements#22",
+      0.0455
+     ]
+    ]
+   },
+   {
+    "state": "which requirements are too vague to ever test?",
+    "expected": "metrics-and-requirements#22",
+    "kind": "paraphrase",
+    "picked": "metrics-and-requirements#3",
+    "p": 0.1429,
+    "coverage": "Partial",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "metrics-and-requirements#11",
+      0.125
+     ],
+     [
+      "metrics-and-requirements#5",
+      0.1
+     ]
+    ]
+   },
+   {
+    "state": "what result would have proven this verification wrong?",
+    "expected": "verification-and-liveness#1",
+    "kind": "paraphrase",
+    "picked": "verification-and-liveness#1",
+    "p": 0.2222,
+    "coverage": "Partial",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "verification-and-liveness#2",
+      0.1
+     ],
+     [
+      "golden-paths#5",
+      0.0833
+     ]
+    ]
+   },
+   {
+    "state": "which beads are blocked on something that's already done?",
+    "expected": "verification-and-liveness#7",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1111,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "golden-paths#2",
+      0.0909
+     ],
+     [
+      "golden-paths#13",
+      0.0455
+     ]
+    ]
+   },
+   {
+    "state": "how many tokens did closing aegis-f8efkn burn across everyone who touched it?",
+    "expected": "verification-and-liveness#16",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1154,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#8",
+      0.1
+     ],
+     [
+      "workflow-and-archive#8",
+      0.0476
+     ]
+    ]
+   },
+   {
+    "state": "which month windows could be frozen right now?",
+    "expected": "workflow-and-archive#12",
+    "kind": "paraphrase",
+    "picked": "workflow-and-archive#12",
+    "p": 0.2143,
+    "coverage": "Partial",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "metrics-and-requirements#7",
+      0.2
+     ],
+     [
+      "workflow-and-archive#8",
+      0.1765
+     ]
+    ]
+   },
+   {
+    "state": "how do I bake sourdough bread?",
+    "expected": "none-of-these",
+    "kind": "none",
+    "picked": "none-of-these",
+    "p": 0.0,
+    "coverage": "Empty",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "what's the weather in Gatlinburg this week?",
+    "expected": "none-of-these",
+    "kind": "none",
+    "picked": "none-of-these",
+    "p": 0.0,
+    "coverage": "Empty",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "write me a python function that parses ISO dates",
+    "expected": "none-of-these",
+    "kind": "none",
+    "picked": "none-of-these",
+    "p": 0.0256,
+    "coverage": "Empty",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "who is the fastest agent on the fleet?",
+    "expected": "none-of-these",
+    "kind": "none-near",
+    "picked": "none-of-these",
+    "p": 0.1,
+    "coverage": "Empty",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "workflow-and-archive#8",
+      0.0625
+     ],
+     [
+      "workflow-and-archive#6",
+      0.0526
+     ]
+    ]
+   },
+   {
+    "state": "what is the capital of France?",
+    "expected": "none-of-these",
+    "kind": "none",
+    "picked": "none-of-these",
+    "p": 0.0,
+    "coverage": "Empty",
+    "hit": true,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   }
+  ],
+  "misses": [
+   {
+    "state": "why did we go with br instead of bd on the Mac?",
+    "expected": "crew-task-lifecycle#1",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.0,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "when we picked the 32W cap, what other options were on the table?",
+    "expected": "crew-task-lifecycle#2",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.037,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "list every decision that came out of aegis-pane50",
+    "expected": "crew-task-lifecycle#3",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1111,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "golden-paths#6",
+      0.0714
+     ],
+     [
+      "workflow-and-archive#12",
+      0.0625
+     ]
+    ]
+   },
+   {
+    "state": "has sattler ever ruled on anything about ssh keys, and where?",
+    "expected": "crew-task-lifecycle#4",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#1",
+    "p": 0.125,
+    "coverage": "Partial",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#5",
+      0.0909
+     ],
+     [
+      "golden-paths#2",
+      0.0769
+     ]
+    ]
+   },
+   {
+    "state": "are there two rulings about kota's GPU that contradict each other?",
+    "expected": "crew-task-lifecycle#5",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1111,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#5",
+      0.0833
+     ],
+     [
+      "metrics-and-requirements#1",
+      0.0833
+     ]
+    ]
+   },
+   {
+    "state": "walk me through aegis-wo12wn from creation to now",
+    "expected": "crew-task-lifecycle#9",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "workflow-and-archive#5",
+      0.0833
+     ],
+     [
+      "workflow-and-archive#12",
+      0.0667
+     ]
+    ]
+   },
+   {
+    "state": "what was franklin working on last week?",
+    "expected": "crew-task-lifecycle#10",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "which beads ended up abandoned?",
+    "expected": "crew-task-lifecycle#11",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.0,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "is the claim that kota has a 4070 something someone measured, or something a bead said?",
+    "expected": "crew-task-lifecycle#13",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.0385,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "verification-and-liveness#10",
+      0.037
+     ],
+     [
+      "golden-paths#3",
+      0.0345
+     ]
+    ]
+   },
+   {
+    "state": "what did we think was true about kota's hardware back on September 1st?",
+    "expected": "crew-task-lifecycle#15",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#1",
+    "p": 0.125,
+    "coverage": "Partial",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#5",
+      0.0909
+     ],
+     [
+      "golden-paths#2",
+      0.0769
+     ]
+    ]
+   },
+   {
+    "state": "what comes right after this chunk, and what came before it?",
+    "expected": "document-structure-and-chunks#4",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1111,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "document-structure-and-chunks#3",
+      0.1
+     ],
+     [
+      "document-structure-and-chunks#4",
+      0.1
+     ]
+    ]
+   },
+   {
+    "state": "which functions and classes live in provision.py?",
+    "expected": "document-structure-and-chunks#10",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.0588,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": []
+   },
+   {
+    "state": "what did the exemplar runs for this golden path try and give up on?",
+    "expected": "golden-paths#7",
+    "kind": "paraphrase",
+    "picked": "golden-paths#12",
+    "p": 0.1818,
+    "coverage": "Partial",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "verification-and-liveness#11",
+      0.1818
+     ],
+     [
+      "golden-paths#9",
+      0.1111
+     ]
+    ]
+   },
+   {
+    "state": "which requirements are too vague to ever test?",
+    "expected": "metrics-and-requirements#22",
+    "kind": "paraphrase",
+    "picked": "metrics-and-requirements#3",
+    "p": 0.1429,
+    "coverage": "Partial",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "metrics-and-requirements#11",
+      0.125
+     ],
+     [
+      "metrics-and-requirements#5",
+      0.1
+     ]
+    ]
+   },
+   {
+    "state": "which beads are blocked on something that's already done?",
+    "expected": "verification-and-liveness#7",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1111,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "golden-paths#2",
+      0.0909
+     ],
+     [
+      "golden-paths#13",
+      0.0455
+     ]
+    ]
+   },
+   {
+    "state": "how many tokens did closing aegis-f8efkn burn across everyone who touched it?",
+    "expected": "verification-and-liveness#16",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.1154,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": null,
+    "abstained": false,
+    "tokens": 0,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#8",
+      0.1
+     ],
+     [
+      "workflow-and-archive#8",
+      0.0476
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "arm": "jev",
+  "n": 35,
+  "agreement": 0.9428571428571428,
+  "conf_agree": 0.9566666666666667,
+  "conf_miss": 0.665,
+  "abstain_rate": 0.17142857142857143,
+  "tokens": 163920,
+  "rows": [
+   {
+    "state": "what did we decide about the vati reboot, and why?",
+    "expected": "crew-task-lifecycle#1",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#1",
+    "p": 1.0,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 1.0,
+    "abstained": false,
+    "tokens": 4684,
+    "runner_up": []
+   },
+   {
+    "state": "why did we go with br instead of bd on the Mac?",
+    "expected": "crew-task-lifecycle#1",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#1",
+    "p": 0.96,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.96,
+    "abstained": false,
+    "tokens": 4684,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#2",
+      0.01
+     ]
+    ]
+   },
+   {
+    "state": "when we picked the 32W cap, what other options were on the table?",
+    "expected": "crew-task-lifecycle#2",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#2",
+    "p": 1.0,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": false,
+    "tokens": 4689,
+    "runner_up": []
+   },
+   {
+    "state": "list every decision that came out of aegis-pane50",
+    "expected": "crew-task-lifecycle#3",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#3",
+    "p": 0.92,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.9,
+    "abstained": false,
+    "tokens": 4683,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#1",
+      0.01
+     ],
+     [
+      "crew-task-lifecycle#4",
+      0.01
+     ]
+    ]
+   },
+   {
+    "state": "has sattler ever ruled on anything about ssh keys, and where?",
+    "expected": "crew-task-lifecycle#4",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#4",
+    "p": 0.95,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.94,
+    "abstained": false,
+    "tokens": 4685,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#1",
+      0.01
+     ],
+     [
+      "crew-task-lifecycle#8",
+      0.01
+     ]
+    ]
+   },
+   {
+    "state": "are there two rulings about kota's GPU that contradict each other?",
+    "expected": "crew-task-lifecycle#5",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#5",
+    "p": 0.95,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.95,
+    "abstained": false,
+    "tokens": 4685,
+    "runner_up": []
+   },
+   {
+    "state": "what are the standing rules for pushing to camayoc main?",
+    "expected": "crew-task-lifecycle#6",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#6",
+    "p": 0.98,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.98,
+    "abstained": false,
+    "tokens": 4684,
+    "runner_up": []
+   },
+   {
+    "state": "which decisions got overturned later and by which ones?",
+    "expected": "crew-task-lifecycle#7",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#7",
+    "p": 1.0,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": false,
+    "tokens": 4681,
+    "runner_up": []
+   },
+   {
+    "state": "show me everything that touched the quipu-backup service",
+    "expected": "crew-task-lifecycle#8",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#8",
+    "p": 0.9,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.89,
+    "abstained": false,
+    "tokens": 4683,
+    "runner_up": [
+     [
+      "golden-paths#1",
+      0.01
+     ]
+    ]
+   },
+   {
+    "state": "walk me through aegis-wo12wn from creation to now",
+    "expected": "crew-task-lifecycle#9",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#9",
+    "p": 0.52,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.5,
+    "abstained": false,
+    "tokens": 4685,
+    "runner_up": [
+     [
+      "golden-paths#1",
+      0.43
+     ],
+     [
+      "workflow-and-archive#3",
+      0.02
+     ]
+    ]
+   },
+   {
+    "state": "what was franklin working on last week?",
+    "expected": "crew-task-lifecycle#10",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#10",
+    "p": 0.99,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": false,
+    "tokens": 4680,
+    "runner_up": [
+     [
+      "crew-task-lifecycle#12",
+      0.01
+     ]
+    ]
+   },
+   {
+    "state": "which beads ended up abandoned?",
+    "expected": "crew-task-lifecycle#11",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.31,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": 0.44,
+    "abstained": true,
+    "tokens": 4677,
+    "runner_up": [
+     [
+      "golden-paths#7",
+      0.2
+     ],
+     [
+      "workflow-and-archive#6",
+      0.01
+     ]
+    ]
+   },
+   {
+    "state": "is the claim that kota has a 4070 something someone measured, or something a bead said?",
+    "expected": "crew-task-lifecycle#13",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#13",
+    "p": 0.89,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.89,
+    "abstained": false,
+    "tokens": 4693,
+    "runner_up": [
+     [
+      "verification-and-liveness#10",
+      0.04
+     ],
+     [
+      "document-structure-and-chunks#14",
+      0.02
+     ]
+    ]
+   },
+   {
+    "state": "what did we think was true about kota's hardware back on September 1st?",
+    "expected": "crew-task-lifecycle#15",
+    "kind": "paraphrase",
+    "picked": "crew-task-lifecycle#15",
+    "p": 1.0,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": false,
+    "tokens": 4688,
+    "runner_up": []
+   },
+   {
+    "state": "which doc is chunk C137 from?",
+    "expected": "document-structure-and-chunks#1",
+    "kind": "paraphrase",
+    "picked": "document-structure-and-chunks#1",
+    "p": 1.0,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 1.0,
+    "abstained": false,
+    "tokens": 4681,
+    "runner_up": []
+   },
+   {
+    "state": "give me the chunks of the kota recovery retrospective in reading order",
+    "expected": "document-structure-and-chunks#2",
+    "kind": "paraphrase",
+    "picked": "document-structure-and-chunks#2",
+    "p": 1.0,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": false,
+    "tokens": 4683,
+    "runner_up": []
+   },
+   {
+    "state": "what comes right after this chunk, and what came before it?",
+    "expected": "document-structure-and-chunks#4",
+    "kind": "paraphrase",
+    "picked": "document-structure-and-chunks#4",
+    "p": 1.0,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": false,
+    "tokens": 4684,
+    "runner_up": []
+   },
+   {
+    "state": "where should an agent start reading the 'Hardware Options' section?",
+    "expected": "document-structure-and-chunks#6",
+    "kind": "paraphrase",
+    "picked": "document-structure-and-chunks#6",
+    "p": 0.99,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": false,
+    "tokens": 4684,
+    "runner_up": []
+   },
+   {
+    "state": "which functions and classes live in provision.py?",
+    "expected": "document-structure-and-chunks#10",
+    "kind": "paraphrase",
+    "picked": "document-structure-and-chunks#10",
+    "p": 0.99,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.98,
+    "abstained": false,
+    "tokens": 4680,
+    "runner_up": []
+   },
+   {
+    "state": "what did the exemplar runs for this golden path try and give up on?",
+    "expected": "golden-paths#7",
+    "kind": "paraphrase",
+    "picked": "golden-paths#7",
+    "p": 0.98,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.98,
+    "abstained": false,
+    "tokens": 4688,
+    "runner_up": [
+     [
+      "golden-paths#6",
+      0.01
+     ]
+    ]
+   },
+   {
+    "state": "is this run following the golden path it said it would, and where does it stray?",
+    "expected": "golden-paths#12",
+    "kind": "paraphrase",
+    "picked": "golden-paths#12",
+    "p": 0.99,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": false,
+    "tokens": 4689,
+    "runner_up": [
+     [
+      "workflow-and-archive#5",
+      0.01
+     ]
+    ]
+   },
+   {
+    "state": "which candidate golden paths are sitting in the queue waiting for a human, and for how long?",
+    "expected": "golden-paths#10",
+    "kind": "paraphrase",
+    "picked": "golden-paths#10",
+    "p": 1.0,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 1.0,
+    "abstained": false,
+    "tokens": 4690,
+    "runner_up": []
+   },
+   {
+    "state": "which metrics can we actually retrieve for kota right now?",
+    "expected": "metrics-and-requirements#7",
+    "kind": "arguable",
+    "picked": "metrics-and-requirements#1",
+    "p": 0.9,
+    "coverage": "Full",
+    "hit": false,
+    "confidence": 0.89,
+    "abstained": false,
+    "tokens": 4682,
+    "runner_up": [
+     [
+      "metrics-and-requirements#7",
+      0.06
+     ],
+     [
+      "metrics-and-requirements#8",
+      0.03
+     ]
+    ]
+   },
+   {
+    "state": "does the KotaThermalThrottling alert really measure what its requirement says?",
+    "expected": "metrics-and-requirements#4",
+    "kind": "paraphrase",
+    "picked": "metrics-and-requirements#4",
+    "p": 1.0,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 1.0,
+    "abstained": false,
+    "tokens": 4688,
+    "runner_up": []
+   },
+   {
+    "state": "which promises have no metric behind them?",
+    "expected": "metrics-and-requirements#5",
+    "kind": "paraphrase",
+    "picked": "metrics-and-requirements#5",
+    "p": 1.0,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": false,
+    "tokens": 4679,
+    "runner_up": []
+   },
+   {
+    "state": "which requirements are too vague to ever test?",
+    "expected": "metrics-and-requirements#22",
+    "kind": "paraphrase",
+    "picked": "metrics-and-requirements#22",
+    "p": 1.0,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": false,
+    "tokens": 4680,
+    "runner_up": []
+   },
+   {
+    "state": "what result would have proven this verification wrong?",
+    "expected": "verification-and-liveness#1",
+    "kind": "paraphrase",
+    "picked": "verification-and-liveness#1",
+    "p": 1.0,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 1.0,
+    "abstained": false,
+    "tokens": 4680,
+    "runner_up": []
+   },
+   {
+    "state": "which beads are blocked on something that's already done?",
+    "expected": "verification-and-liveness#7",
+    "kind": "paraphrase",
+    "picked": "verification-and-liveness#7",
+    "p": 0.98,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.97,
+    "abstained": false,
+    "tokens": 4682,
+    "runner_up": []
+   },
+   {
+    "state": "how many tokens did closing aegis-f8efkn burn across everyone who touched it?",
+    "expected": "verification-and-liveness#16",
+    "kind": "paraphrase",
+    "picked": "verification-and-liveness#16",
+    "p": 0.99,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": false,
+    "tokens": 4689,
+    "runner_up": []
+   },
+   {
+    "state": "which month windows could be frozen right now?",
+    "expected": "workflow-and-archive#12",
+    "kind": "paraphrase",
+    "picked": "workflow-and-archive#12",
+    "p": 0.86,
+    "coverage": "Full",
+    "hit": true,
+    "confidence": 0.84,
+    "abstained": false,
+    "tokens": 4680,
+    "runner_up": [
+     [
+      "workflow-and-archive#11",
+      0.07
+     ],
+     [
+      "workflow-and-archive#1",
+      0.01
+     ]
+    ]
+   },
+   {
+    "state": "how do I bake sourdough bread?",
+    "expected": "none-of-these",
+    "kind": "none",
+    "picked": "none-of-these",
+    "p": 0.01,
+    "coverage": "Empty",
+    "hit": true,
+    "confidence": 0.98,
+    "abstained": true,
+    "tokens": 4680,
+    "runner_up": []
+   },
+   {
+    "state": "what's the weather in Gatlinburg this week?",
+    "expected": "none-of-these",
+    "kind": "none",
+    "picked": "none-of-these",
+    "p": 0.0,
+    "coverage": "Empty",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": true,
+    "tokens": 4682,
+    "runner_up": []
+   },
+   {
+    "state": "write me a python function that parses ISO dates",
+    "expected": "none-of-these",
+    "kind": "none",
+    "picked": "none-of-these",
+    "p": 0.0,
+    "coverage": "Empty",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": true,
+    "tokens": 4680,
+    "runner_up": []
+   },
+   {
+    "state": "who is the fastest agent on the fleet?",
+    "expected": "none-of-these",
+    "kind": "none-near",
+    "picked": "none-of-these",
+    "p": 0.02,
+    "coverage": "Empty",
+    "hit": true,
+    "confidence": 0.95,
+    "abstained": true,
+    "tokens": 4680,
+    "runner_up": [
+     [
+      "metrics-and-requirements#22",
+      0.02
+     ]
+    ]
+   },
+   {
+    "state": "what is the capital of France?",
+    "expected": "none-of-these",
+    "kind": "none",
+    "picked": "none-of-these",
+    "p": 0.0,
+    "coverage": "Empty",
+    "hit": true,
+    "confidence": 0.99,
+    "abstained": true,
+    "tokens": 4678,
+    "runner_up": []
+   }
+  ],
+  "misses": [
+   {
+    "state": "which beads ended up abandoned?",
+    "expected": "crew-task-lifecycle#11",
+    "kind": "paraphrase",
+    "picked": "none-of-these",
+    "p": 0.31,
+    "coverage": "Empty",
+    "hit": false,
+    "confidence": 0.44,
+    "abstained": true,
+    "tokens": 4677,
+    "runner_up": [
+     [
+      "golden-paths#7",
+      0.2
+     ],
+     [
+      "workflow-and-archive#6",
+      0.01
+     ]
+    ]
+   },
+   {
+    "state": "which metrics can we actually retrieve for kota right now?",
+    "expected": "metrics-and-requirements#7",
+    "kind": "arguable",
+    "picked": "metrics-and-requirements#1",
+    "p": 0.9,
+    "coverage": "Full",
+    "hit": false,
+    "confidence": 0.89,
+    "abstained": false,
+    "tokens": 4682,
+    "runner_up": [
+     [
+      "metrics-and-requirements#7",
+      0.06
+     ],
+     [
+      "metrics-and-requirements#8",
+      0.03
+     ]
+    ]
+   }
+  ]
+ }
+]
