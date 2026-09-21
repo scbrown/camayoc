@@ -1,7 +1,8 @@
 # Design: Jev — typed decisions in the ingress path (exploration)
 
-> **Status: OPEN EXPLORATION (2026-09-20, Stiwi).** Nothing here is built or
-> decided. This doc exists so the question stays open in the repo rather than in
+> **Status: EXPLORATION, FIRST ARM BUILT (2026-09-21).** Stiwi has a TypeSafe
+> account (console.typesafe.ai, created 2026-09-20). Slot 2 below ships as
+> `competency.py --method jev` over `scripts/jev.py`; nothing is decided. This doc exists so the question stays open in the repo rather than in
 > a chat. It records what Jev is, where a typed decision would slot into camayoc
 > and into NeuralAmplifier, what the ingress discipline demands of it, and what
 > has to be true before the first experiment runs. Tracked on the aegis board;
@@ -87,12 +88,31 @@ Slots 1 and 2 in camayoc: both already record method and threshold, so a Jev arm
 is a scorer selection plus a benchmark against the lexical arm on the same
 inputs. Report agreement, confidence distribution, and the NO COVERAGE rate.
 
+**Built 2026-09-21 (slot 2):** `scripts/jev.py` is the only Jev client (bearer
+key from `TYPESAFE_API_KEY`; no key -> `JevUnavailable`, never a silent
+fallback). `competency.py --method jev` poses ONE `choice` per asked question
+with the 91 suite questions plus a reserved `none-of-these` option; the verdict
+carries `method: jev-latest-choice-v1`, `semantic: true`, the instructions, the
+model, the confidence, the none probability, and `abstained`, which forces
+`Empty`. Tests: `tests/test_jev.py` (fake transport, no network). Slot 1
+(settled-decision collision, `noul`) is next.
+
+Run it:
+
+```bash
+export TYPESAFE_API_KEY=$(cd ~/workspace/goldblum && just infisical get TYPESAFE_API_KEY)
+python3 scripts/competency.py --method jev "what did we decide about the vati reboot?"
+python3 scripts/competency.py --method lexical "what did we decide about the vati reboot?"
+```
+
 ## 6. Blockers before any of it
 
-- Jev API access (waitlist) — who holds the key, where it lives (see
-  aegis-6016ma for the credential-discoverability rule this must follow).
-- Egress: the network policy that denied the HF CDN may also deny
-  `api.typesafe.ai` from vati/kota. Measure, do not assume.
+- ~~Jev API access (waitlist)~~ Account exists (2026-09-20). The key lives in
+  Infisical as `TYPESAFE_API_KEY` (aegis-6016ma rule); scripts read it from the
+  environment only.
+- ~~Egress~~ Measured 2026-09-21: `POST api.typesafe.ai/v1/systemone` answers
+  403 (reachable, unauthenticated) in 0.24 s from both the Mac and vati. kota
+  still unmeasured.
 - Quipu "deliberately contains no LLM" — Jev calls live in camayoc scripts (the
   ingress layer), never in the store.
 

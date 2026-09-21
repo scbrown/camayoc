@@ -180,6 +180,78 @@ class Scorer:
         return [sum(vals) / len(kept) for vals in zip(*kept)]
 
 
+#: The method label for the Jev scorer (docs/design/jev-typed-decisions.md).
+#: Changing the question posed, the model, or the none-option MUST change this.
+JEV_METHOD = "jev-latest-choice-v1"
+
+
+class JevScorer:
+    """Coverage as ONE typed decision (aegis-sfg5vb slot 2).
+
+    Where `Scorer` scores every suite question pairwise, this poses a single
+    Jev `choice` per asked question: the suite's questions are the options plus
+    a reserved "none of these" option, and each question's score is the
+    probability Jev put on it. Jev cannot abstain, so the none option is how
+    the forced choice becomes a NO COVERAGE verdict: when it wins, coverage is
+    Empty regardless of the runner-up.
+
+    Honesty rules inherited from `Scorer`: `method` and `semantic` describe
+    the thing that ran; construction FAILS without a client (no silent lexical
+    fallback under a Jev label); the verdict carries the instructions, the
+    model, the confidence and the none probability so a reader can re-judge.
+    Every verdict is a model judgment: if written back, it is `inferred`.
+    """
+
+    semantic = True
+    method = JEV_METHOD
+    INSTRUCTIONS = (
+        "The state is a question someone asked of a knowledge graph. Choose the "
+        "competency question below that this asked question is an instance of, i.e. "
+        "answering the chosen competency question (with its parameters filled in) "
+        "would answer the asked question. If no competency question fits, choose "
+        "none-of-these."
+    )
+    NONE_TEXT = "None of the competency questions above would answer the asked question."
+
+    def __init__(self, client):
+        if client is None:
+            raise ValueError("JevScorer needs a jev.JevClient; there is no fallback")
+        self.client = client
+        self._cache: dict[tuple[str, str], dict] = {}
+        self.last: dict | None = None
+
+    def _run(self, asked: str, suite: "list[Question]") -> dict:
+        key = (asked, watermark(suite))
+        if key not in self._cache:
+            criteria = {q.id: q.text for q in suite}
+            self._cache[key] = self.client.choice(
+                asked, self.INSTRUCTIONS, criteria, none_text=self.NONE_TEXT, qid="coverage"
+            )
+        self.last = self._cache[key]
+        return self.last
+
+    def score(self, asked: str, question: "Question", suite: "list[Question] | None" = None) -> float:
+        if suite is None:
+            raise ValueError("JevScorer.score needs the whole suite (one choice per asked question)")
+        out = self._run(asked, suite)
+        return float(out["probabilities"].get(question.id, 0.0))
+
+    def extras(self) -> dict:
+        """What the verdict must carry beyond a number."""
+        from jev import NONE_OPTION
+        out = self.last or {}
+        probs = out.get("probabilities", {})
+        return {
+            "model": out.get("model"),
+            "instructions": self.INSTRUCTIONS,
+            "confidence": out.get("confidence"),
+            "choice": out.get("choice"),
+            "none_probability": probs.get(NONE_OPTION),
+            "abstained": out.get("choice") == NONE_OPTION,
+            "usage": out.get("usage"),
+        }
+
+
 #: Back-compat: the module-level METHOD names the scorer that runs by default.
 METHOD = Scorer().method
 
@@ -319,12 +391,19 @@ def assess(
     scorer other than the one that produced the number.
     """
     scorer = scorer or Scorer()
+    whole = isinstance(scorer, JevScorer)
     ranked = sorted(
-        ((scorer.score(asked, q), q) for q in suite), key=lambda pair: (-pair[0], pair[1].id)
+        (((scorer.score(asked, q, suite) if whole else scorer.score(asked, q)), q) for q in suite),
+        key=lambda pair: (-pair[0], pair[1].id),
     )
     best = ranked[0][0] if ranked else 0.0
+    extras = scorer.extras() if whole else None
 
-    if best >= full:
+    if extras and extras.get("abstained"):
+        # Jev cannot abstain; the reserved none option is our abstention. When it
+        # wins, the honest verdict is a gap, whatever the runner-up scored.
+        coverage = "Empty"
+    elif best >= full:
         coverage = "Full"
     elif best >= floor:
         coverage = "Partial"
@@ -332,6 +411,7 @@ def assess(
         coverage = "Empty"
 
     return {
+        **({"jev": extras} if extras else {}),
         "asked": asked,
         "coverage": coverage,
         "best_score": round(best, 4),
@@ -370,6 +450,11 @@ def main() -> int:
     ap.add_argument("--json", action="store_true", help="machine-readable verdict")
     ap.add_argument("--floor", type=float, default=FLOOR)
     ap.add_argument("--full", type=float, default=FULL)
+    ap.add_argument(
+        "--method", choices=("auto", "lexical", "jev"), default="auto",
+        help="auto = embeddings if weights exist else lexical; jev = one typed Jev choice "
+             "(needs TYPESAFE_API_KEY; refuses loudly without it, never falls back)",
+    )
     args = ap.parse_args()
 
     directory = Path(args.suite)
@@ -395,14 +480,36 @@ def main() -> int:
     if not args.question:
         ap.error("a question is required unless --list is given")
 
-    verdict = assess(args.question, suite, floor=args.floor, full=args.full)
+    if args.method == "jev":
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import jev
+
+        try:
+            scorer: "Scorer | JevScorer" = JevScorer(jev.JevClient())
+        except jev.JevError as exc:
+            print(f"jev: {exc}", file=sys.stderr)
+            return 2
+    else:
+        scorer = Scorer()
+        if args.method == "lexical":
+            scorer._embedder = None  # the deterministic arm, asked for by name
+
+    verdict = assess(args.question, suite, floor=args.floor, full=args.full, scorer=scorer)
 
     if args.json:
         print(json.dumps(verdict, indent=2))
         return 0
 
     print(f"coverage: {verdict['coverage']}   best {verdict['best_score']}")
-    print(f"method:   {verdict['method']} — WORD OVERLAP, not semantic similarity")
+    if verdict.get("jev"):
+        j = verdict["jev"]
+        print(f"method:   {verdict['method']} — one typed choice by {j['model']}, "
+              f"confidence {j['confidence']}, none-of-these {j['none_probability']}"
+              + ("  [ABSTAINED]" if j["abstained"] else ""))
+    elif verdict["semantic"]:
+        print(f"method:   {verdict['method']} — embedding similarity")
+    else:
+        print(f"method:   {verdict['method']} — WORD OVERLAP, not semantic similarity")
     print(f"corpus:   {verdict['suite_size']} questions, {verdict['corpus_watermark']}")
     if verdict["matches"]:
         print("\nnearest:")
