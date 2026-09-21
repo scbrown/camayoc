@@ -189,7 +189,7 @@ JEV_HIER_METHOD = "jev-latest-choice-hier-v1"
 
 
 class JevScorer:
-    """Coverage as ONE typed decision (aegis-sfg5vb slot 2).
+    """Question MAPPING as one typed decision (aegis-sfg5vb slot 2).
 
     Where `Scorer` scores every suite question pairwise, this poses a single
     Jev `choice` per asked question: the suite's questions are the options plus
@@ -256,7 +256,7 @@ class JevScorer:
     def _run_flat(self, asked: str, suite: "list[Question]") -> dict:
         criteria = {q.id: q.text for q in suite}
         return self.client.choice(asked, self.INSTRUCTIONS, criteria,
-                                  none_text=self.NONE_TEXT, qid="coverage")
+                                  none_text=self.NONE_TEXT, qid="mapping")
 
     def _run_hier(self, asked: str, suite: "list[Question]") -> dict:
         from jev import NONE_OPTION
@@ -270,7 +270,7 @@ class JevScorer:
                     "stages": [stage1["choice"]], "file_confidence": stage1.get("confidence"), "usage": usage}
         subset = [q for q in suite if q.source == stage1["choice"]]
         stage2 = self.client.choice(asked, self.INSTRUCTIONS, {q.id: q.text for q in subset},
-                                    none_text=self.NONE_TEXT, qid="coverage")
+                                    none_text=self.NONE_TEXT, qid="mapping")
         for k, v in (stage2.get("usage") or {}).items():
             usage[k] = usage.get(k, 0) + v
         # Scale stage-2 probabilities by the file's probability so a confident pick in

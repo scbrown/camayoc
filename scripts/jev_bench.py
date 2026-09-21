@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark the coverage arms against a labelled set — aegis-4hhqoe.9.
+"""Benchmark the question-mapping arms against a labelled set — aegis-4hhqoe.9.
 
 No arm is trusted before this runs (docs/design/jev-typed-decisions.md §8.2).
 Input: a JSONL of {state, expected, kind, why} where expected is a competency

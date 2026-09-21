@@ -62,7 +62,7 @@ A Jev answer is a model judgment. Ingress rule 4 applies without exception:
 | # | Slot | Today | Jev shape | Fit | Why |
 |---|---|---|---|---|---|
 | 1 | Settled-decision collision (`settled_decisions.py`, camayoc-7lt) | lexical, advisory, says so | one `noul` per standing decision: "does the new Decision duplicate or conflict with this one" | strong | advisory posture already tolerates error; verdict shape exists |
-| 2 | Competency coverage / NO COVERAGE (`competency.py`, camayoc-b6h) | lexical; embedding path blocked by network policy (HF CDN denied) | `choice` over parsed competency questions + "none of these"; confidence floor → NO COVERAGE | strong | the semantic matcher b6h asked for, without weights on disk |
+| 2 | Question mapping onto the competency suite / NO COVERAGE (`competency.py`, camayoc-b6h) | lexical; embedding path blocked by network policy (HF CDN denied) | `choice` over parsed competency questions + "none of these"; confidence floor → NO COVERAGE | strong | the semantic matcher b6h asked for, without weights on disk |
 | 3 | Promotion-queue triage | nothing ranks the quarantine plane | `score` "how well evidenced is this fact" over a fixed rubric | good | orders human review; authority untouched |
 | 4 | Entity-mention disambiguation (`extract_entities.py`) | abstains on a label naming two entities | `choice` among the candidates + "neither" | cautious | doc's stance: a wrong mention is worse than a missing one; keep the abstain path, high floor |
 | 5 | Plane routing (`planes.plane_for`) | deterministic | — | **no** | must stay deterministic |
@@ -88,7 +88,7 @@ Slots 1 and 2 in camayoc: both already record method and threshold, so a Jev arm
 is a scorer selection plus a benchmark against the lexical arm on the same
 inputs. Report agreement, confidence distribution, and the NO COVERAGE rate.
 
-**Built 2026-09-21 (slot 2):** `scripts/jev.py` is the only Jev client (bearer
+**Built 2026-09-21 (slot 2, question mapping):** `scripts/jev.py` is the only Jev client (bearer
 key from `TYPESAFE_API_KEY`; no key -> `JevUnavailable`, never a silent
 fallback). `competency.py --method jev` poses ONE `choice` per asked question
 with the 91 suite questions plus a reserved `none-of-these` option; the verdict
@@ -175,7 +175,7 @@ disagreements, abstain rate. Thresholds come from that, never from a default.
 The competency slot's first three live calls (2026-09-21) already produced one
 "confident but arguable" pick; that is the item type the set needs most.
 
-### 8.3 Coverage results, 2026-09-21 (35 labelled items, hammond as ontology owner)
+### 8.3 Question-mapping results, 2026-09-21 (35 labelled items, hammond as ontology owner)
 
 | arm | agreement | conf when right | conf when wrong | abstain | input tokens |
 |---|---|---|---|---|---|
@@ -189,3 +189,12 @@ turns below-floor verdicts into "a human reads it" rather than a filed gap
 variant halves the tokens but loses 20 points, almost all at the file stage,
 so it is kept as a measured option and not used. Cost of the default:
 ~4.7k input tokens (< $0.01) per asked question at list price.
+
+### 8.4 Vocabulary (Stiwi 2026-09-21)
+
+**Mapping, not coverage.** Jev maps an asked question onto the competency
+suite (or abstains). *Coverage* is the deterministic question — does a
+competency question have a stored query that answers it — and stays with
+`query_coverage.py`. The verdict's `coverage: Empty|Partial|Full` field keeps
+its pre-Jev name (camayoc-b6h) because other tools read it; read it as "how
+well the asked question maps".

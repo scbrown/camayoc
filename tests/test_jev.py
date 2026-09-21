@@ -106,7 +106,7 @@ class ScorerTests(unittest.TestCase):
         s = competency.JevScorer(jev.JevClient(api_key="k", transport=t))
         competency.assess("what did we decide about X", suite(), scorer=s)
         self.assertEqual(len(t.calls), 1)
-        self.assertEqual(len(t.calls[0]["questions"]["coverage"]["criteria"]), 4)
+        self.assertEqual(len(t.calls[0]["questions"]["mapping"]["criteria"]), 4)
 
     def test_none_winning_is_no_coverage_even_with_a_high_runner_up(self):
         t = FakeTransport(jev.NONE_OPTION, {"a#1": 0.45, "a#2": 0.05, "b#1": 0.02, jev.NONE_OPTION: 0.48})

@@ -95,8 +95,8 @@ are never stored in the graph method.
 
 ### Typed decisions with Jev
 
-Some ingress questions are semantic judgments, not parser facts: *does this
-asked question fall under any competency question?* *Does this new decision
+Some ingress questions are semantic judgments, not parser facts: *which
+competency question is this asked question an instance of, if any?* *Does this new decision
 collide with a settled one?* Camayoc's first answer to those was deliberately
 lexical, and every verdict said so (`method: lexical-jaccard-v1`,
 `semantic: false`). Since 2026-09-21 there is a second arm:
@@ -106,11 +106,13 @@ options, `score` over ordered levels) instead of text, in one parallel pass.
 
 `scripts/jev.py` is the only place camayoc calls it. What that unlocked:
 
-- **Coverage as one typed decision.** `competency.py --method jev` poses a
-  single `choice` per asked question over the whole competency suite plus a
-  reserved `none-of-these` option, and reads Jev's probability per question.
-  Paraphrases the word-overlap scorer could not resolve now resolve, with a
-  confidence attached.
+- **Question mapping as one typed decision.** `competency.py --method jev`
+  poses a single `choice` per asked question over the whole competency suite
+  plus a reserved `none-of-these` option, and reads Jev's probability per
+  question. Paraphrases the word-overlap scorer could not resolve now map,
+  with a confidence attached. (Whether a competency question is *covered* by
+  a stored query is the separate, deterministic check in `query_coverage.py`;
+  Jev never answers that.)
 - **An abstention Jev does not have.** Jev cannot say "nothing fits"; the
   reserved option is how a forced choice becomes an honest **NO COVERAGE**.
   When it wins, coverage is `Empty` whatever the runner-up scored.
