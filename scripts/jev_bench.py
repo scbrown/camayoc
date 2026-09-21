@@ -33,9 +33,9 @@ NONE = "none-of-these"
 
 
 def run_arm(arm: str, items: list[dict], suite) -> dict:
-    if arm == "jev":
+    if arm in ("jev", "jev-hier"):
         import jev
-        scorer = competency.JevScorer(jev.JevClient())
+        scorer = competency.JevScorer(jev.JevClient(), hierarchical=(arm == "jev-hier"))
     else:
         scorer = competency.Scorer(); scorer._embedder = None
     rows = []
@@ -54,8 +54,8 @@ def run_arm(arm: str, items: list[dict], suite) -> dict:
     n = len(rows); hits = [r for r in rows if r["hit"]]; miss = [r for r in rows if not r["hit"]]
     conf = lambda rs: (sum(r["confidence"] for r in rs if r["confidence"] is not None) / max(1, len([r for r in rs if r["confidence"] is not None]))) if rs else None
     return {"arm": arm, "n": n, "agreement": len(hits) / n if n else 0,
-            "conf_agree": conf(hits) if arm == "jev" else None,
-            "conf_miss": conf(miss) if arm == "jev" else None,
+            "conf_agree": conf(hits) if arm.startswith("jev") else None,
+            "conf_miss": conf(miss) if arm.startswith("jev") else None,
             "abstain_rate": sum(r["abstained"] for r in rows) / n if n else 0,
             "tokens": sum(r["tokens"] for r in rows), "rows": rows, "misses": miss}
 
@@ -64,12 +64,12 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("labelled", type=Path)
     ap.add_argument("--suite", default=str(Path(__file__).resolve().parents[1] / "competency"))
-    ap.add_argument("--arm", choices=("lexical", "jev", "both"), default="both")
+    ap.add_argument("--arm", choices=("lexical", "jev", "jev-hier", "both", "all"), default="both")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
     items = [json.loads(l) for l in a.labelled.read_text().splitlines() if l.strip()]
     suite = competency.parse_suite(Path(a.suite))
-    arms = ["lexical", "jev"] if a.arm == "both" else [a.arm]
+    arms = {"both": ["lexical", "jev"], "all": ["lexical", "jev", "jev-hier"]}.get(a.arm, [a.arm])
     results = []
     for arm in arms:
         try:

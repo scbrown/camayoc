@@ -174,3 +174,18 @@ agreement with the label, confidence distribution on agreements vs
 disagreements, abstain rate. Thresholds come from that, never from a default.
 The competency slot's first three live calls (2026-09-21) already produced one
 "confident but arguable" pick; that is the item type the set needs most.
+
+### 8.3 Coverage results, 2026-09-21 (35 labelled items, hammond as ontology owner)
+
+| arm | agreement | conf when right | conf when wrong | abstain | input tokens |
+|---|---|---|---|---|---|
+| lexical | 54% | — | — | 0% | 0 |
+| jev (flat, 91 options) | **94%** | 0.96 | 0.64 | 17% | 163,920 |
+| jev-hier (file then question, +examples) | 74% | 0.84 | 0.45 | 31% | 76,426 |
+
+Rulings from this: **flat stays the default**; a **confidence floor of 0.75**
+turns below-floor verdicts into "a human reads it" rather than a filed gap
+(the 0.96/0.64 split is what makes the floor meaningful); the two-stage
+variant halves the tokens but loses 20 points, almost all at the file stage,
+so it is kept as a measured option and not used. Cost of the default:
+~4.7k input tokens (< $0.01) per asked question at list price.

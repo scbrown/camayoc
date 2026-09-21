@@ -183,6 +183,9 @@ class Scorer:
 #: The method label for the Jev scorer (docs/design/jev-typed-decisions.md).
 #: Changing the question posed, the model, or the none-option MUST change this.
 JEV_METHOD = "jev-latest-choice-v1"
+#: Two-stage variant: choose the FILE (title + section headings), then the
+#: question within it. ~4x fewer tokens; the file stage is a second place to miss.
+JEV_HIER_METHOD = "jev-latest-choice-hier-v1"
 
 
 class JevScorer:
@@ -213,20 +216,76 @@ class JevScorer:
     )
     NONE_TEXT = "None of the competency questions above would answer the asked question."
 
-    def __init__(self, client):
+    FILE_INSTRUCTIONS = (
+        "The state is a question someone asked of a knowledge graph. Each option is one FILE of "
+        "competency questions, described by its title and section headings. Choose the file whose "
+        "questions this asked question belongs under. If none fits, choose none-of-these."
+    )
+    FILE_NONE_TEXT = "None of these files would contain a question that answers the asked question."
+
+    def __init__(self, client, hierarchical: bool = False):
         if client is None:
             raise ValueError("JevScorer needs a jev.JevClient; there is no fallback")
         self.client = client
+        self.hierarchical = hierarchical
+        if hierarchical:
+            self.method = JEV_HIER_METHOD
         self._cache: dict[tuple[str, str], dict] = {}
         self.last: dict | None = None
+
+    @staticmethod
+    def file_descriptions(suite: "list[Question]") -> dict[str, str]:
+        """One line per source file: its title and the sections its questions sit under.
+
+        Built from the parsed questions only, so it needs no extra files and moves
+        with the suite watermark.
+        """
+        by_file: dict[str, list[str]] = {}
+        examples: dict[str, list[str]] = {}
+        for q in suite:
+            secs = by_file.setdefault(q.source, [])
+            if q.section and q.section not in secs:
+                secs.append(q.section)
+            ex = examples.setdefault(q.source, [])
+            if len(ex) < 4:
+                ex.append(q.text)
+        return {src: (f"{Path(src).stem.replace('-', ' ')} — sections: " + "; ".join(secs)
+                      + " — e.g. " + " | ".join(examples[src]))
+                for src, secs in by_file.items()}
+
+    def _run_flat(self, asked: str, suite: "list[Question]") -> dict:
+        criteria = {q.id: q.text for q in suite}
+        return self.client.choice(asked, self.INSTRUCTIONS, criteria,
+                                  none_text=self.NONE_TEXT, qid="coverage")
+
+    def _run_hier(self, asked: str, suite: "list[Question]") -> dict:
+        from jev import NONE_OPTION
+        files = self.file_descriptions(suite)
+        stage1 = self.client.choice(asked, self.FILE_INSTRUCTIONS, files,
+                                    none_text=self.FILE_NONE_TEXT, qid="file")
+        usage = dict(stage1.get("usage") or {})
+        if stage1["choice"] == NONE_OPTION or stage1["choice"] not in files:
+            # The file stage abstained: no question can score, and the verdict says why.
+            return {**stage1, "probabilities": {NONE_OPTION: stage1["probabilities"].get(NONE_OPTION, 1.0)},
+                    "stages": [stage1["choice"]], "file_confidence": stage1.get("confidence"), "usage": usage}
+        subset = [q for q in suite if q.source == stage1["choice"]]
+        stage2 = self.client.choice(asked, self.INSTRUCTIONS, {q.id: q.text for q in subset},
+                                    none_text=self.NONE_TEXT, qid="coverage")
+        for k, v in (stage2.get("usage") or {}).items():
+            usage[k] = usage.get(k, 0) + v
+        # Scale stage-2 probabilities by the file's probability so a confident pick in
+        # an uncertain file does not outrank the file-level doubt.
+        pf = stage1["probabilities"].get(stage1["choice"], 1.0)
+        probs = {k: v * pf for k, v in stage2["probabilities"].items()}
+        conf = min(stage1.get("confidence") or 0.0, stage2.get("confidence") or 0.0)
+        return {**stage2, "probabilities": probs, "confidence": round(conf, 4), "usage": usage,
+                "stages": [stage1["choice"], stage2["choice"]], "file_confidence": stage1.get("confidence"),
+                "request": {"file": stage1["request"], "coverage": stage2["request"]}}
 
     def _run(self, asked: str, suite: "list[Question]") -> dict:
         key = (asked, watermark(suite))
         if key not in self._cache:
-            criteria = {q.id: q.text for q in suite}
-            self._cache[key] = self.client.choice(
-                asked, self.INSTRUCTIONS, criteria, none_text=self.NONE_TEXT, qid="coverage"
-            )
+            self._cache[key] = self._run_hier(asked, suite) if self.hierarchical else self._run_flat(asked, suite)
         self.last = self._cache[key]
         return self.last
 
@@ -249,6 +308,8 @@ class JevScorer:
             "none_probability": probs.get(NONE_OPTION),
             "abstained": out.get("choice") == NONE_OPTION,
             "usage": out.get("usage"),
+            **({"stages": out.get("stages"), "file_confidence": out.get("file_confidence")}
+               if self.hierarchical else {}),
         }
 
 
@@ -451,9 +512,10 @@ def main() -> int:
     ap.add_argument("--floor", type=float, default=FLOOR)
     ap.add_argument("--full", type=float, default=FULL)
     ap.add_argument(
-        "--method", choices=("auto", "lexical", "jev"), default="auto",
-        help="auto = embeddings if weights exist else lexical; jev = one typed Jev choice "
-             "(needs TYPESAFE_API_KEY; refuses loudly without it, never falls back)",
+        "--method", choices=("auto", "lexical", "jev", "jev-hier"), default="auto",
+        help="auto = embeddings if weights exist else lexical; jev = one typed Jev choice over "
+             "the whole suite; jev-hier = file first, then question (~4x fewer tokens) "
+             "(both need TYPESAFE_API_KEY; refuse loudly without it, never fall back)",
     )
     args = ap.parse_args()
 
@@ -480,12 +542,12 @@ def main() -> int:
     if not args.question:
         ap.error("a question is required unless --list is given")
 
-    if args.method == "jev":
+    if args.method in ("jev", "jev-hier"):
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         import jev
 
         try:
-            scorer: "Scorer | JevScorer" = JevScorer(jev.JevClient())
+            scorer: "Scorer | JevScorer" = JevScorer(jev.JevClient(), hierarchical=(args.method == "jev-hier"))
         except jev.JevError as exc:
             print(f"jev: {exc}", file=sys.stderr)
             return 2
