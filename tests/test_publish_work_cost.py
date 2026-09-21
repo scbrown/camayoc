@@ -465,3 +465,40 @@ class RefusalAccountingTests(unittest.TestCase):
         self.assertEqual(a['attempts'], 2)
         self.assertEqual(a['window']['baseline_attempts'], 1)
         self.assertEqual(a['window']['observed_since'], 210)
+
+class SchedulerStatusTests(unittest.TestCase):
+    def test_unknown_ticks_advance_without_graph_or_budget_work(self):
+        import json
+        with TemporaryDirectory() as tmp:
+            state = Path(tmp) / 'scheduler.json'
+            history = {}
+            record_budget(history, {'attempted_at': 10, 'preflight_reached': True,
+                'items_per_snapshot': [1], 'records_per_snapshot': [2],
+                'body_bytes_per_snapshot': [100]})
+            state.with_suffix('.budget.json').write_text(json.dumps(history))
+            state.with_suffix('.receipt.json').write_text(json.dumps({
+                'status': 'OK', 'attempted_at': 10, 'next_request_after': 9999}))
+            with patch('publish_work_cost._publish') as graph, \
+                 patch('camayoc_metrics.push', return_value=(True, 'fixture')) as push, \
+                 patch('publish_work_cost.time.time', return_value=100):
+                publish(None, 'st-cost', state, scheduler_only='tick', push_status=True)
+                publish(None, 'st-cost', state, scheduler_only='source_selection', push_status=True)
+                graph.assert_not_called()
+            receipt = json.loads(state.with_suffix('.receipt.json').read_text())
+            self.assertEqual(receipt['attempted_at'], 100)
+            self.assertEqual(receipt['next_request_after'], 9999)
+            self.assertEqual(receipt['status'], 'UNKNOWN')
+            self.assertEqual(receipt['requests'], 0)
+            self.assertEqual(json.loads(state.with_suffix('.budget.json').read_text()), history)
+            self.assertIn('camayoc_cost_projection_ok 0', push.call_args.args[1])
+            self.assertIn('camayoc_cost_projection_unknown{reason="source_selection"} 1', push.call_args.args[1])
+            with patch('publish_work_cost.time.time', return_value=160):
+                publish(None, 'st-cost', state, scheduler_only='tick')
+            later = json.loads(state.with_suffix('.receipt.json').read_text())
+            self.assertEqual(later['attempted_at'], 160)
+            self.assertEqual(later['status'], 'UNKNOWN')  # heartbeat never invents success
+            pending = state.with_suffix('.pending.json')
+            pending.write_text('{"body":"preserve exactly"}')
+            publish(None, 'st-cost', state, scheduler_only='tick')
+            self.assertEqual(pending.read_text(), '{"body":"preserve exactly"}')
+            self.assertEqual(json.loads(state.with_suffix('.receipt.json').read_text())['status'], 'STALLED')

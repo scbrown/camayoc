@@ -189,3 +189,18 @@ The distribution is censored at the unchanged caps: its maximum describes the
 largest admitted sample, not headroom. Exact shape equivalence remains
 `(items, records, body_bytes)`. Repeated admitted shapes increase attempts without
 necessarily increasing distinct shapes; that alone does not prove pinned input.
+
+## Scheduler attempts before source selection
+
+`--scheduler-only tick --publish-status` refreshes the attempt timestamp without
+reading sources or querying the graph. It preserves the previous outcome,
+request cooldown, pending write body, and budget history; a heartbeat is not a
+successful projection. The scheduler calls it under its publication lock before
+checking pending work, review pauses, cooldowns, or selecting an active source.
+
+`--scheduler-only source_selection` (or `preflight` / `projection`) records an
+early UNKNOWN outcome and its bounded reason. The existing failure and stale
+alerts can then distinguish repeated failed attempts from missing reports.
+`camayoc_cost_projection_unknown{reason="source_selection"}` identifies the
+no-source path. Status-only calls neither read transcripts nor write graph data.
+Deploy this publisher interface before a scheduler that invokes it.
