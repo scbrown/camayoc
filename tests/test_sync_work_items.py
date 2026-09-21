@@ -137,6 +137,20 @@ class Delivery(unittest.TestCase):
         self.assertEqual('proj-b', result['item'])
         self.assertEqual('DEGRADED', result['status'])
 
+    def test_controlled_retry_does_not_wait_behind_fresh_backlog(self):
+        self.lost = True
+        self.tick()
+        original = self.calls[0][1]
+        pending = self.state['items']['proj-a']['pending']
+        pending['absent_reads'] = 2
+        self.lost = False
+        records = [RECORD] + [{**RECORD, 'id': f'proj-new-{i}'} for i in range(250)]
+        result = self.tick(records, now=1060)
+        self.assertEqual('proj-a', result['item'])
+        self.assertEqual(1, result['writes'])
+        self.assertEqual(original, self.calls[-3][1])
+        self.assertEqual('OK', result['status'])
+
     def test_backoff_has_no_requests(self):
         self.tick()
         before = len(self.calls)

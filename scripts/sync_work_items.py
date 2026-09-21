@@ -129,10 +129,9 @@ def tick(records, state, path, *, actor, source, now, post):
                                    entries[i].get('priority', 4)))
     # Reconcile indeterminate writes ahead of the fresh backlog. Alternate
     # recovery preference with the fair queue so an unreachable read control
-    # cannot starve new work. Only READS get this preference, never retries.
+    # cannot starve new work. A retry write still needs two absent reads.
     recovery = [i for i in candidates if entries[i].get('pending')
-                and entries[i]['pending']['attempts'] < MAX_ATTEMPTS
-                and entries[i]['pending'].get('absent_reads', 0) < 2]
+                and entries[i]['pending']['attempts'] < MAX_ATTEMPTS]
     prefer_recovery = bool(recovery) and not state.get('last_was_recovery', False)
     if prefer_recovery:
         candidates.remove(recovery[0])
