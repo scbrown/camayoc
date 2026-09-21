@@ -66,9 +66,16 @@ def usage_log_path(env: dict | None = None) -> Path:
     explicit = env.get(USAGE_LOG_ENV)
     if explicit:
         return Path(explicit).expanduser()
+    # SHANTY_ROOT **IS** the store directory, not its parent — shantytown's own
+    # help says `export SHANTY_ROOT=<path>/.shanty`. Appending ".shanty" again
+    # produced `<...>/.shanty/.shanty/jev-usage.jsonl`, so accounting wrote to a
+    # real file that nothing reads. Measured on the Mac (aegis-k6dcp9): the live
+    # calls "did not account" until the doubled path was found; the governor is
+    # asked to read this log, so a wrong path is a silent loss, not a cosmetic
+    # one. The failure needed a host with SHANTY_ROOT set to surface at all.
     root = env.get("SHANTY_ROOT")
     if root:
-        return Path(root).expanduser() / ".shanty" / "jev-usage.jsonl"
+        return Path(root).expanduser() / "jev-usage.jsonl"
     return Path(DEFAULT_USAGE_LOG).expanduser()
 
 

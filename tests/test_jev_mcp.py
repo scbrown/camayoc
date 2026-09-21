@@ -168,6 +168,20 @@ class UsageIsCountedPerAgent(unittest.TestCase):
         out = call("jev_noul", {"state": "s", "instructions": "q?"}, env=env)
         self.assertEqual(out["model"], "jev-1.13.0")
 
+    def test_SHANTY_ROOT_is_the_store_dir_and_is_not_doubled(self):
+        """Regression (aegis-k6dcp9): this appended a second ".shanty", so the
+        log landed at <root>/.shanty/.shanty/... — a real file nothing reads.
+        Only a host with SHANTY_ROOT set could surface it, which is why it
+        survived the vati acceptance run."""
+        self.assertEqual(jev_mcp.usage_log_path({"SHANTY_ROOT": "/srv/dep/.shanty"}),
+                         Path("/srv/dep/.shanty/jev-usage.jsonl"))
+
+    def test_an_explicit_log_path_still_wins_over_SHANTY_ROOT(self):
+        self.assertEqual(
+            jev_mcp.usage_log_path({"SHANTY_ROOT": "/srv/dep/.shanty",
+                                    jev_mcp.USAGE_LOG_ENV: "/tmp/explicit.jsonl"}),
+            Path("/tmp/explicit.jsonl"))
+
     def test_a_dry_run_costs_nothing_so_it_is_not_counted(self):
         import tempfile
         with tempfile.TemporaryDirectory() as d:
