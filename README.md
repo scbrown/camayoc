@@ -93,6 +93,47 @@ the returned sample. Authenticated Prometheus deployments are read from
 `PROMETHEUS_BASIC_AUTH_USER` and `PROMETHEUS_BASIC_AUTH_PASSWORD`; credentials
 are never stored in the graph method.
 
+### Typed decisions with Jev
+
+Some ingress questions are semantic judgments, not parser facts: *does this
+asked question fall under any competency question?* *Does this new decision
+collide with a settled one?* Camayoc's first answer to those was deliberately
+lexical, and every verdict said so (`method: lexical-jaccard-v1`,
+`semantic: false`). Since 2026-09-21 there is a second arm:
+[Jev](https://typesafe.ai), TypeSafe's "System One" model, which returns typed,
+calibrated decisions (`noul` yes/no probabilities, `choice` over up to 255
+options, `score` over ordered levels) instead of text, in one parallel pass.
+
+`scripts/jev.py` is the only place camayoc calls it. What that unlocked:
+
+- **Coverage as one typed decision.** `competency.py --method jev` poses a
+  single `choice` per asked question over the whole competency suite plus a
+  reserved `none-of-these` option, and reads Jev's probability per question.
+  Paraphrases the word-overlap scorer could not resolve now resolve, with a
+  confidence attached.
+- **An abstention Jev does not have.** Jev cannot say "nothing fits"; the
+  reserved option is how a forced choice becomes an honest **NO COVERAGE**.
+  When it wins, coverage is `Empty` whatever the runner-up scored.
+- **The same honesty rules as before.** The verdict carries
+  `method: jev-latest-choice-v1`, `semantic: true`, the instructions posed, the
+  model that answered, the confidence and the none probability. No key means a
+  loud `JevUnavailable`, never a quiet fall back to word overlap under a Jev
+  label.
+- **Ingress discipline unchanged.** Every Jev answer is a model judgment. If it
+  is written back it is `inferred` and lands in the quarantine plane; Jev never
+  promotes, and plane routing stays deterministic.
+
+```bash
+export TYPESAFE_API_KEY=$(cd ~/workspace/goldblum && just infisical get TYPESAFE_API_KEY)
+python3 scripts/competency.py --method jev "which metrics can we retrieve for kota right now?"
+python3 scripts/competency.py --method lexical "which metrics can we retrieve for kota right now?"
+python3 scripts/jev.py noul --state "..." --ask "Does this message request a refund?" --dry-run
+```
+
+Design, candidate slots and the caveats (no rationale, forced choice, context
+rot): [docs/design/jev-typed-decisions.md](docs/design/jev-typed-decisions.md).
+The settled-decision collision check (`noul`) is the next arm.
+
 ## What runs today
 
 The ingress discipline stopped being a table in a design doc. The pieces below
