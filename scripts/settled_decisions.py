@@ -64,6 +64,7 @@ def _load(name: str):
 
 competency = _load("competency")
 planes = _load("planes")
+jev = _load("jev")
 
 #: Reusing competency's tokenizer and scorer rather than writing a second one.
 #: Two similarity implementations in one repo drift, and the drift is invisible
@@ -76,6 +77,43 @@ METHOD = "lexical-jaccard-v1"
 #: new decision was already settled, which is a claim about a person.
 ADVISORY = 0.20
 ESCALATE = 0.45
+
+#: The Jev arm (aegis-4hhqoe.2, design §8.1 slot 1).
+JEV_METHOD = "jev-latest-noul-v1"
+
+#: ONE noul PER SETTLED DECISION, not one `choice` over all of them — which is
+#: how the competency slot works and is the obvious thing to copy. It would be
+#: wrong here. A `choice` asserts the options are MUTUALLY EXCLUSIVE and forces
+#: exactly one winner; a proposed decision can genuinely collide with two
+#: settled decisions at once, and must be allowed to collide with none. Nouls
+#: are independent, so both of those are representable.
+#:
+#: Jev takes many questions in one request, so N decisions cost one round trip
+#: up to the batch size, not N.
+MAX_NOULS_PER_REQUEST = 50
+
+#: PROVISIONAL, and deliberately not reused from the lexical pair above: those
+#: are Jaccard overlaps and these are probabilities, so the same number means a
+#: different thing. §8.2 is explicit that thresholds come from a labelled
+#: benchmark and never from a default — until that set is labelled these are a
+#: starting point that every verdict reports, not a calibration.
+JEV_ADVISORY = 0.50
+JEV_ESCALATE = 0.80
+
+#: The abstain direction is stated INSIDE the question. hammond's job-patrol
+#: measurement (aegis-4hhqoe) produced a false positive from a noul asked about
+#: a fact the state did not mention, fixed by telling it what to answer when
+#: the state is silent. A noul with no abstain direction reads absence as
+#: whatever is most probable in general, which is not what we are asking.
+JEV_INSTRUCTIONS = (
+    "The state is a NEW decision somebody is about to record. Below is ONE "
+    "decision that has already been settled. Answer yes only if the new "
+    "decision would DUPLICATE this settled decision (deciding the same "
+    "question again) or CONFLICT with it (deciding the same question "
+    "differently). Answer no if it is about a different question, even when "
+    "it shares a topic, a system or vocabulary with it. If the new decision "
+    "does not clearly address the same question, answer no."
+)
 
 
 @dataclass(frozen=True)
@@ -181,6 +219,91 @@ def check(
     }
 
 
+def _noul_batches(corpus, size: int = MAX_NOULS_PER_REQUEST):
+    for i in range(0, len(corpus), size):
+        yield corpus[i:i + size]
+
+
+def check_jev(
+    proposed: str,
+    corpus: list[SettledDecision],
+    client,
+    advisory: float = JEV_ADVISORY,
+    escalate: float = JEV_ESCALATE,
+) -> dict:
+    """Score a proposed decision against the settled ones with Jev nouls.
+
+    Returns the SAME verdict shape as `check()` — same keys, same outcome
+    vocabulary, same `no_corpus` distinction — so every consumer (the CLI, the
+    episode writer, the benchmark) works on either arm without branching. What
+    differs is `method`, `semantic: True`, and the extra fields a model verdict
+    owes a reader: the instructions it was asked, the model that answered, the
+    token usage, and the per-match probability.
+
+    There is NO lexical fallback. A client that cannot be built raises, as it
+    does in competency's JevScorer: a lexical answer wearing a Jev method
+    string is the one outcome this module's docstring forbids outright.
+    """
+    if client is None:
+        raise ValueError("check_jev needs a jev.JevClient; there is no fallback")
+    if not corpus:
+        out = check(proposed, corpus, advisory, escalate)   # reuse the no_corpus branch
+        out.update({"method": JEV_METHOD, "semantic": True,
+                    "instructions": JEV_INSTRUCTIONS, "model": None,
+                    "usage": {"input_tokens": 0, "output_tokens": 0}})
+        return out
+
+    scored: list[tuple[float, SettledDecision]] = []
+    usage = {"input_tokens": 0, "output_tokens": 0}
+    model = None
+    for batch in _noul_batches(corpus):
+        qids = {f"q{i}": d for i, d in enumerate(batch)}
+        # The settled decision rides in the QUESTION, not the state: the state is
+        # the one proposal, and Jev is asked N independent questions about it.
+        questions = {
+            qid: jev.JevClient.noul_q(
+                f"{JEV_INSTRUCTIONS}\n\nThe settled decision: {d.text}",
+                true="The new decision decides the same question as this settled one.",
+                false="The new decision is about a different question.",
+            )
+            for qid, d in qids.items()
+        }
+        out = client.ask(proposed, questions)
+        model = out.get("model", model)
+        for k in usage:
+            usage[k] += (out.get("usage") or {}).get(k, 0) or 0
+        for qid, d in qids.items():
+            scored.append((float(out["answers"].get(qid, {}).get("noul") or 0.0), d))
+
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    matches = [
+        {"iri": d.iri, "decided_by": d.decided_by, "text": d.text,
+         "score": round(s, 4),
+         "level": "escalate" if s >= escalate else "advisory"}
+        for s, d in scored if s >= advisory
+    ]
+    outcome = "clear"
+    if any(m["level"] == "escalate" for m in matches):
+        outcome = "escalate"
+    elif matches:
+        outcome = "advisory"
+
+    return {
+        "outcome": outcome,
+        "matches": matches,
+        "method": JEV_METHOD,
+        "semantic": True,
+        "advisory_threshold": advisory,
+        "escalate_threshold": escalate,
+        "corpus_size": len(corpus),
+        "corpus_watermark": watermark(corpus),
+        "instructions": JEV_INSTRUCTIONS,
+        "model": model,
+        "usage": usage,
+        "top_score": round(scored[0][0], 4) if scored else 0.0,
+    }
+
+
 def verdict_episode(proposed: str, verdict: dict, actor: str, timestamp: str) -> dict:
     """The episode recording this verdict, routed to the INFERRED plane.
 
@@ -196,7 +319,7 @@ def verdict_episode(proposed: str, verdict: dict, actor: str, timestamp: str) ->
 [] a camayoc:SettledDecisionCheck ;
     camayoc:proposedText  "{proposed.replace('"', chr(92) + chr(34))}" ;
     camayoc:verdict       "{body}" ;
-    camayoc:method        "{METHOD}" ;
+    camayoc:method        "{verdict["method"]}" ;
     aegis:sourceKind      "inferred" ;
     aegis:falsifier       "a human re-scores the proposal against the same corpus watermark and disagrees with the outcome" ;
     camayoc:checkedAt     "{timestamp}" .
@@ -217,12 +340,29 @@ def main() -> int:
     ap.add_argument("proposed", help="the decision text about to be recorded")
     ap.add_argument("--declared", type=Path, required=True,
                     help="JSON export of standing decisions from crew:declared")
-    ap.add_argument("--advisory", type=float, default=ADVISORY)
-    ap.add_argument("--escalate", type=float, default=ESCALATE)
+    ap.add_argument("--method", choices=("lexical", "jev"), default="lexical",
+                    help="lexical Jaccard (default) or a Jev noul per settled decision")
+    ap.add_argument("--advisory", type=float, default=None)
+    ap.add_argument("--escalate", type=float, default=None)
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
-    verdict = check(args.proposed, load_declared(args.declared), args.advisory, args.escalate)
+    # Thresholds default PER ARM. A Jaccard overlap and a probability are not
+    # the same scale, so carrying 0.20/0.45 into the Jev arm would silently
+    # apply a lexical calibration to a model score.
+    corpus = load_declared(args.declared)
+    if args.method == "jev":
+        advisory = JEV_ADVISORY if args.advisory is None else args.advisory
+        escalate = JEV_ESCALATE if args.escalate is None else args.escalate
+        try:
+            verdict = check_jev(args.proposed, corpus, jev.JevClient(), advisory, escalate)
+        except jev.JevError as exc:
+            print(f"jev: {exc}", file=sys.stderr)
+            return 2
+    else:
+        advisory = ADVISORY if args.advisory is None else args.advisory
+        escalate = ESCALATE if args.escalate is None else args.escalate
+        verdict = check(args.proposed, corpus, advisory, escalate)
 
     if args.json:
         print(json.dumps(verdict, indent=2))
@@ -245,6 +385,12 @@ def main() -> int:
     print(f"\nbasis: method={verdict['method']} semantic={verdict['semantic']} "
           f"advisory={verdict['advisory_threshold']} escalate={verdict['escalate_threshold']} "
           f"corpus={verdict['corpus_size']} watermark={verdict['corpus_watermark']}")
+    if verdict.get("model"):
+        u = verdict.get("usage") or {}
+        print(f"       model={verdict['model']} input_tokens={u.get('input_tokens')} "
+              f"output_tokens={u.get('output_tokens')}")
+    if verdict["semantic"]:
+        print("       PROVISIONAL THRESHOLDS — not yet calibrated on a labelled set (§8.2).")
     return 0
 
 
