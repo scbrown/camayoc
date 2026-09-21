@@ -154,11 +154,18 @@ Every row above needs the same three calls. They must not each grow a client.
 - **`scripts/jev.py` stays the single client** (camayoc owns ingress and the
   ingress discipline that every Jev answer is `inferred`).
 - **`jev-mcp`**: a stdio MCP server in camayoc exposing `jev_noul`, `jev_choice`,
-  `jev_score` with the same argument shapes as the client, plus `jev_dry_run`
-  (returns the request without sending). Registered through the deployment's
-  provision template (`provision/mcp.template.json`) so `st agent new` wires it
-  for every crew member; the key is read from `TYPESAFE_API_KEY`, which the
-  launcher exports from Infisical — never from a card, never from a template.
+  `jev_score`, `jev_dry_run` (the request without sending) and `map_question`
+  (an asked question -> competency id, probability, confidence, abstention,
+  stored-query name; floor 0.75, never a guess below it). **Delivered through
+  the camayoc plugin** (Stiwi 2026-09-21): declared in
+  `.claude-plugin/plugin.json` `mcpServers`, so `/plugin install camayoc@camayoc`
+  is the whole registration; shantytown only projects the manifest at launch
+  (aegis-b08zsc). The skill's *query first* move becomes map, then run the
+  stored query, then file an abstained question as a candidate competency
+  question. `/camayoc:bootstrap` offers the Jev step like it offers bobbin and
+  yupana: asks where `TYPESAFE_API_KEY` lives, proves a dry run and one live
+  `noul`, reports unreachable/unauthorized honestly. Never a key in a card or
+  a template.
 - **CLI parity**: `python3 scripts/jev.py {noul,choice,score}` for shells and
   cron. Both surfaces log `usage.input_tokens` and the model string.
 - **Guardrails baked in, not documented**: `choice` always accepts a
