@@ -124,3 +124,53 @@ python3 scripts/competency.py --method lexical "what did we decide about the vat
 - Does a `score` over the promotion queue need a rubric per plane?
 
 Tracked: aegis-sfg5vb.
+
+## 8. Across the stack (added 2026-09-21, Stiwi: "make progress on all of these")
+
+Jev fits one job: a bounded decision with a state to judge, made often, where a
+calibrated probability beats a rationale. The stack has that shape in more
+places than camayoc. Each row is a bead under the epic named at the bottom.
+
+| Where | Decision | Shape | Fit | Existing bead |
+|---|---|---|---|---|
+| camayoc | settled-decision collision | `noul` per standing decision | strong | camayoc-7lt (lexical today) |
+| camayoc | promotion-queue triage | `score` on evidence quality | good | aegis-f8efkn (quipu side) |
+| camayoc | entity-mention disambiguation | `choice` + neither | cautious | camayoc-0c8 (abstains today) |
+| bobbin | retrieval floor: does this chunk answer the query | `noul` per chunk | strong | aegis-xd2nko (insufficient context) |
+| yupana | grounded-predicate evaluator for edit policies | `noul` per predicate | strong | aegis-vwvjwl |
+| shantytown | board hygiene: route by domain, duplicate?, escalation severity | `choice` / `noul` / `score` | strong (volume) | aegis-cvd2xu context |
+| goldblum | alert triage: severity + owner; governor stop deliberate-or-fault | `score` + `choice` | good | — |
+| NeuralAmplifier | grounding-fact rank, tier routing, semantic guard | `score` / `choice` / `noul` | good | na-htm |
+| evals | rubric judge for NA evals and quipu conformance | `score` | good | — |
+| resume (hammond) | recruiter inbound disposition | `choice` + `noul`s | immediate | job-patrol skill |
+
+**Never:** inside quipu (no model in the store), plane routing by `sourceKind`,
+promotion itself. Jev ranks and flags; humans and deterministic code decide.
+
+### 8.1 Fleet tooling: one way for any st agent to ask Jev
+
+Every row above needs the same three calls. They must not each grow a client.
+
+- **`scripts/jev.py` stays the single client** (camayoc owns ingress and the
+  ingress discipline that every Jev answer is `inferred`).
+- **`jev-mcp`**: a stdio MCP server in camayoc exposing `jev_noul`, `jev_choice`,
+  `jev_score` with the same argument shapes as the client, plus `jev_dry_run`
+  (returns the request without sending). Registered through the deployment's
+  provision template (`provision/mcp.template.json`) so `st agent new` wires it
+  for every crew member; the key is read from `TYPESAFE_API_KEY`, which the
+  launcher exports from Infisical — never from a card, never from a template.
+- **CLI parity**: `python3 scripts/jev.py {noul,choice,score}` for shells and
+  cron. Both surfaces log `usage.input_tokens` and the model string.
+- **Guardrails baked in, not documented**: `choice` always accepts a
+  `none_text` and the MCP tool defaults it on; every result carries the
+  request; a missing key is an error the agent can read, not a fallback.
+- **Cost line**: at ~$0.0004 per decision, 10k decisions/day is ~$4. The MCP
+  server counts calls per agent so the governor can see it.
+
+### 8.2 The benchmark that must exist before any arm is trusted
+
+A labelled set per slot (≈30 items with the human-correct answer), then per arm:
+agreement with the label, confidence distribution on agreements vs
+disagreements, abstain rate. Thresholds come from that, never from a default.
+The competency slot's first three live calls (2026-09-21) already produced one
+"confident but arguable" pick; that is the item type the set needs most.
