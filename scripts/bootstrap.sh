@@ -164,7 +164,7 @@ SHAPES="$PLUGIN_ROOT/shapes/core.shapes.ttl"
 # actor AND source: ingress rule 1 narrows to knot writes carrying both, and
 # this load named only its actor (camayoc-99t).
 R=$(python3 -c 'import json,sys; print(json.dumps({"turtle": open(sys.argv[1]).read(), "actor": "camayoc-bootstrap", "source": sys.argv[2]}))' "$ONTO" "ontology/core.ttl" \
-    | curl -sf -m 10 -X POST "$SERVER/knot" -H 'Content-Type: application/json' "${AUTH[@]}" -d @- 2>&1) \
+    | curl -sf -m 10 -X POST "$SERVER/knot" -H 'Content-Type: application/json' ${AUTH[@]+"${AUTH[@]}"} -d @- 2>&1) \
   && say "ontology: loaded (core.ttl)" || { say "ontology load FAILED: $R"; exit 1; }
 
 # Quarantine planes (camayoc-s0h). Registered AND labelled, or neither: routing
@@ -176,13 +176,13 @@ R=$(python3 "$PLUGIN_ROOT/scripts/planes.py" ensure 2>&1) \
   || { say "plane setup FAILED: $R"; say "Refusing to proceed: unrouted writes would land in ROOT alongside observed facts."; exit 1; }
 
 R=$(python3 -c 'import json,sys; print(json.dumps({"action":"load","name":"camayoc-core","turtle":open(sys.argv[1]).read()}))' "$SHAPES" \
-    | curl -sf -m 10 -X POST "$SERVER/shapes" -H 'Content-Type: application/json' "${AUTH[@]}" -d @- 2>&1) \
+    | curl -sf -m 10 -X POST "$SERVER/shapes" -H 'Content-Type: application/json' ${AUTH[@]+"${AUTH[@]}"} -d @- 2>&1) \
   && say "shapes: loaded (camayoc-core)" || { say "shapes load FAILED: $R"; exit 1; }
 
 for query in "$PLUGIN_ROOT"/queries/*.json; do
   [ -e "$query" ] || continue
   R=$(curl -sf -m 10 -X POST "$SERVER/queries" -H 'Content-Type: application/json' \
-      "${AUTH[@]}" --data-binary @"$query" 2>&1) \
+      ${AUTH[@]+"${AUTH[@]}"} --data-binary @"$query" 2>&1) \
     && say "query: loaded ($(basename "$query" .json))" \
     || { say "query load FAILED ($query): $R"; exit 1; }
 done

@@ -46,7 +46,7 @@ say "seed: source tree $SRC"
 
 # Gate first: load the code-entities shapes so the walk is validated
 R=$(python3 -c 'import json,sys; print(json.dumps({"action":"load","name":"code-entities","turtle":open(sys.argv[1]).read()}))' "$PLUGIN_ROOT/shapes/code-entities.ttl" \
-    | curl -sf -m 10 -X POST "$SERVER/shapes" -H 'Content-Type: application/json' "${AUTH[@]}" -d @- 2>&1) \
+    | curl -sf -m 10 -X POST "$SERVER/shapes" -H 'Content-Type: application/json' ${AUTH[@]+"${AUTH[@]}"} -d @- 2>&1) \
   && say "shapes: code-entities loaded" || { say "shapes load FAILED: $R"; exit 1; }
 
 # Walk → Turtle
@@ -58,7 +58,7 @@ say "seed: walked $(basename "$SRC") (~$TRIPLE_HINT statement lines)"
 
 # Ingest, SHACL-gated
 R=$(python3 -c 'import json,sys; print(json.dumps({"turtle": open(sys.argv[1]).read(), "actor": "camayoc-seed", "source": sys.argv[2]}))' "$TTL" "$SRC" \
-    | curl -sf -m 120 -X POST "$SERVER/knot" -H 'Content-Type: application/json' "${AUTH[@]}" -d @- 2>&1) || {
+    | curl -sf -m 120 -X POST "$SERVER/knot" -H 'Content-Type: application/json' ${AUTH[@]+"${AUTH[@]}"} -d @- 2>&1) || {
   say "seed: ingest REFUSED or failed:"
   say "  $R"
   say "  A refusal means the gate is working — fix the walker output, don't bypass."

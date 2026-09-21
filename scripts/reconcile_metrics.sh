@@ -31,4 +31,4 @@ print(json.dumps({
 PY
 
 curl -fsS "$SERVER/knot" -X POST -H 'Content-Type: application/json' \
-  "${AUTH[@]}" --data-binary @"$PAYLOAD"
+  ${AUTH[@]+"${AUTH[@]}"} --data-binary @"$PAYLOAD"

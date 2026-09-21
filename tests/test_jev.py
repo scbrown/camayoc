@@ -50,9 +50,28 @@ class FakeTransport:
 
 class ClientTests(unittest.TestCase):
     def test_no_key_is_loud_not_lexical(self):
-        os.environ.pop("TYPESAFE_API_KEY", None)
-        with self.assertRaises(jev.JevUnavailable):
-            jev.JevClient()
+        # ISOLATE THE KEY FILE, not just the env var. Since the file ladder
+        # landed (aegis-4hhqoe.1) this test passed only on a host that happened
+        # to have no ~/.config/aegis/typesafe_api_key — so provisioning the
+        # fleet's own key turned it red, which is the test telling the truth
+        # about itself. A test whose result depends on the machine's secrets is
+        # not a test of the code.
+        import tempfile
+        saved = {k: os.environ.get(k) for k in ("TYPESAFE_API_KEY",
+                                                "TYPESAFE_API_KEY_FILE", "HOME")}
+        try:
+            with tempfile.TemporaryDirectory() as home:
+                os.environ.pop("TYPESAFE_API_KEY", None)
+                os.environ["TYPESAFE_API_KEY_FILE"] = os.path.join(home, "absent")
+                os.environ["HOME"] = home
+                with self.assertRaises(jev.JevUnavailable):
+                    jev.JevClient()
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
 
     def test_choice_limits_and_none_option(self):
         q = jev.JevClient.choice_q("pick", {"x": "X"}, none_text="nothing fits")

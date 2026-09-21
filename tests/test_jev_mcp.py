@@ -235,6 +235,20 @@ class KeyResolution(unittest.TestCase):
         self.assertEqual(jev.resolve_key({jev.KEY_FILE_ENV: "/nonexistent",
                                           "HOME": "/nonexistent-home"}), "")
 
+    def test_the_default_path_is_expanded_against_the_PASSED_env(self):
+        """Path.expanduser() reads the process HOME and ignores a passed env, so
+        this pinned the one thing that made the check above meaningful. Without
+        it, resolve_key({...}) answered from the REAL home and the test passed
+        or failed on whether this machine has a key (aegis-g69atf shape)."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as home:
+            cfg = Path(home) / ".config" / "aegis"
+            cfg.mkdir(parents=True)
+            (cfg / "typesafe_api_key").write_text("sandbox-key\n")
+            self.assertEqual(jev.resolve_key({"HOME": home}), "sandbox-key")
+            # and the real home is NOT consulted when an env is passed
+            self.assertEqual(jev.resolve_key({"HOME": "/nonexistent-home"}), "")
+
 
 if __name__ == "__main__":
     unittest.main()

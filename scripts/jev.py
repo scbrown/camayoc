@@ -98,12 +98,31 @@ def resolve_key(env: dict | None = None) -> str:
         if not candidate:
             continue
         try:
-            text = Path(candidate).expanduser().read_text().strip()
+            text = _expand(candidate, env).read_text().strip()
         except OSError:
             continue
         if text:
             return text
     return ""
+
+
+def _expand(candidate: str, env) -> Path:
+    """`~` against the PASSED env, not the process env.
+
+    Path.expanduser() reads os.environ["HOME"] and ignores our mapping, so a
+    caller that passed an isolated env would still be answered from the real
+    home directory. That is not a tidiness point: it is precisely the
+    test-home-escape shape (aegis-g69atf) — a function that ACCEPTS an env and
+    then consults a different one gives a test the appearance of isolation and
+    none of the substance, so the test passes or fails on whether the machine
+    running it happens to have a key."""
+    path = Path(candidate)
+    if not candidate.startswith("~"):
+        return path
+    home = env.get("HOME")
+    if not home:
+        return path.expanduser()
+    return Path(home) / candidate.lstrip("~").lstrip("/")
 
 Transport = Callable[[dict, str], dict]
 

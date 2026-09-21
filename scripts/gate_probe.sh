@@ -137,7 +137,7 @@ probe_write() {
   # and mixing the two is defect (a). Transport failure shows up as a non-zero
   # exit status, which cannot be confused with anything the store said.
   out=$(curl -s -m 10 -w '\n%{http_code}' -X POST "$SERVER/episode" \
-        -H 'Content-Type: application/json' "${GATE_AUTH[@]}" -d "$payload" 2>/dev/null)
+        -H 'Content-Type: application/json' ${GATE_AUTH[@]+"${GATE_AUTH[@]}"} -d "$payload" 2>/dev/null)
   rc=$?
   if [ $rc -ne 0 ]; then
     PROBE_REASON="curl exit $rc — the request did not complete, so no answer was received"
