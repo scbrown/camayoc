@@ -106,9 +106,36 @@ class Delivery(unittest.TestCase):
         records = [RECORD, {**RECORD, 'id': 'proj-b'}]
         self.tick(records)
         self.lost = False
-        result = self.tick(records, now=1060)
+        self.present = False
+        self.assertEqual('proj-a', self.tick(records, now=1060)['item'])
+        self.present = True
+        result = self.tick(records, now=1120)
         self.assertEqual('proj-b', result['item'])
         self.assertEqual(1, result['verified'])
+
+    def test_pending_recovery_beats_large_fresh_backlog_without_repost(self):
+        self.lost = True
+        self.tick()
+        self.lost = False
+        records = [RECORD] + [{**RECORD, 'id': f'proj-new-{i}'} for i in range(250)]
+        result = self.tick(records, now=1060)
+        self.assertEqual('proj-a', result['item'])
+        self.assertEqual(2, result['requests'])
+        self.assertEqual(0, result['writes'])
+        self.assertEqual(1, result['verified'])
+        self.assertEqual(0, result['indeterminate'])
+
+    def test_recovery_control_failure_does_not_starve_fresh_work(self):
+        self.lost = True
+        self.tick()
+        self.lost = False
+        self.control = False
+        records = [RECORD, {**RECORD, 'id': 'proj-b'}]
+        self.assertEqual('proj-a', self.tick(records, now=1060)['item'])
+        self.control = True
+        result = self.tick(records, now=1120)
+        self.assertEqual('proj-b', result['item'])
+        self.assertEqual('DEGRADED', result['status'])
 
     def test_backoff_has_no_requests(self):
         self.tick()
@@ -116,15 +143,19 @@ class Delivery(unittest.TestCase):
         self.assertEqual('BACKOFF', self.tick(now=1059)['mode'])
         self.assertEqual(before, len(self.calls))
 
-    def test_failed_receipt_survives_backoff_and_other_success(self):
+    def test_indeterminate_receipt_degrades_during_other_success(self):
         self.lost = True
         records = [RECORD, {**RECORD, 'id': 'proj-b'}]
         self.tick(records)
         self.assertEqual('UNKNOWN', self.tick(now=1059)['status'])
         self.lost = False
-        result = self.tick(records, now=1060)
+        self.present = False
+        self.assertEqual('UNKNOWN', self.tick(records, now=1060)['status'])
+        self.present = True
+        result = self.tick(records, now=1120)
         self.assertEqual(1, result['verified'])
-        self.assertEqual('UNKNOWN', result['status'])
+        self.assertEqual('DEGRADED', result['status'])
+        self.assertEqual(1, result['indeterminate'])
 
     def test_successful_version_not_reposted_and_recheck_is_read_only(self):
         self.tick()

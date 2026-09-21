@@ -360,3 +360,15 @@ errors and backlog age; a backlog older than twice its bounded drain interval
 run. Operators must arm status, stale and absent detection with the scheduler.
 The scheduler should run this prerequisite before consumers; consumers retain
 their own canonical-presence checks.
+
+### Standing WorkItem recovery receipts
+
+The standing tracker sync distinguishes `DEGRADED` from `UNKNOWN`:
+verified delivery with retryable indeterminate entries is degraded (exit 0),
+while a tick unable to verify pending work, invalid records, exhausted attempts,
+or an over-age backlog remains unknown (exit 2). Healthy no-op ticks remain OK.
+Receipts and metrics expose the indeterminate count independently of backlog.
+Recovery reads receive priority on alternating ticks; the other ticks retain
+least-recently-attempted fairness. This prevents both a fresh backlog delaying
+all recovery reads and a broken control starving fresh work. Retry writes still
+require two separately scheduled controlled absent reads and the original body.

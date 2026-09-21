@@ -127,6 +127,17 @@ def tick(records, state, path, *, actor, source, now, post):
     candidates.sort(key=lambda i: (entries[i]['last_attempt'],
                                    not entries[i].get('active'),
                                    entries[i].get('priority', 4)))
+    # Reconcile indeterminate writes ahead of the fresh backlog. Alternate
+    # recovery preference with the fair queue so an unreachable read control
+    # cannot starve new work. Only READS get this preference, never retries.
+    recovery = [i for i in candidates if entries[i].get('pending')
+                and entries[i]['pending']['attempts'] < MAX_ATTEMPTS
+                and entries[i]['pending'].get('absent_reads', 0) < 2]
+    prefer_recovery = bool(recovery) and not state.get('last_was_recovery', False)
+    if prefer_recovery:
+        candidates.remove(recovery[0])
+        candidates.insert(0, recovery[0])
+    state['last_was_recovery'] = prefer_recovery
     if candidates:
         item = candidates[0]
         entry = entries[item]
@@ -191,9 +202,15 @@ def tick(records, state, path, *, actor, source, now, post):
                    (i in current and (e.get('version') != current[i]['name'] or e.get('error')))]
     receipt['backlog'] = len(outstanding)
     receipt['oldest_seconds'] = max((now - e.get('due_since', now) for e in outstanding), default=0)
-    if (invalid or any(e.get('error') for e in outstanding)
+    pending_entries = [e for e in outstanding if e.get('pending')]
+    receipt['indeterminate'] = len(pending_entries)
+    if (invalid or any(e['pending']['attempts'] >= MAX_ATTEMPTS for e in pending_entries)
+            or any(e.get('error') and not e.get('pending') for e in outstanding)
+            or (pending_entries and not receipt['verified'])
             or receipt['oldest_seconds'] > max(900, len(current) * INTERVAL * 2)):
         receipt['status'] = 'UNKNOWN'
+    elif pending_entries:
+        receipt['status'] = 'DEGRADED'
     # Retain all indeterminate writes; prune inactive confirmed entries only.
     state['items'] = {i: e for i, e in entries.items() if i in current or e.get('pending')
                       or now - e.get('verified_at', 0) < RECHECK}
@@ -236,6 +253,8 @@ def main():
                 ('camayoc_workitem_ingress_exit_status', {}, code),
                 ('camayoc_workitem_ingress_backlog', {}, receipt.get('backlog', -1)),
                 ('camayoc_workitem_ingress_oldest_seconds', {}, receipt.get('oldest_seconds', -1)),
+                ('camayoc_workitem_ingress_indeterminate', {}, receipt.get('indeterminate', -1)),
+                ('camayoc_workitem_ingress_degraded', {}, int(receipt['status'] == 'DEGRADED')),
             ]
             ok, why = camayoc_metrics.push('camayoc_workitem_ingress',
                 camayoc_metrics.exposition(samples), grouping={'producer': args.actor})
