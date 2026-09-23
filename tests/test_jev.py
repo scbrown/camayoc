@@ -89,6 +89,68 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(out["request"], t.calls[0])
 
 
+class BrokenKeyFetchTests(unittest.TestCase):
+    """aegis-c4yh3k SABOTAGE ARMS: a failed secret-store fetch whose error text
+    became "the key" must raise JevUnavailable and SEND NOTHING. The 2026-09-23
+    incident sent the error as a bearer and learned only from TypeSafe's 401."""
+
+    ERROR_TEXT = "Error: unable to reach secret store: dial tcp: i/o timeout"
+    GOOD = "ts_" + "a1B2c3D4" * 13  # key-shaped, not a real key
+
+    def setUp(self):
+        import tempfile
+        self._saved = {k: os.environ.get(k) for k in ("TYPESAFE_API_KEY",
+                                                      "TYPESAFE_API_KEY_FILE", "HOME")}
+        self._home = tempfile.TemporaryDirectory()
+        os.environ.pop("TYPESAFE_API_KEY", None)
+        os.environ["HOME"] = self._home.name
+        self.keyfile = os.path.join(self._home.name, "key")
+        os.environ["TYPESAFE_API_KEY_FILE"] = self.keyfile
+        self.sent = FakeTransport("x", {"x": 1.0})
+
+    def tearDown(self):
+        self._home.cleanup()
+        for k, v in self._saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def _assert_refused_unsent(self, **kw):
+        with self.assertRaises(jev.JevUnavailable) as cm:
+            c = jev.JevClient(transport=self.sent, **kw)
+            c.noul("s", "q?")
+        self.assertEqual(self.sent.calls, [], "a broken key must never reach the transport")
+        self.assertNotIn(self.ERROR_TEXT, str(cm.exception), "the bad value is never echoed")
+        return str(cm.exception)
+
+    def test_error_text_in_env_is_refused_and_unsent(self):
+        os.environ["TYPESAFE_API_KEY"] = self.ERROR_TEXT
+        self.assertIn("$TYPESAFE_API_KEY", self._assert_refused_unsent())
+
+    def test_error_text_in_key_file_is_refused_and_unsent(self):
+        Path(self.keyfile).write_text(self.ERROR_TEXT + "\n")
+        self.assertIn(self.keyfile, self._assert_refused_unsent())
+
+    def test_bad_env_does_not_fall_through_to_a_good_file(self):
+        Path(self.keyfile).write_text(self.GOOD + "\n")
+        os.environ["TYPESAFE_API_KEY"] = self.ERROR_TEXT
+        self._assert_refused_unsent()
+
+    def test_explicit_bad_key_on_real_transport_is_refused(self):
+        with self.assertRaises(jev.JevUnavailable):
+            jev.JevClient(api_key=self.ERROR_TEXT)
+
+    def test_control_a_key_shaped_value_is_sent(self):
+        # CONTROL: without this, every arm above would pass on a client that
+        # refused everything.
+        Path(self.keyfile).write_text(self.GOOD + "\n")
+        c = jev.JevClient(transport=self.sent)
+        self.assertEqual(c.api_key, self.GOOD)
+        c.noul("s", "q?")
+        self.assertEqual(len(self.sent.calls), 1)
+
+
 class ScorerTests(unittest.TestCase):
     def test_labels_come_from_the_scorer_that_ran(self):
         t = FakeTransport("a#1", {"a#1": 0.7, "a#2": 0.2, "b#1": 0.05, jev.NONE_OPTION: 0.05})
