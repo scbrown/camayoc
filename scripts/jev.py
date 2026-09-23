@@ -37,6 +37,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -70,6 +71,18 @@ KEY_ENV = "TYPESAFE_API_KEY"
 KEY_FILE_ENV = "TYPESAFE_API_KEY_FILE"
 DEFAULT_KEY_FILE = "~/.config/aegis/typesafe_api_key"
 
+#: WHAT A KEY LOOKS LIKE, checked BEFORE anything is sent (aegis-c4yh3k).
+#:
+#: On 2026-09-23 a secret-store fetch failed (host off the tunnel), printed its
+#: ERROR on stdout, and `export TYPESAFE_API_KEY=$(... get TYPESAFE_API_KEY)`
+#: captured that error as the key. The client sent it as a bearer and learned
+#: only from TypeSafe's 401. So a failed fetch reached the network carrying
+#: our error text, and the failure surfaced as "key refused", which points at
+#: the wrong remedy. A real key is one token with no whitespace; any error
+#: message has spaces. Rejecting the shape here makes a broken fetch raise
+#: JevUnavailable locally and never send. The value itself is never echoed.
+KEY_SHAPE = re.compile(r"[A-Za-z0-9_.\-]{20,}")
+
 NO_KEY_HELP = (
     "no Jev key. Put it in a 0600 file at ~/.config/aegis/typesafe_api_key "
     "(or point TYPESAFE_API_KEY_FILE at one):\n"
@@ -93,17 +106,33 @@ def resolve_key(env: dict | None = None) -> str:
     env = os.environ if env is None else env
     direct = (env.get(KEY_ENV) or "").strip()
     if direct:
-        return direct
+        return _checked(direct, f"${KEY_ENV}")
     for candidate in (env.get(KEY_FILE_ENV), DEFAULT_KEY_FILE):
         if not candidate:
             continue
+        path = _expand(candidate, env)
         try:
-            text = _expand(candidate, env).read_text().strip()
+            text = path.read_text().strip()
         except OSError:
             continue
         if text:
-            return text
+            return _checked(text, str(path))
     return ""
+
+
+def _checked(value: str, source: str) -> str:
+    """The value if it is shaped like a key; otherwise JevUnavailable, naming the
+    SOURCE and never the value. A malformed override does NOT fall through to
+    the next rung: whoever set it meant it, and quietly using another key would
+    hide the broken fetch that produced it."""
+    if KEY_SHAPE.fullmatch(value):
+        return value
+    raise JevUnavailable(
+        f"the Jev key from {source} is not shaped like a key "
+        f"({len(value)} chars, whitespace={any(c.isspace() for c in value)}). "
+        "It is most likely a secret-store ERROR captured as the value; refetch "
+        "it and check the command's exit status. Nothing was sent (aegis-c4yh3k)."
+    )
 
 
 def _expand(candidate: str, env) -> Path:
@@ -162,6 +191,10 @@ class JevClient:
     def __init__(self, api_key: str | None = None, transport: Transport | None = None,
                  model: str = MODEL):
         self.api_key = api_key if api_key is not None else resolve_key()
+        if api_key is not None and transport is None and api_key:
+            # An explicit key bound for the real network gets the same shape
+            # check as a resolved one; test transports keep their stub keys.
+            _checked(api_key.strip(), "the api_key argument")
         self.transport = transport or _default_transport
         self.model = model
         if not self.api_key and transport is None:

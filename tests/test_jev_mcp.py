@@ -238,11 +238,11 @@ class KeyResolution(unittest.TestCase):
     def test_env_wins_over_file(self):
         import tempfile
         with tempfile.NamedTemporaryFile("w", suffix=".key", delete=False) as fh:
-            fh.write("from-file")
+            fh.write("from-file-0123456789abcdef")
             name = fh.name
-        self.assertEqual(jev.resolve_key({jev.KEY_ENV: "from-env",
-                                          jev.KEY_FILE_ENV: name}), "from-env")
-        self.assertEqual(jev.resolve_key({jev.KEY_FILE_ENV: name}), "from-file")
+        self.assertEqual(jev.resolve_key({jev.KEY_ENV: "from-env-0123456789abcdef",
+                                          jev.KEY_FILE_ENV: name}), "from-env-0123456789abcdef")
+        self.assertEqual(jev.resolve_key({jev.KEY_FILE_ENV: name}), "from-file-0123456789abcdef")
         os.unlink(name)
 
     def test_no_key_anywhere_is_empty_not_an_exception(self):
@@ -258,8 +258,8 @@ class KeyResolution(unittest.TestCase):
         with tempfile.TemporaryDirectory() as home:
             cfg = Path(home) / ".config" / "aegis"
             cfg.mkdir(parents=True)
-            (cfg / "typesafe_api_key").write_text("sandbox-key\n")
-            self.assertEqual(jev.resolve_key({"HOME": home}), "sandbox-key")
+            (cfg / "typesafe_api_key").write_text("sandbox-key-0123456789abcdef\n")
+            self.assertEqual(jev.resolve_key({"HOME": home}), "sandbox-key-0123456789abcdef")
             # and the real home is NOT consulted when an env is passed
             self.assertEqual(jev.resolve_key({"HOME": "/nonexistent-home"}), "")
 
