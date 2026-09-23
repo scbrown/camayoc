@@ -163,9 +163,29 @@ SHAPES="$PLUGIN_ROOT/shapes/core.shapes.ttl"
 
 # actor AND source: ingress rule 1 narrows to knot writes carrying both, and
 # this load named only its actor (camayoc-99t).
-R=$(python3 -c 'import json,sys; print(json.dumps({"turtle": open(sys.argv[1]).read(), "actor": "camayoc-bootstrap", "source": sys.argv[2]}))' "$ONTO" "ontology/core.ttl" \
-    | curl -sf -m 10 -X POST "$SERVER/knot" -H 'Content-Type: application/json' ${AUTH[@]+"${AUTH[@]}"} -d @- 2>&1) \
-  && say "ontology: loaded (core.ttl)" || { say "ontology load FAILED: $R"; exit 1; }
+# RE-RUNNABLE ON PURPOSE. Quipu's vocabulary gate is inactive until shapes are
+# loaded, so the first run's load succeeds; this script then loads shapes, and
+# every later load of the same file is refused (HTTP 400, "unknown rdf:type
+# IRIs: rdf:Property, rdfs:Class"). caboodle's resume re-runs this script as its
+# functional verification, so that refusal failed every resumed install. A
+# refusal says nothing about whether the ontology is already there — ask the
+# store. The body is captured, not discarded: `curl -f` printed an empty
+# "FAILED:" here, which cannot tell a 401 from a 400 from a timeout.
+KNOT_BODY=$(mktemp)
+KNOT_CODE=$(python3 -c 'import json,sys; print(json.dumps({"turtle": open(sys.argv[1]).read(), "actor": "camayoc-bootstrap", "source": sys.argv[2]}))' "$ONTO" "ontology/core.ttl" \
+    | curl -s -m 10 -o "$KNOT_BODY" -w '%{http_code}' -X POST "$SERVER/knot" -H 'Content-Type: application/json' ${AUTH[@]+"${AUTH[@]}"} -d @- 2>/dev/null) || true
+KNOT_MSG=$(head -c 400 "$KNOT_BODY"); rm -f "$KNOT_BODY"
+case "$KNOT_CODE" in
+  2??) say "ontology: loaded (core.ttl)" ;;
+  *)
+    if PRESENT=$(python3 "$PLUGIN_ROOT/scripts/ontology_present.py" "$ONTO" "$SERVER"); then
+      say "ontology: already present ($PRESENT declared terms typed in the store); re-post refused with HTTP $KNOT_CODE, not needed"
+    else
+      say "ontology load FAILED: HTTP ${KNOT_CODE:-none} ${KNOT_MSG}"
+      say "  store presence check: $PRESENT"
+      exit 1
+    fi ;;
+esac
 
 # Quarantine planes (camayoc-s0h). Registered AND labelled, or neither: routing
 # without labels yields separate graphs every query still reads at equal trust,
