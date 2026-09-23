@@ -126,7 +126,7 @@ options, `score` over ordered levels) instead of text, in one parallel pass.
   promotes, and plane routing stays deterministic.
 
 ```bash
-export TYPESAFE_API_KEY=$(cd ~/workspace/goldblum && just infisical get TYPESAFE_API_KEY)
+export TYPESAFE_API_KEY=...   # or the 0600 key file, see "Where the key comes from" below
 python3 scripts/competency.py --method jev "which metrics can we retrieve for kota right now?"
 python3 scripts/competency.py --method lexical "which metrics can we retrieve for kota right now?"
 python3 scripts/jev.py noul --state "..." --ask "Does this message request a refund?" --dry-run
@@ -134,7 +134,75 @@ python3 scripts/jev.py noul --state "..." --ask "Does this message request a ref
 
 Design, candidate slots and the caveats (no rationale, forced choice, context
 rot): [docs/design/jev-typed-decisions.md](docs/design/jev-typed-decisions.md).
-The settled-decision collision check (`noul`) is the next arm.
+The settled-decision collision check is the second arm on main:
+`scripts/settled_decisions.py --method jev` asks one `noul` per standing
+decision (`method: jev-latest-noul-v1`); lexical stays the default.
+
+#### jev-mcp: Jev as tools for any agent
+
+`scripts/jev_mcp.py` is a stdio MCP server over `scripts/jev.py`. It is
+stdlib Python with nothing to install, and it adds a protocol surface and
+nothing else: it builds no requests of its own, so `jev.py` stays the only
+client and every agent that registers it inherits the same discipline as the
+CLI.
+
+| Tool | Arguments | Returns |
+| --- | --- | --- |
+| `jev_noul` | `state`, `instructions`, optional `true` / `false` criteria | a calibrated yes/no probability |
+| `jev_choice` | `state`, `instructions`, `criteria` (option id -> text, up to 255), optional `none_text` | the winner, per-option probabilities, `chose_none` |
+| `jev_score` | `state`, `instructions`, `levels` (2..10 names, lowest first) | a level, with the ladder echoed back as `levels` |
+| `jev_dry_run` | `kind` (`noul` / `choice` / `score`) plus that tool's arguments | the exact request the live tool would send, `sent: false` |
+
+The guardrails are baked in, not left for the caller to remember:
+
+- **`none_text` defaults ON for `jev_choice`.** Jev cannot abstain, so the
+  server adds a `none-of-these` option and says out loud when it won
+  (`chose_none: true`). Passing `none_text: ""` is the deliberate opt-out.
+- **Every verdict carries `request`, `usage` and `model`.** A verdict that
+  cannot show its question is not a verdict.
+- **No retries.** One tool call is one request. A 429 or 529 comes back as
+  an error and the agent decides what to do with it.
+- **`JevUnavailable` fails loud.** A missing or refused key is a tool error
+  (`isError: true`) the agent reads, never a lexical answer under a Jev
+  label.
+- **Answers are `inferred`.** The server never writes to the graph. An
+  agent that writes a Jev answer back writes it as `inferred`, into the
+  quarantine plane.
+- **Dry runs are free.** `jev_dry_run` builds the request through the same
+  code path as the live tools and works with no key.
+- **Every call is counted.** One JSON line per call (agent, tool, model,
+  token counts) goes to `$JEV_USAGE_LOG`, else `$SHANTY_ROOT/jev-usage.jsonl`,
+  else `~/.local/state/camayoc-jev/usage.jsonl`. The agent name comes from
+  `SHANTY_AGENT`.
+
+Register it in a project's `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "jev": {
+      "command": "python3",
+      "args": ["/path/to/camayoc/scripts/jev_mcp.py"]
+    }
+  }
+}
+```
+
+or with Claude Code directly:
+
+```bash
+claude mcp add jev -- python3 /path/to/camayoc/scripts/jev_mcp.py
+```
+
+The tools then show up as `mcp__jev__jev_noul`, `mcp__jev__jev_choice`,
+`mcp__jev__jev_score` and `mcp__jev__jev_dry_run`.
+
+**Where the key comes from.** Set `TYPESAFE_API_KEY`, or put the key in a
+0600 file at `~/.config/aegis/typesafe_api_key` (point `TYPESAFE_API_KEY_FILE`
+at a different file). The environment variable wins when both exist. Prefer
+the file for long-lived agents: the server inherits its environment from
+whatever launched it, and a key exported into an agent launcher ends up in
+that agent's session snapshots. Leave the key out of `.mcp.json`.
 
 ## What runs today
 
