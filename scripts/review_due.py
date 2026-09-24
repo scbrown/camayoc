@@ -44,7 +44,9 @@ import planes  # noqa: E402
 from blocked_by import A, CLIENT, _local, select  # noqa: E402
 
 DUE, NOT_DUE, UNKNOWN = "DUE", "NOT_DUE", "UNKNOWN"
-_DURATION = re.compile(r"^P(?:(\d+)W|(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?)$")
+# The SAME grammar as CamayocReviewAgeShape: at least one component, and a T
+# must be followed by hours or minutes. The write refuses what this cannot read.
+_DURATION = re.compile(r"^P(?:(\d+)W|(\d+)D|(?:(\d+)D)?T(?:(\d+)H(?:(\d+)M)?|(\d+)M))$")
 
 
 def parse_instant(raw: str) -> dt.datetime | None:
@@ -63,10 +65,10 @@ def parse_instant(raw: str) -> dt.datetime | None:
 def parse_duration(raw: str) -> dt.timedelta | None:
     text = raw.split("^^")[0].strip().strip('"')
     m = _DURATION.match(text)
-    if not m or text in ("P", "PT"):
+    if not m:
         return None
-    weeks, days, hours, minutes = (int(g) if g else 0 for g in m.groups())
-    return dt.timedelta(weeks=weeks, days=days, hours=hours, minutes=minutes)
+    weeks, days, t_days, hours, h_minutes, minutes = (int(g) if g else 0 for g in m.groups())
+    return dt.timedelta(weeks=weeks, days=days + t_days, hours=hours, minutes=h_minutes + minutes)
 
 
 def _values(post, entity: str, prop: str) -> list[str]:

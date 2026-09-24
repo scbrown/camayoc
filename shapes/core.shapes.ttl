@@ -59,7 +59,7 @@ aegis:CamayocReviewAgeShape a sh:NodeShape ;
         sh:path aegis:maxAge ;
         sh:maxCount 1 ;
         sh:datatype xsd:string ;
-        sh:pattern "^P([0-9]+W|([0-9]+D)?(T([0-9]+H)?([0-9]+M)?)?)$" ;
+        sh:pattern "^P([0-9]+W|[0-9]+D|([0-9]+D)?T([0-9]+H([0-9]+M)?|[0-9]+M))$" ;
         sh:message "camayoc: maxAge is one ISO-8601 duration in weeks, days, hours or minutes (no months or years)" ;
     ] .
 
