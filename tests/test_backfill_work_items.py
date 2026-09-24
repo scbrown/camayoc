@@ -91,12 +91,19 @@ class Safety(unittest.TestCase):
         with self.assertRaises(ValueError):
             bf.covered(FakeQuipu(control=False).post)
 
-    def test_a_slow_write_stops_the_run(self):
+    def test_one_slow_write_backs_off_and_continues(self):
         q = FakeQuipu(slow_on={"aegis-3"})
         recs = [bead(i, f"2026-09-0{i}T00:00:00Z") for i in (1, 2, 3)]
         report = go(q, recs)
-        self.assertIn("writer-hold", report["stopped"])
-        self.assertEqual(len(q.writes), 1, "nothing may be written after the slow one")
+        self.assertIsNone(report["stopped"])
+        self.assertEqual((len(q.writes), report["slow_writes"]), (3, 1))
+
+    def test_two_consecutive_slow_writes_stop_the_run(self):
+        q = FakeQuipu(slow_on={"aegis-3", "aegis-2"})
+        recs = [bead(i, f"2026-09-0{i}T00:00:00Z") for i in (1, 2, 3)]
+        report = go(q, recs)
+        self.assertIn("2 consecutive", report["stopped"])
+        self.assertEqual(len(q.writes), 2, "nothing may be written after the second slow one")
 
     def test_a_lost_response_is_not_retried_in_the_same_run(self):
         q = FakeQuipu(fail_on={"aegis-2"})

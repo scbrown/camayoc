@@ -101,7 +101,8 @@ def covered(post) -> set[str]:
 
 
 def run(records, done: set[str], post, *, actor, source, rate, stop_after,
-        limit=None, dry_run=False, clock=time.monotonic, sleep=time.sleep) -> dict:
+        limit=None, dry_run=False, clock=time.monotonic, sleep=time.sleep,
+        max_slow=2, backoff=60.0) -> dict:
     missing = [r for r in records if r.get("id") not in done]
     missing.sort(key=lambda r: r.get("created_at", ""), reverse=True)  # newest first
     if limit is not None:
@@ -112,6 +113,7 @@ def run(records, done: set[str], post, *, actor, source, rate, stop_after,
               "stopped": None, "dry_run": dry_run}
     gap = 1.0 / rate if rate > 0 else 0.0
     latencies: list[float] = []
+    slow_streak = 0
     for record in missing:
         try:
             body = episode_for(record, actor=actor, source=source)
@@ -137,9 +139,19 @@ def run(records, done: set[str], post, *, actor, source, rate, stop_after,
         took = clock() - started
         latencies.append(took)
         if took > stop_after:
-            report["stopped"] = (f"writer-hold rule: one write took {took:.1f}s "
-                                 f"(> {stop_after}s) on {record['id']}")
-            break
+            # One slow write is a busy writer: back off and let it drain. Two in a
+            # row is the shape of a stuck one: stop, and the next tick resumes.
+            # (Measured 2026-09-24: isolated ~15 s stalls recur on quipu, so
+            # stopping on the FIRST one held the backfill to ~18 writes a run.)
+            slow_streak += 1
+            report["slow_writes"] = report.get("slow_writes", 0) + 1
+            if slow_streak >= max_slow:
+                report["stopped"] = (f"writer-hold rule: {slow_streak} consecutive writes over "
+                                     f"{stop_after}s, last {took:.1f}s on {record['id']}")
+                break
+            sleep(backoff)
+            continue
+        slow_streak = 0
         if gap:
             sleep(max(0.0, gap - took))
     if latencies:
