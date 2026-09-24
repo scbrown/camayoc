@@ -8,7 +8,7 @@
     "url": "https://github.com/scbrown"
   },
   "repository": "https://github.com/scbrown/camayoc",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "keywords": [
     "knowledge-graph",
     "memory",
