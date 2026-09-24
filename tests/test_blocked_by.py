@@ -38,6 +38,9 @@ class Store:
         return {"rows": self._select(q), "truncated": False}
 
     def _select(self, q):
+        where = q[q.index("{"):]
+        if " . " in where.strip("{} "):
+            raise AssertionError(f"multi-pattern query (quipu 408s joins live): {q}")
         subj = re.search(r"\{ <" + re.escape(A) + r"([^>]+)>", q)
         s = subj.group(1) if subj else None
         if "> <%sblockedOn> ?t" % A in q or "?w <%sblockedOn> ?t" % A in q:
@@ -48,13 +51,19 @@ class Store:
         for pred, var in (("closedAt", "c"), ("resolvesOn", "d"), ("resolutionQuery", "q")):
             if f"<{A}{pred}> ?{var}" in q:
                 return [{var: c} for a, b, c in self.t if a == s and b == pred]
-        if f"?w <{A}observes> ?obs . ?obs <{A}observedBlockedOn> ?t" in q:
-            return [{"w": f"aegis:{w}", "obs": f"aegis:{o}", "t": f"aegis:{t}"}
-                    for w, b, o in self.t if b == "observes"
-                    for o2, b2, t in self.t if o2 == o and b2 == "observedBlockedOn"]
+        if " ?w <%sobserves> ?obs . ?obs " % A in q:
+            raise AssertionError("multi-pattern join over the whole store: quipu 408s it live")
+        if q.startswith("SELECT ?obs ?t WHERE { ?obs <%sobservedBlockedOn> ?t }" % A):
+            return [{"obs": f"aegis:{o}", "t": f"aegis:{t}"} for o, b, t in self.t if b == "observedBlockedOn"]
+        m = re.search(r"\?w <" + re.escape(A) + r"observes> <" + re.escape(A) + r"([^>]+)>", q)
+        if m:
+            return [{"w": f"aegis:{w}"} for w, b, o in self.t if b == "observes" and o == m.group(1)]
+        if f"<{A}observedBlockedOn> ?t" in q:
+            return [{"t": f"aegis:{c}"} for a, b, c in self.t if a == s and b == "observedBlockedOn"]
         if f"<{A}observes> ?obs" in q:
-            return [{"obs": f"aegis:{o}", "at": at} for a, b, o in self.t if a == s and b == "observes"
-                    for o2, b2, at in self.t if o2 == o and b2 == "observedAt"]
+            return [{"obs": f"aegis:{o}"} for a, b, o in self.t if a == s and b == "observes"]
+        if f"<{A}observedAt> ?at" in q:
+            return [{"at": c} for a, b, c in self.t if a == s and b == "observedAt"]
         for pred, var in (("observedStatus", "st"), ("observedValue", "v")):
             if f"<{A}{pred}> ?{var}" in q:
                 return [{var: c} for a, b, c in self.t if a == s and b == pred]
@@ -121,6 +130,11 @@ class TrackerProjection(unittest.TestCase):
                   + self.obs("w", "o2", "2026-09-23", "open", [])         # newest: dependency gone
                   + item("d", "open"))
         self.assertNotIn("w", run(s), "an item with no current blocker is not reported")
+
+    def test_one_item_reads_only_its_latest_observation(self):
+        s = Store([("w", "a", "WorkItem")] + self.obs("w", "o1", "2026-09-20", "blocked", ["d"])
+                  + item("d", "open"))
+        self.assertEqual(run(s, item="w")["w"]["verdict"], "BLOCKED")
 
     def test_status_falls_back_to_the_observation_snapshot(self):
         s = Store(item("w", "open") + [("d", "a", "WorkItem"), ("d", "observes", "od"),
