@@ -46,7 +46,11 @@ BLOCKED, UNBLOCKED = "BLOCKED", "UNBLOCKED"
 
 
 def graphs() -> list[str | None]:
-    return [None, planes.plane_for("observed")]
+    """Where blocking facts live: the default graph, the observed records (the
+    tracker projection) and the DECLARED plane (condition blockers someone
+    declared). Not the inferred plane: an inferred blocker is quarantined
+    guesswork and must not hold work up."""
+    return [None, planes.plane_for("observed"), planes.plane_for("declared")]
 
 
 def _iri(term: str) -> str:

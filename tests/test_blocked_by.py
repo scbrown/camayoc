@@ -195,6 +195,15 @@ class TypedProbes(unittest.TestCase):
             bb._run = orig
 
 
+class Planes(unittest.TestCase):
+    def test_declared_blockers_count_and_inferred_ones_do_not(self):
+        import planes
+        gs = bb.graphs()
+        self.assertIn(planes.plane_for("declared"), gs)
+        self.assertIn(planes.plane_for("observed"), gs)
+        self.assertNotIn(planes.plane_for("inferred"), gs)
+
+
 class ConditionTargets(unittest.TestCase):
     def blocker(self, name, **props):
         return [(name, "a", "Blocker")] + [(name, k, v) for k, v in props.items()]
