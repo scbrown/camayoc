@@ -56,10 +56,8 @@ def collect(db):
     records = records_from(json.loads(result.stdout))
     # Same dependency set the backfill projects (aegis-3b3nrb), so both writers
     # mint the SAME Observation version and never two competing "latest" ones.
-    from ingest_work_items import blocked_on_of
-    for record in records:
-        if record.get("dependency_count"):
-            record["blocked_on"] = blocked_on_of(record["id"], db)
+    from ingest_work_items import attach_blocked_on
+    attach_blocked_on(records, db)
     return records
 
 
@@ -95,6 +93,12 @@ def tick(records, state, path, *, actor, source, now, post):
     current = {}
     invalid = []
     for record in records:
+        if record.get('dep_unknown'):
+            # Its dependencies could not be read: writing it now would record
+            # "blocks on nothing". Park it; the next tick retries the lookup.
+            invalid.append({'id': str(record.get('id', 'UNKNOWN'))[:120],
+                            'error': 'DependencyLookupFailed'})
+            continue
         try:
             item = _entity_name(record['id'])
             body = episode_for(record, actor=actor, source=f'{source}#{item}')
