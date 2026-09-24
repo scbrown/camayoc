@@ -40,6 +40,9 @@ class ReviewAgeShape(unittest.TestCase):
     def test_an_ambiguous_or_malformed_duration_is_refused(self):
         self.assertFalse(self.valid('aegis:fact1 aegis:maxAge "P1M" .'))
         self.assertFalse(self.valid('aegis:fact1 aegis:maxAge "30 days" .'))
+        for bad in ("P", "PT", "P1DT"):   # sattler, review of #28: the writer must refuse what the reader cannot use
+            self.assertFalse(self.valid(f'aegis:fact1 aegis:maxAge "{bad}" .'), bad)
+        self.assertTrue(self.valid('aegis:fact1 aegis:maxAge "P1DT2H30M" .'))
 
     def test_two_review_instants_are_refused(self):
         self.assertFalse(self.valid('aegis:fact1 aegis:reviewAfter "2026-10-01", "2026-11-01" .'))

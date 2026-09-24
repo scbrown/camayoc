@@ -84,6 +84,11 @@ class MaxAge(unittest.TestCase):
         self.assertEqual(rd.parse_duration("PT1M"), dt.timedelta(minutes=1))
         self.assertEqual(rd.parse_duration("P2W"), dt.timedelta(weeks=2))
         self.assertIsNone(rd.parse_duration("P"))
+        for bad in ("PT", "P1DT", "P1W2D", "P1H"):
+            self.assertIsNone(rd.parse_duration(bad), bad)
+        self.assertEqual(rd.parse_duration("P1DT2H30M"), dt.timedelta(days=1, hours=2, minutes=30))
+        self.assertEqual(rd.parse_duration("PT2H"), dt.timedelta(hours=2))
+        self.assertEqual(rd.parse_duration("P3D"), dt.timedelta(days=3))
 
 
 class Combination(unittest.TestCase):
@@ -102,6 +107,19 @@ class Combination(unittest.TestCase):
         a = run([("f", "reviewAfter", '"2026-09-20"')])["f"]["evidence"]
         self.assertEqual(a, run([("f", "reviewAfter", '"2026-09-20"')])["f"]["evidence"])
         self.assertNotEqual(a, run([("f", "reviewAfter", '"2026-09-21"')])["f"]["evidence"])
+
+
+class ShapeAndReaderAgree(unittest.TestCase):
+    """The write must refuse exactly what the reader cannot use (sattler, review of #28)."""
+
+    def test_the_shape_pattern_and_the_reader_accept_the_same_durations(self):
+        shapes = (Path(__file__).resolve().parents[1] / "shapes" / "core.shapes.ttl").read_text()
+        block = shapes[shapes.index("sh:path aegis:maxAge"):]
+        pattern = re.search(r'sh:pattern "([^"]+)"', block).group(1).replace("\\\\", "\\")
+        shape = re.compile(pattern)
+        for text in ("P", "PT", "P1W", "P2D", "P1DT", "PT1H", "PT30M", "PT1H30M", "P1DT2H", "P1DT45M",
+                     "P1DT2H30M", "P1W1D", "P1M", "P1H", "P1Y", "30 days", "P0D"):
+            self.assertEqual(bool(shape.match(text)), rd.parse_duration(text) is not None, text)
 
 
 if __name__ == "__main__":
