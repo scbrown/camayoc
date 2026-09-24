@@ -83,10 +83,10 @@ find_or_install_binary() {
   if command -v cargo >/dev/null 2>&1; then
     say "binary: no prebuilt release for $os/$arch — building via cargo (this takes a while)..." >&2
     # The crate is quipu-ai; plain `quipu` on crates.io is someone else's.
-    cargo install quipu-ai --locked --features onnx,server --quiet >&2 && command -v quipu-server && return 0
+    cargo install quipu-ai --locked --features full --quiet >&2 && command -v quipu-server && return 0
   fi
   say "binary: could not install quipu-server for $os/$arch." >&2
-  say "  Install Rust, then: cargo install quipu-ai --locked --features onnx,server" >&2
+  say "  Install Rust, then: cargo install quipu-ai --locked --features full" >&2
   return 1
 }
 
