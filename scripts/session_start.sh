@@ -25,7 +25,7 @@ emit() {
 SERVER=$(resolve_server); SERVER=${SERVER%/}
 
 STATS=$(curl -sf -m 2 "$SERVER/stats" 2>/dev/null) || {
-  emit "camayoc: could not reach quipu at $SERVER — governed memory UNAVAILABLE this session (this is 'could not look', not 'nothing exists'). To enable: start quipu-server (cargo install quipu-ai --locked --features onnx,server; quipu-server --db .quipu/store.db) then run /camayoc:bootstrap."
+  emit "camayoc: could not reach quipu at $SERVER — governed memory UNAVAILABLE this session (this is 'could not look', not 'nothing exists'). To enable: start quipu-server (cargo install quipu-ai --locked --features full; quipu-server --db .quipu/store.db) then run /camayoc:bootstrap."
   exit 0
 }
 
