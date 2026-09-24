@@ -28,7 +28,7 @@ Ask the user (use the question tool, multi-select) which optional components
 to set up, briefly describing each:
 
 - **bobbin** — semantic code search + task-aware context bundles, exposed to
-  agents over MCP (`cargo install bobbin`, indexes this project).
+  agents over MCP (`cargo install bobbin-ai`, indexes this project).
 - **hank** — structural code facts: defs/refs, call graph, blast radius,
   over MCP (pre-release; installs from git, can take minutes).
 - **beads (bd)** — the agent-first work-item tracker (graph-based,
