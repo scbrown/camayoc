@@ -33,8 +33,9 @@ PY
 setup_bobbin() {
   if ! command -v bobbin >/dev/null 2>&1; then
     command -v cargo >/dev/null 2>&1 || { say "bobbin: needs cargo (install Rust first) — skipped"; return 1; }
-    say "bobbin: installing from crates.io (cargo install bobbin — takes several minutes)..."
-    cargo install bobbin --quiet || { say "bobbin: cargo install FAILED"; return 1; }
+    say "bobbin: installing from crates.io (cargo install bobbin-ai — takes several minutes)..."
+    # The crate is bobbin-ai; plain `bobbin` on crates.io is someone else's.
+    cargo install bobbin-ai --locked --quiet || { say "bobbin: cargo install FAILED"; return 1; }
   fi
   say "bobbin: binary ready ($(command -v bobbin))"
   if [ ! -e "$PROJECT_DIR/.bobbin" ] || ! ls "$PROJECT_DIR/.bobbin"/bobbin* >/dev/null 2>&1; then
