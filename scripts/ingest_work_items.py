@@ -64,6 +64,28 @@ def blocked_on_of(item_id: str, db, run=None) -> list[str]:
                    if r.get("type") == "blocks" and r.get("issue_id") == item_id})
 
 
+def attach_blocked_on(records: list[dict], db, run=None) -> list[str]:
+    """Set record["blocked_on"] on every record that has dependencies.
+
+    A record whose lookup FAILS (a slow or failing `br dep list`) is marked
+    `dep_unknown` and must not be written this run: an episode without its
+    dependencies would mint an Observation saying it blocks on NOTHING, which
+    reads as unblocked (aegis-c0awwp's forbidden direction). Returns those ids.
+    """
+    import subprocess
+
+    unknown = []
+    for record in records:
+        if not record.get("dependency_count"):
+            continue
+        try:
+            record["blocked_on"] = blocked_on_of(record["id"], db, run=run)
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError, ValueError, KeyError):
+            record["dep_unknown"] = True
+            unknown.append(record["id"])
+    return unknown
+
+
 def episode_for(payload: object, *, actor: str, source: str, about: list[str] | None = None) -> dict:
     """Return the governed episode for one tracker record.
 

@@ -119,5 +119,32 @@ class Safety(unittest.TestCase):
             bf.all_beads(Path("x.db"), run=fake)
 
 
+class DependencyLookup(unittest.TestCase):
+    """A failed `br dep list` must skip the bead, never write it without deps."""
+
+    def test_a_timed_out_lookup_marks_only_that_record_and_the_rest_attach(self):
+        import subprocess
+        from ingest_work_items import attach_blocked_on
+
+        def fake(cmd, **kw):
+            if cmd[5] == "aegis-slow":
+                raise subprocess.TimeoutExpired(cmd, 15)
+            return types.SimpleNamespace(stdout=json.dumps(
+                [{"issue_id": cmd[5], "depends_on_id": "aegis-d", "type": "blocks"}]))
+
+        recs = [dict(bead(1), dependency_count=1), dict(bead(2), id="aegis-slow", dependency_count=1),
+                bead(3)]
+        self.assertEqual(attach_blocked_on(recs, Path("x.db"), run=fake), ["aegis-slow"])
+        self.assertEqual(recs[0]["blocked_on"], ["aegis-d"])
+        self.assertTrue(recs[1]["dep_unknown"])
+        self.assertNotIn("blocked_on", recs[2])
+
+    def test_a_record_with_unknown_dependencies_is_not_written(self):
+        q = FakeQuipu()
+        report = go(q, [bead(1), dict(bead(2, "2026-09-02T00:00:00Z"), dep_unknown=True)])
+        self.assertEqual([b["nodes"][0]["name"] for b in q.writes], ["aegis-1"])
+        self.assertEqual(report["written"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

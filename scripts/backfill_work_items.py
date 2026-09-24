@@ -106,7 +106,10 @@ def run(records, done: set[str], post, *, actor, source, rate, stop_after,
     # A covered bead with dependencies is re-projected too: its Observation must
     # carry observedBlockedOn (aegis-3b3nrb). episode_for is deterministic, so a
     # bead already projected with the same dependencies re-posts as a no-op.
-    missing = [r for r in records if r.get("id") not in done or r.get("blocked_on")]
+    # A record whose dependencies could not be read is SKIPPED, never written
+    # without them: that would record "blocks on nothing" (see attach_blocked_on).
+    missing = [r for r in records if not r.get("dep_unknown")
+               and (r.get("id") not in done or r.get("blocked_on"))]
     missing.sort(key=lambda r: r.get("created_at", ""), reverse=True)  # newest first
     if limit is not None:
         missing = missing[:limit]
@@ -186,13 +189,14 @@ def main(argv=None) -> int:
             return 0
         post = lambda endpoint, body: planes._post(endpoint, body, client=CLIENT)  # noqa: E731
         records = all_beads(args.db)
-        from ingest_work_items import blocked_on_of
-        for record in records:
-            if record.get("dependency_count"):
-                record["blocked_on"] = blocked_on_of(record["id"], args.db)
+        from ingest_work_items import attach_blocked_on
+        dep_unknown = attach_blocked_on(records, args.db)
         done = covered(post)
         report = run(records, done, post, actor=args.actor, source=args.source, rate=args.rate,
                      stop_after=args.stop_after, limit=args.max, dry_run=args.dry_run)
+        if dep_unknown:
+            report["dep_unknown"] = len(dep_unknown)
+            report["dep_unknown_ids"] = dep_unknown[:20]
         if not args.dry_run:
             after = covered(post)
             report["covered_after"] = len(after & {r["id"] for r in records})
