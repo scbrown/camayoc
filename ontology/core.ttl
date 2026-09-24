@@ -233,6 +233,22 @@ aegis:resolvesOn a rdf:Property ;
     rdfs:domain aegis:Blocker ;
     rdfs:range xsd:date .
 
+# ---- Declared review age (aegis-kxjack) ------------------------------
+# Stiwi 2026-09-24: "check on this after this time and quipu will emit an
+# event" ("age not agent"). Any entity may declare WHEN it must be re-checked.
+# Whether it is due is evaluated at read or tick time as due | not_due |
+# unknown, and never stored as a verdict. Routing uses aegis:ownedBy.
+
+aegis:reviewAfter a rdf:Property ;
+    rdfs:label "review after" ;
+    rdfs:comment "An ISO-8601 instant after which this entity is DUE for re-checking: the fact is to be re-verified, not trusted. Applies to any entity; a claim is aged through its own node." ;
+    rdfs:range xsd:string .
+
+aegis:maxAge a rdf:Property ;
+    rdfs:label "max age" ;
+    rdfs:comment "An ISO-8601 duration (PnW, or PnDTnHnM) the entity may go without a fresh check. Anchored on the latest aegis:verifiedAt of a Verification that aegis:verifies it; with no such verification the age is UNKNOWN, never fresh and never due." ;
+    rdfs:range xsd:string .
+
 # Typed probe PARAMETERS (aegis-c0awwp). The graph holds only the parameters;
 # the code that checks them is fixed in camayoc, never a command read from the
 # graph, which would be command injection through the knowledge store.
