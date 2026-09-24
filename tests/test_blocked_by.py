@@ -48,6 +48,9 @@ class Store:
                     if b == "blockedOn" and (s is None or a == s)]
         if "> a ?t" in q:
             return [{"t": f"aegis:{c}"} for a, b, c in self.t if a == s and b == "a"]
+        if f"> ?v }}" in q:
+            pred = re.search(r"<" + re.escape(A) + r"([A-Za-z]+)> \?v", q).group(1)
+            return [{"v": c} for a, b, c in self.t if a == s and b == pred]
         for pred, var in (("closedAt", "c"), ("resolvesOn", "d"), ("resolutionQuery", "q")):
             if f"<{A}{pred}> ?{var}" in q:
                 return [{var: c} for a, b, c in self.t if a == s and b == pred]
@@ -79,6 +82,7 @@ def item(name, status=None, at="2026-09-20T00:00:00Z", obs=None):
 
 
 def run(store, **kw):
+    kw.setdefault("probes", {})
     return {r["item"]: r for r in bb.evaluate(store.post, today=TODAY, **kw)}
 
 
@@ -141,6 +145,54 @@ class TrackerProjection(unittest.TestCase):
                   ("od", "observedAt", "2026-09-22"), ("od", "observedValue", '{"status": "closed"}'),
                   ("w", "blockedOn", "d")])
         self.assertEqual(run(s)["w"]["verdict"], "UNBLOCKED")
+
+
+class TypedProbes(unittest.TestCase):
+    """pr-merged / release-installed / ci-green: the parameters come from the
+    graph, the probe code is fixed in camayoc (aegis-c0awwp)."""
+
+    def case(self, kind, props, answer):
+        calls = []
+        def probe(*args):
+            calls.append(args)
+            return answer
+        s = Store(item("w", "open") + [("b", "a", "Blocker"), ("b", "blockerKind", kind)]
+                  + [("b", k, v) for k, v in props.items()] + [("w", "blockedOn", "b")])
+        return run(s, probes={kind: probe})["w"]["verdict"], calls
+
+    def test_each_probe_gets_its_parameters_and_its_answer_decides(self):
+        for kind, props, want_args in (
+                ("pr-merged", {"prRef": "scbrown/quipu#274"}, ("scbrown/quipu#274",)),
+                ("release-installed", {"tool": "yupana", "minVersion": "0.10.0"}, ("yupana", "0.10.0")),
+                ("ci-green", {"repoRef": "scbrown/quipu@main"}, ("scbrown/quipu@main",))):
+            for answer, want in ((True, "UNBLOCKED"), (False, "BLOCKED"), (None, "UNKNOWN")):
+                with self.subTest(kind=kind, answer=answer):
+                    verdict, calls = self.case(kind, props, answer)
+                    self.assertEqual(verdict, want)
+                    self.assertEqual(calls, [want_args])
+
+    def test_a_missing_parameter_is_unknown_and_nothing_is_probed(self):
+        verdict, calls = self.case("pr-merged", {}, True)
+        self.assertEqual((verdict, calls), ("UNKNOWN", []))
+
+    def test_the_real_probes_refuse_malformed_parameters_without_running_anything(self):
+        self.assertIsNone(bb.probe_pr_merged("quipu 274; rm -rf ~"))
+        self.assertIsNone(bb.probe_release_installed("yupana; rm -rf ~", "0.10.0"))
+        self.assertIsNone(bb.probe_release_installed("yupana", "latest"))
+        self.assertIsNone(bb.probe_ci_green("not a repo ref"))
+
+    def test_version_comparison_pads_and_orders_numerically(self):
+        self.assertEqual(bb._version_tuple("yupana 0.10.0 (abc)"), (0, 10, 0))
+        orig = bb._run
+        try:
+            bb._run = lambda argv: "yupana 0.9.12\n"
+            self.assertFalse(bb.probe_release_installed("yupana", "0.10"))
+            bb._run = lambda argv: "yupana 0.10.0\n"
+            self.assertTrue(bb.probe_release_installed("yupana", "0.10"))
+            bb._run = lambda argv: None
+            self.assertIsNone(bb.probe_release_installed("yupana", "0.10"))
+        finally:
+            bb._run = orig
 
 
 class ConditionTargets(unittest.TestCase):

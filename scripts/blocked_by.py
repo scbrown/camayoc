@@ -108,7 +108,70 @@ def latest_observation(post, item: str) -> str | None:
     return max(stamped)[1] if stamped else None
 
 
-def blocker_state(post, target: str, today: dt.date) -> tuple[str, str]:
+# ---- typed probes: FIXED code, parameters from the graph (aegis-c0awwp) ----
+# Every probe returns True (resolved), False (unresolved) or None (could not
+# tell). Parameters are re-validated here, independent of the SHACL shape, and
+# nothing is ever run through a shell.
+import re
+import subprocess
+
+_PR = re.compile(r"^([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)#([0-9]+)$")
+_TOOL = re.compile(r"^[A-Za-z0-9_.-]+$")
+_VER = re.compile(r"^[0-9]+(\.[0-9]+)*$")
+_REPO = re.compile(r"^([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)@([A-Za-z0-9_./-]+)$")
+
+
+def _run(argv: list[str]) -> str | None:
+    try:
+        out = subprocess.run(argv, capture_output=True, text=True, timeout=30, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return out.stdout if out.returncode == 0 else None
+
+
+def probe_pr_merged(ref: str):
+    m = _PR.match(ref)
+    if not m:
+        return None
+    out = _run(["gh", "api", f"repos/{m[1]}/{m[2]}/pulls/{m[3]}", "--jq", ".merged"])
+    return None if out is None else out.strip() == "true"
+
+
+def _version_tuple(text: str):
+    m = re.search(r"([0-9]+(?:\.[0-9]+)+)", text or "")
+    return tuple(int(x) for x in m.group(1).split(".")) if m else None
+
+
+def probe_release_installed(tool: str, min_version: str):
+    if not _TOOL.match(tool) or not _VER.match(min_version):
+        return None
+    have = _version_tuple(_run([tool, "--version"]) or "")
+    if have is None:
+        return None
+    want = tuple(int(x) for x in min_version.split("."))
+    width = max(len(have), len(want))
+    return have + (0,) * (width - len(have)) >= want + (0,) * (width - len(want))
+
+
+def probe_ci_green(ref: str):
+    m = _REPO.match(ref)
+    if not m:
+        return None
+    out = _run(["gh", "run", "list", "-R", f"{m[1]}/{m[2]}", "-b", m[3], "--status", "completed",
+                "-L", "1", "--json", "conclusion", "--jq", ".[0].conclusion"])
+    return None if not out or not out.strip() else out.strip() == "success"
+
+
+PROBES = {"pr-merged": probe_pr_merged, "release-installed": probe_release_installed,
+          "ci-green": probe_ci_green}
+
+
+def _prop(post, target: str, name: str) -> str | None:
+    rows = select(post, f"SELECT ?v WHERE {{ <{A}{target}> <{A}{name}> ?v }}")
+    return str(rows[0]["v"]).split("^^")[0].strip('"') if rows else None
+
+
+def blocker_state(post, target: str, today: dt.date, probes=None) -> tuple[str, str]:
     """(state, why) for one blockedOn target."""
     types = {_iri(r["t"]) for r in select(post, f"SELECT ?t WHERE {{ <{A}{target}> a ?t }}")}
     if A + "WorkItem" in types:
@@ -117,6 +180,18 @@ def blocker_state(post, target: str, today: dt.date) -> tuple[str, str]:
             return UNKNOWN, f"{target}: no tracker status in the graph"
         return (RESOLVED if status == "closed" else UNRESOLVED), f"{target}: {status}"
     if A + "Blocker" in types:
+        probes = PROBES if probes is None else probes
+        kind = _prop(post, target, "blockerKind")
+        if kind in ("pr-merged", "release-installed", "ci-green"):
+            args = {"pr-merged": ["prRef"], "release-installed": ["tool", "minVersion"],
+                    "ci-green": ["repoRef"]}[kind]
+            values = [_prop(post, target, a) for a in args]
+            if None in values:
+                return UNKNOWN, f"{target}: {kind} blocker missing {args}"
+            answer = probes[kind](*values)
+            if answer is None:
+                return UNKNOWN, f"{target}: {kind} {' '.join(values)} could not be checked"
+            return (RESOLVED if answer else UNRESOLVED), f"{target}: {kind} {' '.join(values)} -> {answer}"
         dates = select(post, f"SELECT ?d WHERE {{ <{A}{target}> <{A}resolvesOn> ?d }}")
         asks = select(post, f"SELECT ?q WHERE {{ <{A}{target}> <{A}resolutionQuery> ?q }}")
         if dates:
@@ -147,7 +222,8 @@ def verdict(states: list[str]) -> str:
     return UNKNOWN.upper()
 
 
-def evaluate(post, *, item: str | None = None, today: dt.date | None = None) -> list[dict]:
+def evaluate(post, *, item: str | None = None, today: dt.date | None = None,
+             probes=None) -> list[dict]:
     today = today or dt.date.today()
     scope = f"<{A}{item}>" if item else "?w"
     # Declared by an agent on the WorkItem ...
@@ -179,7 +255,7 @@ def evaluate(post, *, item: str | None = None, today: dt.date | None = None) -> 
     for w, targets in sorted(by_item.items()):
         if current_status(post, w) == "closed":
             continue
-        judged = [blocker_state(post, t, today) for t in sorted(set(targets))]
+        judged = [blocker_state(post, t, today, probes) for t in sorted(set(targets))]
         out.append({"item": w, "verdict": verdict([s for s, _ in judged]),
                     "blockers": [{"state": s, "why": why} for s, why in judged]})
     return out
