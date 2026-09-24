@@ -200,7 +200,7 @@ class ProtocolBasics(unittest.TestCase):
     def test_tools_list_has_the_four_tools(self):
         r = jev_mcp.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         names = sorted(t["name"] for t in r["result"]["tools"])
-        self.assertEqual(names, ["jev_choice", "jev_dry_run", "jev_noul", "jev_score"])
+        self.assertEqual(names, ["jev_choice", "jev_dry_run", "jev_noul", "jev_score", "map_question"])
 
     def test_every_tool_declares_a_usable_schema(self):
         r = jev_mcp.handle({"jsonrpc": "2.0", "id": 3, "method": "tools/list"})
@@ -232,6 +232,81 @@ class ProtocolBasics(unittest.TestCase):
         out = io.StringIO()
         jev_mcp.serve(io.StringIO("{not json\n"), out)
         self.assertEqual(json.loads(out.getvalue())["error"]["code"], -32700)
+
+
+class MappingTransport:
+    """Plays Jev for the one `mapping` choice map_question poses."""
+
+    def __init__(self, choice, confidence, prob=0.9):
+        self.bodies = []
+        self.choice, self.confidence, self.prob = choice, confidence, prob
+
+    def __call__(self, body, key):
+        self.bodies.append(body)
+        return {"answers": {"mapping": {"type": "choice", "choice": self.choice,
+                                        "probabilities": {self.choice: self.prob},
+                                        "confidence": self.confidence}},
+                "model": "jev-1.13.0", "usage": {"input_tokens": 4700, "output_tokens": 0}}
+
+
+class MapQuestion(unittest.TestCase):
+    """aegis-4hhqoe.10: three outcomes, the 0.75 floor, coverage kept separate."""
+
+    def run_map(self, transport, question="what did it cost to reach decision D?"):
+        return jev_mcp.call_tool("map_question", {"question": question},
+                                 client_factory(transport), {"JEV_USAGE_LOG": os.devnull})
+
+    def test_mapped_above_floor_carries_the_stored_query(self):
+        t = MappingTransport("verification-and-liveness#21", 0.96)
+        v = self.run_map(t)
+        self.assertEqual(v["outcome"], "mapped")
+        self.assertEqual(v["competency_id"], "verification-and-liveness#21")
+        self.assertEqual(v["stored_query"], {"state": "STORED", "query": "camayoc_decision_cost"})
+        self.assertEqual(v["source_kind"], "inferred")
+        self.assertTrue(v["suite_watermark"].startswith("sha256:"))
+        self.assertEqual(len(t.bodies), 1, "one Jev call per asked question")
+        # the whole suite was offered, plus the none option
+        crit = t.bodies[0]["questions"]["mapping"]["criteria"]
+        self.assertIn(jev.NONE_OPTION, crit)
+        self.assertEqual(len(crit) - 1, v["suite_size"])
+
+    def test_mapped_to_an_unwritten_question_says_so_rather_than_naming_a_query(self):
+        v = self.run_map(MappingTransport("crew-task-lifecycle#1", 0.96))
+        self.assertEqual(v["outcome"], "mapped")
+        self.assertEqual(v["stored_query"]["state"], "UNWRITTEN")
+        self.assertIsNone(v["stored_query"]["query"])
+
+    def test_below_floor_is_human_reads_never_an_answer(self):
+        v = self.run_map(MappingTransport("verification-and-liveness#21", 0.64))
+        self.assertEqual(v["outcome"], "human_reads")
+        self.assertIsNone(v["competency_id"])
+        self.assertIsNone(v["stored_query"])
+        self.assertEqual(v["candidate"], "verification-and-liveness#21")
+
+    def test_floor_is_inclusive_at_exactly_075(self):
+        self.assertEqual(self.run_map(MappingTransport("verification-and-liveness#21", 0.75))["outcome"],
+                         "mapped")
+
+    def test_none_of_these_is_abstained(self):
+        v = self.run_map(MappingTransport(jev.NONE_OPTION, 0.99))
+        self.assertEqual(v["outcome"], "abstained")
+        self.assertTrue(v["abstained"])
+        self.assertIsNone(v["competency_id"])
+
+    def test_an_id_outside_the_suite_is_not_mapped(self):
+        self.assertEqual(self.run_map(MappingTransport("invented#1", 0.99))["outcome"], "human_reads")
+
+    def test_empty_question_is_a_tool_error(self):
+        with self.assertRaises(ValueError):
+            jev_mcp.call_tool("map_question", {"question": "  "}, client_factory(MappingTransport("x", 1)), {})
+
+    def test_no_key_is_an_error_the_agent_reads(self):
+        def no_key():
+            raise jev.JevUnavailable("no Jev key")
+        r = jev_mcp.handle({"jsonrpc": "2.0", "id": 9, "method": "tools/call",
+                            "params": {"name": "map_question", "arguments": {"question": "q?"}}},
+                           no_key, {})
+        self.assertTrue(r["result"]["isError"])
 
 
 class KeyResolution(unittest.TestCase):

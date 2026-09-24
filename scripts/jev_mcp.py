@@ -13,6 +13,8 @@ Four tools, mirroring JevClient argument-for-argument:
     jev_choice(state, instructions, criteria, ...)    -> winner + per-option probs
     jev_score(state, instructions, levels[2..10])     -> an ordered level
     jev_dry_run(kind, ...same args)                   -> the request, sent nowhere
+    map_question(question)                            -> competency id + stored query,
+                                                         or abstained / human_reads
 
 The guardrails are BAKED IN rather than documented, because a guardrail an
 agent has to remember is one the fleet will discover it forgot:
@@ -43,6 +45,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import competency  # noqa: E402
 import jev  # noqa: E402
 
 PROTOCOL_VERSION = "2025-06-18"
@@ -59,6 +62,10 @@ _STATE = {"type": "string",
           "description": "The text or JSON Jev judges. Keep it MINIMAL — long, "
                          "noisy state measurably degrades Jev."}
 _INSTR = {"type": "string", "description": "The question, as instructions."}
+
+#: The competency suite map_question maps onto: this checkout's own, so the
+#: watermark in every verdict names exactly what was on disk.
+SUITE_DIR = Path(__file__).resolve().parents[1] / "competency"
 
 
 def usage_log_path(env: dict | None = None) -> Path:
@@ -149,6 +156,17 @@ def call_tool(name: str, args: dict, client_factory=jev.JevClient, env: dict | N
                             "questions": {"q": question}},
                 "sent": False,
                 "note": "dry run — nothing was sent and nothing was spent."}
+    if name == "map_question":
+        asked = args.get("question")
+        if not isinstance(asked, str) or not asked.strip():
+            raise ValueError("question is required and must be a non-empty string")
+        suite = competency.parse_suite(SUITE_DIR)
+        if not suite:
+            raise ValueError(f"no competency questions parsed from {SUITE_DIR}")
+        verdict = competency.map_question(asked.strip(), suite,
+                                          competency.JevScorer(client_factory()))
+        record_usage(name, verdict, env)
+        return verdict
     kind = {"jev_noul": "noul", "jev_choice": "choice", "jev_score": "score"}.get(name)
     if kind is None:
         raise ValueError(f"unknown tool {name!r}")
@@ -222,6 +240,25 @@ TOOLS = [
                            "maxItems": 10, "description": "Ordered levels, lowest first."},
             },
             "required": ["state", "instructions", "levels"],
+        },
+    },
+    {
+        "name": "map_question",
+        "description": (
+            "Map a freeform question onto camayoc's competency suite BEFORE "
+            "writing SPARQL by hand. Returns `outcome`: `mapped` (competency_id "
+            "at confidence >= 0.75, plus `stored_query` — if its state is STORED, "
+            "run that named query), `abstained` (no competency question fits: "
+            "file the asked question as a CANDIDATE competency question), or "
+            "`human_reads` (a low-confidence `candidate` — not an answer, never "
+            "act on it). Every verdict is inferred; never promote it."),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "question": {"type": "string",
+                             "description": "The question you are about to ask the graph, as you would phrase it."},
+            },
+            "required": ["question"],
         },
     },
     {

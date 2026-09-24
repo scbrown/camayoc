@@ -492,6 +492,90 @@ def assess(
     }
 
 
+#: The ruled floor for acting on a MAPPING (design §8.3, 2026-09-21): below it,
+#: the verdict is "a human reads it", never a guess and never a filed gap. The
+#: 35-item bench put Jev's confidence at 0.96 when right and 0.64 when wrong;
+#: that split is what makes a floor here meaningful.
+MAP_CONFIDENCE_FLOOR = 0.75
+
+MAPPED, ABSTAINED, HUMAN_READS = "mapped", "abstained", "human_reads"
+
+
+def stored_query_for(competency_id: str) -> dict:
+    """COVERAGE for one competency question: does a stored query answer it?
+
+    Deterministic and separate from mapping (design §8.4): this asks
+    query_coverage.py, the one authority for the slice tables, and returns its
+    state verbatim (STORED / UNWRITTEN / GAP / MISSING / UNGROUNDED). Only a
+    STORED row yields a query name to run; every other state is a reason.
+    """
+    import importlib.util
+    slice_name, _, number = competency_id.partition("#")
+    spec = importlib.util.spec_from_file_location(
+        "query_coverage", Path(__file__).resolve().parent / "query_coverage.py")
+    qc = importlib.util.module_from_spec(spec)
+    assert spec.loader
+    spec.loader.exec_module(qc)
+    if slice_name not in qc.SLICES or not number.isdigit():
+        return {"state": "UNKNOWN", "query": None,
+                "reason": f"no coverage table row for {competency_id}"}
+    for row in qc.report(slice_name)["rows"]:
+        if row["question"] == int(number):
+            stored = row["state"] == "STORED"
+            return {"state": row["state"], "query": row["query"] if stored else None,
+                    **({} if stored else {"reason": row.get("gap")})}
+    return {"state": "UNKNOWN", "query": None,
+            "reason": f"{competency_id} has no row in its slice table"}
+
+
+def map_question(asked: str, suite: "list[Question]", scorer: "JevScorer",
+                 floor: float = MAP_CONFIDENCE_FLOOR) -> dict:
+    """An agent's freeform question -> the competency question it is an instance
+    of, or an explicit non-answer (aegis-4hhqoe.10).
+
+    Three outcomes, never a fourth:
+      mapped       Jev picked a question at confidence >= floor. `stored_query`
+                   says whether a stored query answers it (coverage).
+      abstained    none-of-these won. The asked question is a candidate
+                   competency question: file it, that is how the suite grows.
+      human_reads  Jev picked something below the floor. `candidate` shows the
+                   pick so a human can judge it; it is NOT the answer.
+    Every verdict is a model judgment: written back, it is sourceKind inferred.
+    """
+    out = scorer._run(asked, suite)
+    ex = scorer.extras()
+    choice, conf = out.get("choice"), out.get("confidence")
+    prob = (out.get("probabilities") or {}).get(choice)
+    by_id = {q.id: q for q in suite}
+    if ex["abstained"]:
+        outcome = ABSTAINED
+    elif conf is None or conf < floor or choice not in by_id:
+        outcome = HUMAN_READS
+    else:
+        outcome = MAPPED
+    verdict = {
+        "asked": asked,
+        "outcome": outcome,
+        "competency_id": choice if outcome == MAPPED else None,
+        "question": by_id[choice].text if outcome == MAPPED else None,
+        "candidate": choice if outcome == HUMAN_READS else None,
+        "probability": prob,
+        "confidence": conf,
+        "none_probability": ex["none_probability"],
+        "abstained": ex["abstained"],
+        "floor": floor,
+        "stored_query": stored_query_for(choice) if outcome == MAPPED else None,
+        "suite_watermark": watermark(suite),
+        "suite_size": len(suite),
+        "method": scorer.method,
+        "source_kind": "inferred",
+        "model": out.get("model"),
+        "usage": out.get("usage"),
+        "request": out.get("request"),
+    }
+    return verdict
+
+
 def gap_bead(verdict: dict) -> str:
     """The bead text a reported gap becomes. b6h: gaps become candidate questions."""
     return (
@@ -509,6 +593,10 @@ def main() -> int:
     ap.add_argument("--suite", default="competency", help="directory of competency md files")
     ap.add_argument("--list", action="store_true", help="print the parsed suite and exit")
     ap.add_argument("--json", action="store_true", help="machine-readable verdict")
+    ap.add_argument("--map", action="store_true",
+                    help="MAPPING with Jev (flat): one line of JSON — outcome mapped|abstained|"
+                         "human_reads, competency_id, confidence, stored_query. Same verdict "
+                         "as the jev-mcp map_question tool (aegis-4hhqoe.10)")
     ap.add_argument("--floor", type=float, default=FLOOR)
     ap.add_argument("--full", type=float, default=FULL)
     ap.add_argument(
@@ -541,6 +629,18 @@ def main() -> int:
 
     if not args.question:
         ap.error("a question is required unless --list is given")
+
+    if args.map:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import jev
+
+        try:
+            verdict = map_question(args.question, suite, JevScorer(jev.JevClient()))
+        except jev.JevError as exc:
+            print(json.dumps({"asked": args.question, "error": f"jev: {exc}"}))
+            return 2
+        print(json.dumps(verdict))
+        return 0
 
     if args.method in ("jev", "jev-hier"):
         sys.path.insert(0, str(Path(__file__).resolve().parent))

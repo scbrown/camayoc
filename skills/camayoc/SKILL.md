@@ -32,8 +32,28 @@ parameters.
 ## Move 1 — Query first
 
 Before deciding anything a past session may have decided, ask. The
-competency questions in `competency/` are the canonical set. Until stored
-queries land in quipu, use `POST /query` with SPARQL; the patterns:
+competency questions in `competency/` are the canonical set.
+
+**Map before you write SPARQL.** Call the `map_question` tool (jev MCP
+server, shipped with this plugin) with the question as you would phrase it;
+from a shell, `python3 scripts/competency.py --map "<question>"` returns
+the same verdict as one line of JSON. Act on `outcome`:
+
+- `mapped` — the question is an instance of `competency_id`. If
+  `stored_query.state` is `STORED`, run that named query and fill its
+  parameters. Any other state (`UNWRITTEN`, `GAP`, ...) is the reason there
+  is no query yet; fall back to hand-written SPARQL and say so.
+- `abstained` — no competency question fits. File the asked question as a
+  CANDIDATE competency question; that is how the suite grows from what
+  agents actually ask. Then answer it by hand.
+- `human_reads` — confidence was below the 0.75 floor. `candidate` is NOT
+  an answer; do not run its query as if it were. Answer by hand.
+
+A mapping is a model judgment: anything you record from it carries
+`sourceKind "inferred"`, never promoted. When the tool is unavailable (no
+key), it errors; that is not a mapping, so go straight to SPARQL.
+
+Hand-written SPARQL goes through `POST /query`; the patterns:
 
 - *What did we decide about X, and why?* — find `camayoc:Decision` nodes
   whose `about`/`decidedIn` reaches X; read `chose`, `over`, `rationale`.
