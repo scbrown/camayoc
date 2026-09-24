@@ -48,15 +48,16 @@ class Store:
         for pred, var in (("closedAt", "c"), ("resolvesOn", "d"), ("resolutionQuery", "q")):
             if f"<{A}{pred}> ?{var}" in q:
                 return [{var: c} for a, b, c in self.t if a == s and b == pred]
+        if f"?w <{A}observes> ?obs . ?obs <{A}observedBlockedOn> ?t" in q:
+            return [{"w": f"aegis:{w}", "obs": f"aegis:{o}", "t": f"aegis:{t}"}
+                    for w, b, o in self.t if b == "observes"
+                    for o2, b2, t in self.t if o2 == o and b2 == "observedBlockedOn"]
         if f"<{A}observes> ?obs" in q:
-            rows = []
-            for a, b, obs in self.t:
-                if a == s and b == "observes":
-                    at = next((c for x, y, c in self.t if x == obs and y == "observedAt"), None)
-                    st = next((c for x, y, c in self.t if x == obs and y == "observedStatus"), None)
-                    if at and st:
-                        rows.append({"obs": obs, "at": at, "st": st})
-            return rows
+            return [{"obs": f"aegis:{o}", "at": at} for a, b, o in self.t if a == s and b == "observes"
+                    for o2, b2, at in self.t if o2 == o and b2 == "observedAt"]
+        for pred, var in (("observedStatus", "st"), ("observedValue", "v")):
+            if f"<{A}{pred}> ?{var}" in q:
+                return [{var: c} for a, b, c in self.t if a == s and b == pred]
         raise AssertionError(f"unexpected query {q}")
 
 
@@ -100,6 +101,32 @@ class WorkItemTargets(unittest.TestCase):
     def test_a_closed_item_is_left_out(self):
         s = Store(item("w", "closed") + item("d1", "open") + [("w", "blockedOn", "d1")])
         self.assertNotIn("w", run(s))
+
+
+class TrackerProjection(unittest.TestCase):
+    """aegis-3b3nrb: tracker dependencies live on the versioned Observation."""
+
+    def obs(self, item, name, at, status, deps=()):
+        return ([(item, "observes", name), (name, "observedAt", at), (name, "observedStatus", status)]
+                + [(name, "observedBlockedOn", d) for d in deps])
+
+    def test_a_projected_dependency_blocks(self):
+        s = Store([("w", "a", "WorkItem")] + self.obs("w", "o1", "2026-09-20", "blocked", ["d"])
+                  + item("d", "open"))
+        self.assertEqual(run(s)["w"]["verdict"], "BLOCKED")
+
+    def test_a_dependency_removed_in_the_newest_observation_no_longer_blocks(self):
+        s = Store([("w", "a", "WorkItem")]
+                  + self.obs("w", "o1", "2026-09-20", "blocked", ["d"])  # older: blocked on d
+                  + self.obs("w", "o2", "2026-09-23", "open", [])         # newest: dependency gone
+                  + item("d", "open"))
+        self.assertNotIn("w", run(s), "an item with no current blocker is not reported")
+
+    def test_status_falls_back_to_the_observation_snapshot(self):
+        s = Store(item("w", "open") + [("d", "a", "WorkItem"), ("d", "observes", "od"),
+                  ("od", "observedAt", "2026-09-22"), ("od", "observedValue", '{"status": "closed"}'),
+                  ("w", "blockedOn", "d")])
+        self.assertEqual(run(s)["w"]["verdict"], "UNBLOCKED")
 
 
 class ConditionTargets(unittest.TestCase):

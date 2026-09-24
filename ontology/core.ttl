@@ -245,6 +245,11 @@ aegis:observedStatus a rdf:Property ;
     rdfs:domain aegis:Observation ;
     rdfs:range xsd:string .
 
+aegis:observedBlockedOn a rdf:Property ;
+    rdfs:label "observed blocked on" ;
+    rdfs:comment "A tracker `blocks` dependency, as of this Observation. Only the work item's LATEST Observation counts, so a dependency removed in the tracker stops blocking without any retraction." ;
+    rdfs:domain aegis:Observation .
+
 aegis:observedClosedAt a rdf:Property ;
     rdfs:label "observed closed at" ;
     rdfs:comment "When the tracker recorded the work item closed, as of this Observation. Absent means not closed as of this Observation." ;

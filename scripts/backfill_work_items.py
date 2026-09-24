@@ -103,7 +103,10 @@ def covered(post) -> set[str]:
 def run(records, done: set[str], post, *, actor, source, rate, stop_after,
         limit=None, dry_run=False, clock=time.monotonic, sleep=time.sleep,
         max_slow=2, backoff=60.0) -> dict:
-    missing = [r for r in records if r.get("id") not in done]
+    # A covered bead with dependencies is re-projected too: its Observation must
+    # carry observedBlockedOn (aegis-3b3nrb). episode_for is deterministic, so a
+    # bead already projected with the same dependencies re-posts as a no-op.
+    missing = [r for r in records if r.get("id") not in done or r.get("blocked_on")]
     missing.sort(key=lambda r: r.get("created_at", ""), reverse=True)  # newest first
     if limit is not None:
         missing = missing[:limit]
@@ -183,6 +186,10 @@ def main(argv=None) -> int:
             return 0
         post = lambda endpoint, body: planes._post(endpoint, body, client=CLIENT)  # noqa: E731
         records = all_beads(args.db)
+        from ingest_work_items import blocked_on_of
+        for record in records:
+            if record.get("dependency_count"):
+                record["blocked_on"] = blocked_on_of(record["id"], args.db)
         done = covered(post)
         report = run(records, done, post, actor=args.actor, source=args.source, rate=args.rate,
                      stop_after=args.stop_after, limit=args.max, dry_run=args.dry_run)

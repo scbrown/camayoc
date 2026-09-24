@@ -206,6 +206,11 @@ aegis:CamayocTrackerObservationStatusShape a sh:NodeShape ;
         sh:path aegis:observedClosedAt ;
         sh:maxCount 1 ;
         sh:message "camayoc: an Observation records at most one observedClosedAt" ;
+    ] ;
+    sh:property [
+        sh:path aegis:observedBlockedOn ;
+        sh:nodeKind sh:IRI ;
+        sh:message "camayoc: observedBlockedOn points at a work item IRI (it may be projected before its target is)" ;
     ] .
 
 aegis:CamayocNonFunctionalRequirementShape a sh:NodeShape ;

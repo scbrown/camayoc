@@ -78,12 +78,29 @@ def current_status(post, item: str) -> str | None:
     also when the WorkItem carries aegis:closedAt; None when nothing says."""
     if select(post, f"SELECT ?c WHERE {{ <{A}{item}> <{A}closedAt> ?c }}"):
         return "closed"
-    rows = select(post, f"SELECT ?obs ?at ?st WHERE {{ <{A}{item}> <{A}observes> ?obs . "
-                        f"?obs <{A}observedAt> ?at ; <{A}observedStatus> ?st }}")
+    obs = latest_observation(post, item)
+    if obs is None:
+        return None
+    rows = select(post, f"SELECT ?st WHERE {{ <{A}{obs}> <{A}observedStatus> ?st }}")
+    if rows:
+        return str(rows[0]["st"]).strip('"')
+    # Older Observations carry status only inside their JSON snapshot.
+    rows = select(post, f"SELECT ?v WHERE {{ <{A}{obs}> <{A}observedValue> ?v }}")
+    try:
+        raw = str(rows[0]["v"])
+        raw = raw[1:-1].encode().decode("unicode_escape") if raw.startswith('"') else raw
+        return json.loads(raw).get("status")
+    except (IndexError, ValueError, AttributeError):
+        return None
+
+
+def latest_observation(post, item: str) -> str | None:
+    """The WorkItem's Observation with the latest observedAt, or None."""
+    rows = select(post, f"SELECT ?obs ?at WHERE {{ <{A}{item}> <{A}observes> ?obs . "
+                        f"?obs <{A}observedAt> ?at }}")
     if not rows:
         return None
-    latest = max(rows, key=lambda r: str(r.get("at", "")))
-    return str(latest["st"]).strip('"')
+    return _local(max(rows, key=lambda r: str(r.get("at", "")))["obs"])
 
 
 def blocker_state(post, target: str, today: dt.date) -> tuple[str, str]:
@@ -128,11 +145,22 @@ def verdict(states: list[str]) -> str:
 def evaluate(post, *, item: str | None = None, today: dt.date | None = None) -> list[dict]:
     today = today or dt.date.today()
     scope = f"<{A}{item}>" if item else "?w"
+    # Declared by an agent on the WorkItem ...
     edges = select(post, f"SELECT {'?w ' if not item else ''}?t WHERE {{ {scope} <{A}blockedOn> ?t }}")
     by_item: dict[str, list[str]] = {}
     for row in edges:
         w = item or _local(row["w"])
         by_item.setdefault(w, []).append(_local(row["t"]))
+    # ... and projected from the tracker onto the LATEST Observation only, so a
+    # removed dependency (absent from the newest Observation) no longer blocks.
+    projected = select(post, f"SELECT ?w ?obs ?t WHERE {{ ?w <{A}observes> ?obs . "
+                             f"?obs <{A}observedBlockedOn> ?t }}")
+    for row in projected:
+        w = _local(row["w"])
+        if item and w != item:
+            continue
+        if latest_observation(post, w) == _local(row["obs"]):
+            by_item.setdefault(w, []).append(_local(row["t"]))
     out = []
     for w, targets in sorted(by_item.items()):
         if current_status(post, w) == "closed":
