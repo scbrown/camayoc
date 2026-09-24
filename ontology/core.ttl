@@ -233,6 +233,30 @@ aegis:resolvesOn a rdf:Property ;
     rdfs:domain aegis:Blocker ;
     rdfs:range xsd:date .
 
+# Typed probe PARAMETERS (aegis-c0awwp). The graph holds only the parameters;
+# the code that checks them is fixed in camayoc, never a command read from the
+# graph, which would be command injection through the knowledge store.
+
+aegis:prRef a rdf:Property ;
+    rdfs:label "pull request reference" ;
+    rdfs:comment "For a pr-merged Blocker: owner/repo#number. Resolved when that pull request is merged." ;
+    rdfs:domain aegis:Blocker ; rdfs:range xsd:string .
+
+aegis:tool a rdf:Property ;
+    rdfs:label "tool" ;
+    rdfs:comment "For a release-installed Blocker: the executable whose installed version is checked on the evaluating host." ;
+    rdfs:domain aegis:Blocker ; rdfs:range xsd:string .
+
+aegis:minVersion a rdf:Property ;
+    rdfs:label "minimum version" ;
+    rdfs:comment "For a release-installed Blocker: resolved when the installed tool reports a version at or above this." ;
+    rdfs:domain aegis:Blocker ; rdfs:range xsd:string .
+
+aegis:repoRef a rdf:Property ;
+    rdfs:label "repository reference" ;
+    rdfs:comment "For a ci-green Blocker: owner/repo@branch. Resolved when the branch's latest completed CI run succeeded." ;
+    rdfs:domain aegis:Blocker ; rdfs:range xsd:string .
+
 # ---- Tracker status, on the versioned Observation ----------------------
 # NOT on the WorkItem: the tracker projection keeps the WorkItem node
 # byte-identical (a changed body for one node appends duplicate comments), so

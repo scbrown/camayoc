@@ -184,15 +184,31 @@ aegis:CamayocBlockerShape a sh:NodeShape ;
         sh:datatype xsd:date ;
         sh:message "camayoc: resolvesOn is one xsd:date" ;
     ] ;
-    # A KINDED blocker (a condition work waits on) must be checkable: exactly
-    # one resolution. An unkinded one is a stated reason, as before (aegis-c0awwp).
+    # A KINDED blocker (a condition work waits on) must be checkable: the
+    # parameters its kind's probe needs. An unkinded one is a stated reason, as
+    # before (aegis-c0awwp). The probe CODE lives in camayoc, never in the graph.
     sh:or (
         [ sh:path aegis:blockerKind ; sh:maxCount 0 ]
-        [ sh:xone (
-            [ sh:path aegis:resolutionQuery ; sh:minCount 1 ]
+        [ sh:and (
+            [ sh:path aegis:blockerKind ; sh:hasValue "pr-merged" ]
+            [ sh:path aegis:prRef ; sh:minCount 1 ; sh:maxCount 1 ;
+              sh:pattern "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$" ] ) ]
+        [ sh:and (
+            [ sh:path aegis:blockerKind ; sh:hasValue "release-installed" ]
+            [ sh:path aegis:tool ; sh:minCount 1 ; sh:maxCount 1 ; sh:pattern "^[A-Za-z0-9_.-]+$" ]
+            [ sh:path aegis:minVersion ; sh:minCount 1 ; sh:maxCount 1 ; sh:pattern "^[0-9]+(\\.[0-9]+)*$" ] ) ]
+        [ sh:and (
+            [ sh:path aegis:blockerKind ; sh:hasValue "ci-green" ]
+            [ sh:path aegis:repoRef ; sh:minCount 1 ; sh:maxCount 1 ;
+              sh:pattern "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@[A-Za-z0-9_./-]+$" ] ) ]
+        [ sh:and (
+            [ sh:path aegis:blockerKind ; sh:hasValue "human-action" ]
+            [ sh:path aegis:resolutionQuery ; sh:minCount 1 ] ) ]
+        [ sh:and (
+            [ sh:path aegis:blockerKind ; sh:hasValue "date" ]
             [ sh:path aegis:resolvesOn ; sh:minCount 1 ] ) ]
     ) ;
-    sh:message "camayoc: a Blocker with a blockerKind must carry exactly one resolution: resolutionQuery or resolvesOn — a condition nobody can check is a prose claim" .
+    sh:message "camayoc: a kinded Blocker must carry its kind's probe parameters (pr-merged: prRef owner/repo#N; release-installed: tool + minVersion; ci-green: repoRef owner/repo@branch; human-action: resolutionQuery; date: resolvesOn)" .
 
 aegis:CamayocTrackerObservationStatusShape a sh:NodeShape ;
     sh:targetClass aegis:Observation ;

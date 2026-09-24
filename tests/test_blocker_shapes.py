@@ -39,7 +39,7 @@ class BlockerShapes(unittest.TestCase):
 
     def test_a_workitem_may_wait_on_a_checkable_condition(self):
         self.assertTrue(self.valid(f'{WORK} ; aegis:blockedOn aegis:b . aegis:b {BLOCKER} ; '
-                                   'aegis:blockerKind "pr-merged" ; aegis:resolutionQuery "ASK {{}}" .'))
+                                   'aegis:blockerKind "pr-merged" ; aegis:prRef "scbrown/quipu#274" .'))
 
     def test_an_unkinded_stated_blocker_is_still_valid(self):
         self.assertTrue(self.valid(f'aegis:b {BLOCKER} .'))
@@ -47,9 +47,16 @@ class BlockerShapes(unittest.TestCase):
     def test_a_kinded_blocker_with_no_resolution_is_refused(self):
         self.assertFalse(self.valid(f'aegis:b {BLOCKER} ; aegis:blockerKind "date" .'))
 
-    def test_a_kinded_blocker_with_two_resolutions_is_refused(self):
-        self.assertFalse(self.valid(f'aegis:b {BLOCKER} ; aegis:blockerKind "date" ; '
-                                    'aegis:resolvesOn "2026-10-01"^^xsd:date ; aegis:resolutionQuery "ASK {{}}" .'))
+    def test_each_kind_needs_its_own_probe_parameters(self):
+        self.assertTrue(self.valid(f'aegis:b {BLOCKER} ; aegis:blockerKind "pr-merged" ; aegis:prRef "scbrown/quipu#274" .'))
+        self.assertFalse(self.valid(f'aegis:b {BLOCKER} ; aegis:blockerKind "pr-merged" ; aegis:prRef "quipu 274" .'))
+        self.assertTrue(self.valid(f'aegis:b {BLOCKER} ; aegis:blockerKind "release-installed" ; '
+                                   'aegis:tool "yupana" ; aegis:minVersion "0.10.0" .'))
+        self.assertTrue(self.valid(f'aegis:b {BLOCKER} ; aegis:blockerKind "ci-green" ; aegis:repoRef "scbrown/quipu@main" .'))
+
+    def test_a_shell_command_in_a_probe_parameter_is_refused(self):
+        self.assertFalse(self.valid(f'aegis:b {BLOCKER} ; aegis:blockerKind "release-installed" ; '
+                                    'aegis:tool "yupana; rm -rf ~" ; aegis:minVersion "0.10.0" .'))
 
     def test_an_unknown_kind_is_refused(self):
         self.assertFalse(self.valid(f'aegis:b {BLOCKER} ; aegis:blockerKind "vibes" ; '
