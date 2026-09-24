@@ -1,15 +1,18 @@
 """The checkable-blocker shapes, against quipu's own SHACL engine (aegis-c0awwp).
 
-Skipped when no `quipu` binary is on PATH; every arm below was also run by hand
-against quipu 0.8.1 when the shapes landed.
+The quipu CLI is found by tests/quipu_bin_guard.py, the one rule all
+quipu-gated suites share: QUIPU_BIN is the integration job's promise, so there
+this suite RUNS (a skip there fails the job), and elsewhere it skips with the
+reason. Every arm was also run by hand against quipu 0.8.1.
 """
 from __future__ import annotations
 
-import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+
+from quipu_bin_guard import QUIPU, requires_quipu
 
 ROOT = Path(__file__).resolve().parents[1]
 SHAPES = ROOT / "shapes" / "core.shapes.ttl"
@@ -20,12 +23,12 @@ WORK = 'aegis:w1 a aegis:WorkItem ; rdfs:label "w1" ; aegis:sourceKind "observed
 BLOCKER = 'a aegis:Blocker ; rdfs:label "b" ; aegis:sourceKind "declared" ; aegis:blockerEvidence "stated"'
 
 
-@unittest.skipUnless(shutil.which("quipu"), "needs a quipu binary on PATH")
+@requires_quipu
 class BlockerShapes(unittest.TestCase):
     def valid(self, body: str) -> bool:
         with tempfile.NamedTemporaryFile("w", suffix=".ttl", delete=False) as fh:
             fh.write(PREFIX + body)
-        out = subprocess.run(["quipu", "validate", "--shapes", str(SHAPES), "--data", fh.name],
+        out = subprocess.run([str(QUIPU), "validate", "--shapes", str(SHAPES), "--data", fh.name],
                              capture_output=True, text=True)
         Path(fh.name).unlink()
         return out.stdout.lstrip().startswith("valid")
