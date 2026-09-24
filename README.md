@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg" alt="License: Apache-2.0"/></a>
   <a href="https://github.com/scbrown/quipu"><img src="https://img.shields.io/badge/stack-quipu-8B5E3C.svg" alt="Part of the quipu stack"/></a>
 </p>
 
@@ -371,3 +371,7 @@ measured ledger, re-run per row rather than carried forward on trust. The
 competency suite spans six slices; 40 stored queries answer it where the
 vocabulary exists, and `just query-coverage` reports the remaining gaps as
 gaps. The quipu substrate this builds on is itself still in flight.
+
+## License
+
+Licensed under the Apache License, Version 2.0 (see [LICENSE](LICENSE)). Releases before 2026-09-24 were MIT-licensed.

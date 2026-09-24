@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Vendored from scbrown/quipu scripts/ingest-repos.py (MIT, same author).
+# Vendored from scbrown/quipu scripts/ingest-repos.py (Apache-2.0, same author).
 # Emits Turtle against the code-entities vocabulary, rdfs:label included,
 # so a store with the code-entities shapes loaded SHACL-validates the seed.
 # Sync with upstream when the vocabulary moves.
