@@ -51,6 +51,19 @@ def _record(payload: object) -> dict:
     return payload
 
 
+def blocked_on_of(item_id: str, db, run=None) -> list[str]:
+    """The ids this tracker record is BLOCKED on: live `blocks` dependencies
+    from `br dep list`. parent-child, related and the rest do not block."""
+    import subprocess
+
+    run = run or subprocess.run
+    out = run(["br", "--db", str(db), "dep", "list", item_id, "--json"],
+              check=True, capture_output=True, text=True, timeout=15)
+    rows = json.loads(out.stdout or "[]")
+    return sorted({r["depends_on_id"] for r in rows
+                   if r.get("type") == "blocks" and r.get("issue_id") == item_id})
+
+
 def episode_for(payload: object, *, actor: str, source: str, about: list[str] | None = None) -> dict:
     """Return the governed episode for one tracker record.
 
@@ -84,6 +97,14 @@ def episode_for(payload: object, *, actor: str, source: str, about: list[str] | 
         "updated_at": updated,
         "closed_at": record.get("closed_at"),
     }
+    # The tracker's `blocks` dependencies, when the caller fetched them
+    # (aegis-3b3nrb). Added to the snapshot ONLY when non-empty, so a bead with
+    # no dependencies keeps the version digest it always had and nothing is
+    # re-minted. A removed dependency mints a new Observation without it, which
+    # is how removal reaches the graph: /episode never retracts.
+    blocked_on = sorted({str(x) for x in (record.get("blocked_on") or []) if str(x).strip()})
+    if blocked_on:
+        snapshot["blocked_on"] = blocked_on
     canonical = json.dumps(snapshot, sort_keys=True, separators=(",", ":"))
     version = hashlib.sha256(canonical.encode()).hexdigest()[:16]
     observation = f"tracker-observation-{item_id}-{version}"
@@ -91,6 +112,9 @@ def episode_for(payload: object, *, actor: str, source: str, about: list[str] | 
     edges = [{"source": item_id, "target": observation, "relation": "observes"}, *[
         {"source": item_id, "target": _entity_name(iri), "relation": "about"}
         for iri in sorted(set(about or []))
+    ], *[
+        {"source": observation, "target": dep, "relation": "observedBlockedOn"}
+        for dep in blocked_on
     ]]
     body = {
         "name": f"tracker-work-item:{item_id}:{version}",
@@ -111,6 +135,9 @@ def episode_for(payload: object, *, actor: str, source: str, about: list[str] | 
                 "sourceKind": SOURCE_KIND,
                 "observedAt": updated,
                 "observedValue": canonical,
+                # Structured status, so a reader need not parse observedValue.
+                **({"observedStatus": str(record["status"])} if record.get("status") else {}),
+                **({"observedClosedAt": str(record["closed_at"])} if record.get("closed_at") else {}),
             },
         }],
         "edges": edges,

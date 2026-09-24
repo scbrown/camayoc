@@ -53,7 +53,14 @@ def collect(db):
                              '--status', 'in_progress', '--status', 'blocked',
                              '--deferred', '--limit', '0', '--json'],
                             check=True, capture_output=True, text=True, timeout=15)
-    return records_from(json.loads(result.stdout))
+    records = records_from(json.loads(result.stdout))
+    # Same dependency set the backfill projects (aegis-3b3nrb), so both writers
+    # mint the SAME Observation version and never two competing "latest" ones.
+    from ingest_work_items import blocked_on_of
+    for record in records:
+        if record.get("dependency_count"):
+            record["blocked_on"] = blocked_on_of(record["id"], db)
+    return records
 
 
 def readback(body, post):
