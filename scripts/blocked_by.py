@@ -24,11 +24,18 @@ the default graph and the observed-records plane.
 
     python3 scripts/blocked_by.py            # JSON: one verdict per blocked item
     python3 scripts/blocked_by.py --item aegis-bgk9ho
+
+Each verdict is the adapter record an emitter consumes (aegis-2qo001): item,
+verdict (BLOCKED / UNBLOCKED / UNKNOWN), evidence (a stable digest of the
+blocker targets and their states), assignee, and the blockers. This script
+holds no memory between runs: transitions, baselines and delivery belong to
+the emitter, which must treat UNKNOWN as "keep the last known verdict".
 """
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -90,13 +97,34 @@ def current_status(post, item: str) -> str | None:
     if rows:
         return str(rows[0]["st"]).strip('"')
     # Older Observations carry status only inside their JSON snapshot.
+    return snapshot(post, obs).get("status")
+
+
+def snapshot(post, obs: str) -> dict:
+    """The tracker record an Observation captured (its observedValue JSON), or {}."""
     rows = select(post, f"SELECT ?v WHERE {{ <{A}{obs}> <{A}observedValue> ?v }}")
     try:
         raw = str(rows[0]["v"])
         raw = raw[1:-1].encode().decode("unicode_escape") if raw.startswith('"') else raw
-        return json.loads(raw).get("status")
+        value = json.loads(raw)
     except (IndexError, ValueError, AttributeError):
-        return None
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def current_assignee(post, item: str) -> str | None:
+    """Who the tracker says holds the item now (latest Observation), or None."""
+    obs = latest_observation(post, item)
+    return (snapshot(post, obs).get("assignee") or None) if obs else None
+
+
+def evidence_id(item: str, judged: list[tuple[str, str]]) -> str:
+    """A stable identity for the evidence behind one verdict: the item and each
+    blocker target with its state. The same facts give the same id on every
+    run, so a consumer can key an outbox on it; any blocker changing state
+    changes it."""
+    basis = json.dumps([item, sorted(judged)], separators=(",", ":"))
+    return "sha256:" + hashlib.sha256(basis.encode()).hexdigest()
 
 
 def latest_observation(post, item: str) -> str | None:
@@ -259,9 +287,13 @@ def evaluate(post, *, item: str | None = None, today: dt.date | None = None,
     for w, targets in sorted(by_item.items()):
         if current_status(post, w) == "closed":
             continue
-        judged = [blocker_state(post, t, today, probes) for t in sorted(set(targets))]
+        names = sorted(set(targets))
+        judged = [blocker_state(post, t, today, probes) for t in names]
         out.append({"item": w, "verdict": verdict([s for s, _ in judged]),
-                    "blockers": [{"state": s, "why": why} for s, why in judged]})
+                    "evidence": evidence_id(w, [(t, s) for t, (s, _) in zip(names, judged)]),
+                    "assignee": current_assignee(post, w),
+                    "blockers": [{"target": t, "state": s, "why": why}
+                                 for t, (s, why) in zip(names, judged)]})
     return out
 
 

@@ -239,5 +239,30 @@ class ConditionTargets(unittest.TestCase):
         self.assertEqual(list(run(s, item="w")), ["w"])
 
 
+class AdapterRecord(unittest.TestCase):
+    """aegis-2qo001: what the emitter keys transitions and delivery on."""
+
+    def base(self, dep_status="open"):
+        return (item("w", "blocked") + item("d", dep_status) + [("w", "blockedOn", "d"),
+                ("obs-w-2026-09-20T00:00:00Z", "observedValue", '{"status": "blocked", "assignee": "grant"}')])
+
+    def test_the_record_names_item_verdict_evidence_assignee_and_targets(self):
+        r = run(Store(self.base()))["w"]
+        self.assertEqual((r["verdict"], r["assignee"]), ("BLOCKED", "grant"))
+        self.assertEqual([b["target"] for b in r["blockers"]], ["d"])
+        self.assertTrue(r["evidence"].startswith("sha256:"))
+
+    def test_the_same_facts_give_the_same_evidence_on_every_run(self):
+        self.assertEqual(run(Store(self.base()))["w"]["evidence"], run(Store(self.base()))["w"]["evidence"])
+
+    def test_a_blocker_changing_state_changes_the_evidence(self):
+        self.assertNotEqual(run(Store(self.base("open")))["w"]["evidence"],
+                            run(Store(self.base("closed")))["w"]["evidence"])
+
+    def test_no_snapshot_means_no_assignee_not_a_guess(self):
+        s = Store(item("w", "blocked") + item("d", "open") + [("w", "blockedOn", "d")])
+        self.assertIsNone(run(s)["w"]["assignee"])
+
+
 if __name__ == "__main__":
     unittest.main()
