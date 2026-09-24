@@ -121,8 +121,10 @@ def current_assignee(post, item: str) -> str | None:
 def evidence_id(item: str, judged: list[tuple[str, str]]) -> str:
     """A stable identity for the evidence behind one verdict: the item and each
     blocker target with its state. The same facts give the same id on every
-    run, so a consumer can key an outbox on it; any blocker changing state
-    changes it."""
+    run; any blocker changing state changes it. It is AUDIT identity (which
+    facts produced this verdict), not a dedupe key: the emitter keys its
+    outbox on (item, generation), because UNKNOWN between two identical
+    states must not mint a second event."""
     basis = json.dumps([item, sorted(judged)], separators=(",", ":"))
     return "sha256:" + hashlib.sha256(basis.encode()).hexdigest()
 
