@@ -1,0 +1,141 @@
+"""blocked_by: whether a blocker still holds is evaluated at read time (aegis-c0awwp).
+
+A small in-memory store answers the evaluator's single-pattern queries. The
+arm that matters most: "could not tell" never rounds to UNBLOCKED, because
+that is the direction an event consumer acts on.
+"""
+from __future__ import annotations
+
+import datetime as dt
+import re
+import sys
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+
+import blocked_by as bb  # noqa: E402
+
+A = bb.A
+TODAY = dt.date(2026, 9, 24)
+
+
+class Store:
+    """Triples as (s, p, o) with local names for aegis terms."""
+
+    def __init__(self, triples, asks=None):
+        self.t = set(triples)
+        self.asks = asks or {}
+
+    def post(self, endpoint, body):
+        q = body["query"]
+        if body.get("graph"):
+            return {"rows": [], "truncated": False}  # everything lives in default here
+        if q.startswith("ASK"):
+            if q in self.asks and isinstance(self.asks[q], Exception):
+                raise self.asks[q]
+            return {"result": self.asks.get(q, False)}
+        return {"rows": self._select(q), "truncated": False}
+
+    def _select(self, q):
+        subj = re.search(r"\{ <" + re.escape(A) + r"([^>]+)>", q)
+        s = subj.group(1) if subj else None
+        if "> <%sblockedOn> ?t" % A in q or "?w <%sblockedOn> ?t" % A in q:
+            return [{"w": f"aegis:{a}", "t": f"aegis:{c}"} for a, b, c in self.t
+                    if b == "blockedOn" and (s is None or a == s)]
+        if "> a ?t" in q:
+            return [{"t": f"aegis:{c}"} for a, b, c in self.t if a == s and b == "a"]
+        for pred, var in (("closedAt", "c"), ("resolvesOn", "d"), ("resolutionQuery", "q")):
+            if f"<{A}{pred}> ?{var}" in q:
+                return [{var: c} for a, b, c in self.t if a == s and b == pred]
+        if f"<{A}observes> ?obs" in q:
+            rows = []
+            for a, b, obs in self.t:
+                if a == s and b == "observes":
+                    at = next((c for x, y, c in self.t if x == obs and y == "observedAt"), None)
+                    st = next((c for x, y, c in self.t if x == obs and y == "observedStatus"), None)
+                    if at and st:
+                        rows.append({"obs": obs, "at": at, "st": st})
+            return rows
+        raise AssertionError(f"unexpected query {q}")
+
+
+def item(name, status=None, at="2026-09-20T00:00:00Z", obs=None):
+    out = [(name, "a", "WorkItem")]
+    if status:
+        o = obs or f"obs-{name}-{at}"
+        out += [(name, "observes", o), (o, "observedAt", at), (o, "observedStatus", status)]
+    return out
+
+
+def run(store, **kw):
+    return {r["item"]: r for r in bb.evaluate(store.post, today=TODAY, **kw)}
+
+
+class WorkItemTargets(unittest.TestCase):
+    def test_all_dependencies_closed_is_unblocked(self):
+        s = Store(item("w", "blocked") + item("d1", "closed") + [("w", "blockedOn", "d1")])
+        self.assertEqual(run(s)["w"]["verdict"], "UNBLOCKED")
+
+    def test_the_latest_observation_wins(self):
+        s = Store(item("w", "blocked") + item("d", "open", at="2026-09-01T00:00:00Z", obs="o1")
+                  + item("d", "closed", at="2026-09-23T00:00:00Z", obs="o2")
+                  + [("w", "blockedOn", "d")])
+        self.assertEqual(run(s)["w"]["verdict"], "UNBLOCKED")
+
+    def test_one_open_dependency_is_blocked(self):
+        s = Store(item("w", "blocked") + item("d1", "closed") + item("d2", "in_progress")
+                  + [("w", "blockedOn", "d1"), ("w", "blockedOn", "d2")])
+        self.assertEqual(run(s)["w"]["verdict"], "BLOCKED")
+
+    def test_closedAt_on_the_workitem_counts_as_closed(self):
+        s = Store(item("w", "open") + item("d") + [("d", "closedAt", "2026-09-22"), ("w", "blockedOn", "d")])
+        self.assertEqual(run(s)["w"]["verdict"], "UNBLOCKED")
+
+    def test_unknown_never_rounds_to_unblocked(self):
+        s = Store(item("w", "open") + item("d1", "closed") + item("d2")  # d2: no status at all
+                  + [("w", "blockedOn", "d1"), ("w", "blockedOn", "d2")])
+        self.assertEqual(run(s)["w"]["verdict"], "UNKNOWN")
+
+    def test_a_closed_item_is_left_out(self):
+        s = Store(item("w", "closed") + item("d1", "open") + [("w", "blockedOn", "d1")])
+        self.assertNotIn("w", run(s))
+
+
+class ConditionTargets(unittest.TestCase):
+    def blocker(self, name, **props):
+        return [(name, "a", "Blocker")] + [(name, k, v) for k, v in props.items()]
+
+    def test_a_date_blocker_resolves_on_its_date(self):
+        past = Store(item("w", "open") + self.blocker("b", resolvesOn='"2026-09-24"^^xsd:date')
+                     + [("w", "blockedOn", "b")])
+        future = Store(item("w", "open") + self.blocker("b", resolvesOn='"2026-09-25"^^xsd:date')
+                       + [("w", "blockedOn", "b")])
+        self.assertEqual(run(past)["w"]["verdict"], "UNBLOCKED")
+        self.assertEqual(run(future)["w"]["verdict"], "BLOCKED")
+
+    def test_an_ask_true_resolves_and_false_blocks(self):
+        ask = "ASK { ?r a <x> }"
+        for answer, want in ((True, "UNBLOCKED"), (False, "BLOCKED")):
+            s = Store(item("w", "open") + self.blocker("b", resolutionQuery=ask)
+                      + [("w", "blockedOn", "b")], asks={ask: answer})
+            self.assertEqual(run(s)["w"]["verdict"], want)
+
+    def test_an_ask_that_fails_is_unknown_not_resolved(self):
+        ask = "ASK { broken"
+        s = Store(item("w", "open") + self.blocker("b", resolutionQuery=ask)
+                  + [("w", "blockedOn", "b")], asks={ask: RuntimeError("HTTP 400")})
+        self.assertEqual(run(s)["w"]["verdict"], "UNKNOWN")
+
+    def test_a_blocker_with_no_resolution_is_unknown(self):
+        s = Store(item("w", "open") + self.blocker("b") + [("w", "blockedOn", "b")])
+        self.assertEqual(run(s)["w"]["verdict"], "UNKNOWN")
+
+    def test_one_item_by_id(self):
+        s = Store(item("w", "open") + item("d", "closed") + item("v", "open") + item("e", "open")
+                  + [("w", "blockedOn", "d"), ("v", "blockedOn", "e")])
+        self.assertEqual(list(run(s, item="w")), ["w"])
+
+
+if __name__ == "__main__":
+    unittest.main()
