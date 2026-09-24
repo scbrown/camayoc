@@ -18,7 +18,8 @@ unresolved, and UNKNOWN otherwise. "Could not tell" never rounds to
 "unblocked": that is the one direction an event consumer would act on.
 Items whose own current status is closed are left out.
 
-Reads only, with single-pattern queries (joins over the store time out), across
+Reads only, with SINGLE-PATTERN queries (any join, even a bound-subject one,
+exceeded quipu's 10 s budget live), across
 the default graph and the observed-records plane.
 
     python3 scripts/blocked_by.py            # JSON: one verdict per blocked item
@@ -96,11 +97,15 @@ def current_status(post, item: str) -> str | None:
 
 def latest_observation(post, item: str) -> str | None:
     """The WorkItem's Observation with the latest observedAt, or None."""
-    rows = select(post, f"SELECT ?obs ?at WHERE {{ <{A}{item}> <{A}observes> ?obs . "
-                        f"?obs <{A}observedAt> ?at }}")
-    if not rows:
-        return None
-    return _local(max(rows, key=lambda r: str(r.get("at", "")))["obs"])
+    # Two BOUND single-pattern queries, never a join: quipu plans even a
+    # bound-subject two-pattern query from its unbound side and 408s it live.
+    stamped = []
+    for row in select(post, f"SELECT ?obs WHERE {{ <{A}{item}> <{A}observes> ?obs }}"):
+        obs = _local(row["obs"])
+        at = select(post, f"SELECT ?at WHERE {{ <{A}{obs}> <{A}observedAt> ?at }}")
+        if at:
+            stamped.append((str(at[0]["at"]), obs))
+    return max(stamped)[1] if stamped else None
 
 
 def blocker_state(post, target: str, today: dt.date) -> tuple[str, str]:
@@ -153,14 +158,23 @@ def evaluate(post, *, item: str | None = None, today: dt.date | None = None) -> 
         by_item.setdefault(w, []).append(_local(row["t"]))
     # ... and projected from the tracker onto the LATEST Observation only, so a
     # removed dependency (absent from the newest Observation) no longer blocks.
-    projected = select(post, f"SELECT ?w ?obs ?t WHERE {{ ?w <{A}observes> ?obs . "
-                             f"?obs <{A}observedBlockedOn> ?t }}")
-    for row in projected:
-        w = _local(row["w"])
-        if item and w != item:
-            continue
-        if latest_observation(post, w) == _local(row["obs"]):
-            by_item.setdefault(w, []).append(_local(row["t"]))
+    # Single-pattern or bound-subject queries only: the two-pattern join over
+    # the whole store exceeded quipu's 10 s budget live (HTTP 408).
+    if item:
+        latest = latest_observation(post, item)
+        if latest:
+            for row in select(post, f"SELECT ?t WHERE {{ <{A}{latest}> <{A}observedBlockedOn> ?t }}"):
+                by_item.setdefault(item, []).append(_local(row["t"]))
+    else:
+        owner: dict[str, str | None] = {}
+        for row in select(post, f"SELECT ?obs ?t WHERE {{ ?obs <{A}observedBlockedOn> ?t }}"):
+            obs = _local(row["obs"])
+            if obs not in owner:
+                found = select(post, f"SELECT ?w WHERE {{ ?w <{A}observes> <{A}{obs}> }}")
+                owner[obs] = _local(found[0]["w"]) if found else None
+            w = owner[obs]
+            if w and latest_observation(post, w) == obs:
+                by_item.setdefault(w, []).append(_local(row["t"]))
     out = []
     for w, targets in sorted(by_item.items()):
         if current_status(post, w) == "closed":
