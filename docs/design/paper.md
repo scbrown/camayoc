@@ -23,7 +23,7 @@
   [`incident-corpus.md`](incident-corpus.md) (the empirical core),
   [`ingress.md`](ingress.md) (the mechanism),
   [`../vision.md`](../vision.md) (the TrustGraph foil),
-  [`../patents/provisional-grounding-cluster.md`](../patents/provisional-grounding-cluster.md) (D — **claims more than is built**).
+  the provisional filing (kept privately) (D — **claims more than is built**).
 
 ## 1. Intent and thesis
 
