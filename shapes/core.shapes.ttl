@@ -39,8 +39,8 @@ aegis:CamayocWorkItemShape a sh:NodeShape ;
     ] ;
     sh:property [
         sh:path aegis:blockedOn ;
-        sh:class aegis:WorkItem ;
-        sh:message "camayoc: blockedOn must point at a WorkItem — Q7's already-closed join needs a dependency the graph actually holds" ;
+        sh:or ( [ sh:class aegis:WorkItem ] [ sh:class aegis:Blocker ] ) ;
+        sh:message "camayoc: blockedOn must point at a WorkItem or a Blocker the graph actually holds — an unresolvable target is a blocker nobody can clear" ;
     ] .
 
 aegis:CamayocDecisionShape a sh:NodeShape ;
@@ -165,6 +165,47 @@ aegis:CamayocBlockerShape a sh:NodeShape ;
         sh:path aegis:demonstratedBy ;
         sh:class aegis:Verification ;
         sh:message "camayoc: blocker demonstration must be a Verification" ;
+    ] ;
+    sh:property [
+        sh:path aegis:blockerKind ;
+        sh:maxCount 1 ;
+        sh:in ("release-installed" "pr-merged" "ci-green" "human-action" "date") ;
+        sh:message "camayoc: blockerKind is one of release-installed|pr-merged|ci-green|human-action|date" ;
+    ] ;
+    sh:property [
+        sh:path aegis:resolutionQuery ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: a Blocker carries at most one resolutionQuery (a SPARQL ASK)" ;
+    ] ;
+    sh:property [
+        sh:path aegis:resolvesOn ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:date ;
+        sh:message "camayoc: resolvesOn is one xsd:date" ;
+    ] ;
+    # A KINDED blocker (a condition work waits on) must be checkable: exactly
+    # one resolution. An unkinded one is a stated reason, as before (aegis-c0awwp).
+    sh:or (
+        [ sh:path aegis:blockerKind ; sh:maxCount 0 ]
+        [ sh:xone (
+            [ sh:path aegis:resolutionQuery ; sh:minCount 1 ]
+            [ sh:path aegis:resolvesOn ; sh:minCount 1 ] ) ]
+    ) ;
+    sh:message "camayoc: a Blocker with a blockerKind must carry exactly one resolution: resolutionQuery or resolvesOn — a condition nobody can check is a prose claim" .
+
+aegis:CamayocTrackerObservationStatusShape a sh:NodeShape ;
+    sh:targetClass aegis:Observation ;
+    sh:property [
+        sh:path aegis:observedStatus ;
+        sh:maxCount 1 ;
+        sh:datatype xsd:string ;
+        sh:message "camayoc: an Observation records at most one observedStatus" ;
+    ] ;
+    sh:property [
+        sh:path aegis:observedClosedAt ;
+        sh:maxCount 1 ;
+        sh:message "camayoc: an Observation records at most one observedClosedAt" ;
     ] .
 
 aegis:CamayocNonFunctionalRequirementShape a sh:NodeShape ;

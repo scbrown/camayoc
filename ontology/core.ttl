@@ -208,8 +208,48 @@ aegis:assignedTo a rdf:Property ;
 
 aegis:blockedOn a rdf:Property ;
     rdfs:label "blocked on" ;
-    rdfs:comment "The WorkItem this work item cannot proceed past. Owed to Q7: with aegis:closedAt already modelled, this one edge makes 'blocked on a dependency that already cleared' a read-time join — the measured 14-day-blocked-on-a-cleared-dependency failure. The edge is the stated dependency; whether it still holds is a query, never a stored judgment." ;
-    rdfs:range aegis:WorkItem .
+    rdfs:comment "What this work item cannot proceed past: another WorkItem (a tracker dependency), or a Blocker condition with a checkable resolution (aegis-c0awwp). Owed to Q7: with aegis:closedAt already modelled, this one edge makes 'blocked on a dependency that already cleared' a read-time join — the measured 14-day-blocked-on-a-cleared-dependency failure. The edge is the stated dependency; whether it still holds is a query, never a stored judgment." .
+
+# ---- Checkable blocker conditions (aegis-c0awwp) ----------------------
+# A Blocker that work waits on must be CHECKABLE: its kind, plus exactly one
+# resolution a machine can evaluate. Resolution is evaluated at read or tick
+# time as resolved | unresolved | unknown, and never stored as a verdict.
+
+aegis:blockerKind a rdf:Property ;
+    rdfs:label "blocker kind" ;
+    rdfs:comment "What a Blocker condition waits for: release-installed, pr-merged, ci-green, human-action (a Decision Desk card) or date." ;
+    rdfs:domain aegis:Blocker ;
+    rdfs:range xsd:string .
+
+aegis:resolutionQuery a rdf:Property ;
+    rdfs:label "resolution query" ;
+    rdfs:comment "A SPARQL ASK that is true exactly when the Blocker has resolved. An ASK that cannot be answered makes the Blocker's state unknown, never resolved." ;
+    rdfs:domain aegis:Blocker ;
+    rdfs:range xsd:string .
+
+aegis:resolvesOn a rdf:Property ;
+    rdfs:label "resolves on" ;
+    rdfs:comment "For a date Blocker: the date from which it is resolved." ;
+    rdfs:domain aegis:Blocker ;
+    rdfs:range xsd:date .
+
+# ---- Tracker status, on the versioned Observation ----------------------
+# NOT on the WorkItem: the tracker projection keeps the WorkItem node
+# byte-identical (a changed body for one node appends duplicate comments), so
+# mutable tracker state lives on the versioned Observation. A WorkItem's
+# current status is its Observation with the latest observedAt.
+
+aegis:observedStatus a rdf:Property ;
+    rdfs:label "observed status" ;
+    rdfs:comment "The tracker's status token for a work item (open, in_progress, blocked, deferred, closed, ...) as of this Observation." ;
+    rdfs:domain aegis:Observation ;
+    rdfs:range xsd:string .
+
+aegis:observedClosedAt a rdf:Property ;
+    rdfs:label "observed closed at" ;
+    rdfs:comment "When the tracker recorded the work item closed, as of this Observation. Absent means not closed as of this Observation." ;
+    rdfs:domain aegis:Observation ;
+    rdfs:range xsd:string .
 
 # ---- Decision properties ----------------------------------------------
 
