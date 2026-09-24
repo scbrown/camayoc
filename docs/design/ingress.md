@@ -205,6 +205,14 @@ the WorkItem projection is byte-identical on every run. A failed record is
 printed as `outcome=parked` with exit 2 so batch callers can continue instead
 of head-of-line blocking the lane.
 
+Each tracker Observation also points `about` its WorkItem. The incoming
+`WorkItem observes Observation` edge does not satisfy the Observation shape's
+required outgoing `about` property. Fresh-bootstrap integration tests exercise
+the complete installer, accept a real tracker episode, read the edge back from
+its named graph, and reject an otherwise identical unanchored Observation.
+Testing only the serializer or a store without write-time validation misses
+this contract.
+
 - **Beads (`br`)** is the cleanest such source: agent-first, JSON out, and a
   bead *is* a `WorkItem` record — id, status, dependencies, lifecycle — so
   the parse is nearly a projection. Where beads is st's tracker backend, one

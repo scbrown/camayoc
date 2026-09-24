@@ -109,7 +109,11 @@ def episode_for(payload: object, *, actor: str, source: str, about: list[str] | 
     version = hashlib.sha256(canonical.encode()).hexdigest()[:16]
     observation = f"tracker-observation-{item_id}-{version}"
 
-    edges = [{"source": item_id, "target": observation, "relation": "observes"}, *[
+    edges = [
+        {"source": item_id, "target": observation, "relation": "observes"},
+        # CamayocObservationShape requires the subject this snapshot is about.
+        # The incoming observes edge is not an outgoing about property.
+        {"source": observation, "target": item_id, "relation": "about"}, *[
         {"source": item_id, "target": _entity_name(iri), "relation": "about"}
         for iri in sorted(set(about or []))
     ], *[

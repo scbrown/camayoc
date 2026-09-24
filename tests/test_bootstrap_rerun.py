@@ -10,6 +10,7 @@ resumed install, printing an empty "ontology load FAILED:".
 The second arm is what stops the first from passing vacuously: against a store
 that does NOT hold the ontology, the presence check must say so.
 """
+import json
 import os
 import socket
 import subprocess
@@ -17,6 +18,7 @@ import sys
 import tempfile
 import time
 import unittest
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -48,6 +50,7 @@ class BootstrapRerunTest(unittest.TestCase):
             QUIPU_SERVER=self.server,
             CLAUDE_PROJECT_DIR=str(self.project),
             CLAUDE_PLUGIN_ROOT=str(ROOT),
+            HOME=str(self.project),
         )
         self.env.pop("QUIPU_AUTH_TOKEN", None)
 
@@ -76,6 +79,49 @@ class BootstrapRerunTest(unittest.TestCase):
         self.assertIn("server: already running", second.stdout)
         self.assertIn("ontology: already present", second.stdout)
         self.assertNotIn("FAILED", second.stdout)
+
+    def test_bootstrapped_store_accepts_tracker_and_rejects_unanchored_observation(self):
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from ingest_work_items import BASE_NS, episode_for
+
+        boot = self.bootstrap()
+        self.assertEqual(boot.returncode, 0, boot.stdout + boot.stderr)
+
+        def post(body, endpoint="/episode"):
+            request = urllib.request.Request(
+                self.server + endpoint, data=json.dumps(body).encode(),
+                headers={"Content-Type": "application/json"},
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    return response.status, json.load(response)
+            except urllib.error.HTTPError as error:
+                with error:
+                    return error.code, error.read().decode()
+
+        record = {"id": "tracker-acceptance", "title": "Tracker acceptance",
+                  "created_at": "2026-09-23T00:00:00Z", "status": "open"}
+        body = episode_for(record, actor="test", source="test:tracker")
+        status, result = post(body)
+        self.assertEqual(status, 200, result)
+        self.assertIn(result["outcome"], ("created", "updated"))
+        observation = body["nodes"][1]["name"]
+        status, result = post({"query":
+            f"SELECT ?target WHERE {{ GRAPH <{body['graph']}> {{ "
+            f"<{BASE_NS}{observation}> <{BASE_NS}about> ?target }} }}"}, "/query")
+        self.assertEqual(status, 200, result)
+        self.assertEqual(result["count"], 1, result)
+
+        # A new episode/name avoids idempotence masking this negative control.
+        invalid = episode_for({**record, "id": "tracker-unanchored"},
+                              actor="test", source="test:tracker")
+        observation = invalid["nodes"][1]["name"]
+        invalid["edges"] = [edge for edge in invalid["edges"]
+                            if not (edge["source"] == observation
+                                    and edge["relation"] == "about")]
+        status, result = post(invalid)
+        self.assertEqual(status, 400, result)
+        self.assertIn("SHACL", result)
 
 
 @requires_quipu_server
