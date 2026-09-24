@@ -20,3 +20,4 @@ __pycache__/
 .beads/dolt*
 .beads/.br_recovery/
 .beads/*.bak
+book-out/
