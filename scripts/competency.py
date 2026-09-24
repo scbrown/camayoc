@@ -590,7 +590,10 @@ def gap_bead(verdict: dict) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("question", nargs="?", help="the incoming question to assess")
-    ap.add_argument("--suite", default="competency", help="directory of competency md files")
+    # Default to THIS repository's suite, not ./competency: run from anywhere
+    # else (as the README shows) the relative default found nothing.
+    ap.add_argument("--suite", default=str(Path(__file__).resolve().parents[1] / "competency"),
+                    help="directory of competency md files (default: the suite this checkout ships)")
     ap.add_argument("--list", action="store_true", help="print the parsed suite and exit")
     ap.add_argument("--json", action="store_true", help="machine-readable verdict")
     ap.add_argument("--map", action="store_true",

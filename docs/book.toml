@@ -1,0 +1,15 @@
+[book]
+title = "camayoc"
+description = "Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph"
+authors = ["Steve Brown"]
+language = "en"
+src = "."
+
+[build]
+build-dir = "../book-out"
+
+[output.html]
+default-theme = "coal"
+preferred-dark-theme = "coal"
+additional-css = ["custom/css/custom.css"]
+git-repository-url = "https://github.com/scbrown/camayoc"
