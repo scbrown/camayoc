@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: private-signing-material
+        name: Reject private signing material in the index
+        entry: python scripts/check_private_keys.py
+        language: python
+        additional_dependencies: [cryptography]
+        pass_filenames: false
+        always_run: true

@@ -36,6 +36,10 @@ jobs:
       # turns that skip into a failure whenever CI is set, so this cannot
       # regress silently; installing it here is what keeps the arm green.
       - run: pip install boto3 cryptography rdflib pyyaml
+      - name: Prove private-key refusal boundaries
+        run: python3 -m unittest discover -s tests -p test_private_keys.py -v
+      - name: Reject tracked private signing material
+        run: python3 scripts/check_private_keys.py
       - name: Install just
         run: |
           sudo apt-get update -qq
