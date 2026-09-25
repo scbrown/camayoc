@@ -191,13 +191,15 @@ class OrdinalTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ordinal.validate(items)
 
-    def test_both_pilot_datasets_are_valid_and_unlabelled(self):
+    def test_both_pilot_datasets_have_independent_reference_labels(self):
         root = Path(__file__).resolve().parents[1] / "bench" / "ordinal"
         for filename, count in (("na-htm.jsonl", 28), ("quipu-evidence.jsonl", 8)):
             items = [json.loads(line) for line in (root / filename).read_text().splitlines()]
             ordinal.validate(items)
             self.assertEqual(len(items), count)
-            self.assertTrue(all(not row["labels"] for row in items))
+            self.assertTrue(all(set(row["labels"]) == {"reference"} for row in items))
+            self.assertTrue(all(row["labels"]["reference"]["judge"] == "ian / GPT-6 Codex"
+                                for row in items))
             report = ordinal.report(items, [])
             self.assertEqual(report["observed"], 0)
             self.assertFalse(report["trusted"])

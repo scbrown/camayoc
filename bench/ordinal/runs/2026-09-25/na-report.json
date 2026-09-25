@@ -1,0 +1,371 @@
+{
+  "slot": "ordinal",
+  "status": "advisory",
+  "sourceKind": "inferred",
+  "plane": "quarantine",
+  "trusted": false,
+  "n": 28,
+  "observed": 28,
+  "unavailable": 0,
+  "dataset_sha256": "dca9da11f47605f9c9f1ce02d9c11471f46e1810766cddbf300eb661b9313b4c",
+  "rounding": "nearest level, ties upward",
+  "input_tokens": 55536,
+  "usage_scope": "observed responses only; failed calls may still be billed",
+  "abstain_rate": null,
+  "abstention": "score has no abstain option",
+  "groups": [
+    {
+      "rubric_sha256": "86e49c845f054f688f3c8cfc18778a67ad6da2dee3e9513be9370ef81515c6fc",
+      "rubric": {
+        "instructions": "How decision-relevant is this fact to this action space?",
+        "levels": [
+          "No bearing on any offered action",
+          "Background about the subject without differentiating the offered actions",
+          "Explains a consequence of an offered action",
+          "Distinguishes an important tradeoff between offered actions",
+          "Establishes a decisive constraint on choosing among the offered actions"
+        ]
+      },
+      "n": 28,
+      "comparisons": {
+        "reference": {
+          "n": 28,
+          "exact": 0.17857142857142858,
+          "within_one": 1.0,
+          "mae": 0.7267857142857144,
+          "quadratic_weighted_kappa": -0.018987341772151778,
+          "conf_agree": 0.7100000000000001,
+          "conf_agree_n": 5,
+          "conf_miss": 0.4973913043478261,
+          "conf_miss_n": 23,
+          "labelled": 28,
+          "missing_labels": 0,
+          "rows": [
+            {
+              "id": "na-htm/base_production_turn135/0",
+              "score": 2.2,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 3,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn135/0"
+              },
+              "confidence": 0.74,
+              "exact": false
+            },
+            {
+              "id": "na-htm/base_production_turn135/1",
+              "score": 1.37,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn135/1"
+              },
+              "confidence": 0.62,
+              "exact": false
+            },
+            {
+              "id": "na-htm/base_production_turn135/2",
+              "score": 1.41,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn135/2"
+              },
+              "confidence": 0.56,
+              "exact": false
+            },
+            {
+              "id": "na-htm/base_production_turn135/3",
+              "score": 1.2,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn135/3"
+              },
+              "confidence": 0.78,
+              "exact": false
+            },
+            {
+              "id": "na-htm/base_production_turn135/4",
+              "score": 1.6,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn135/4"
+              },
+              "confidence": 0.44,
+              "exact": true
+            },
+            {
+              "id": "na-htm/base_production_turn135/5",
+              "score": 1.41,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn135/5"
+              },
+              "confidence": 0.6,
+              "exact": false
+            },
+            {
+              "id": "na-htm/base_production_turn135/6",
+              "score": 1.35,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn135/6"
+              },
+              "confidence": 0.58,
+              "exact": false
+            },
+            {
+              "id": "na-htm/base_production_turn135/7",
+              "score": 1.87,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 3,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn135/7"
+              },
+              "confidence": 0.68,
+              "exact": false
+            },
+            {
+              "id": "na-htm/base_production_turn42/0",
+              "score": 2.18,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn42/0"
+              },
+              "confidence": 0.79,
+              "exact": true
+            },
+            {
+              "id": "na-htm/base_production_turn42/1",
+              "score": 1.73,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn42/1"
+              },
+              "confidence": 0.73,
+              "exact": true
+            },
+            {
+              "id": "na-htm/base_production_turn42/2",
+              "score": 1.33,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn42/2"
+              },
+              "confidence": 0.55,
+              "exact": false
+            },
+            {
+              "id": "na-htm/base_production_turn42/3",
+              "score": 1.66,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 1,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn42/3"
+              },
+              "confidence": 0.43,
+              "exact": false
+            },
+            {
+              "id": "na-htm/base_production_turn42/4",
+              "score": 2.23,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 3,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn42/4"
+              },
+              "confidence": 0.68,
+              "exact": false
+            },
+            {
+              "id": "na-htm/base_production_turn42/5",
+              "score": 1.91,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn42/5"
+              },
+              "confidence": 0.8,
+              "exact": true
+            },
+            {
+              "id": "na-htm/base_production_turn42/6",
+              "score": 2.02,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/base_production_turn42/6"
+              },
+              "confidence": 0.79,
+              "exact": true
+            },
+            {
+              "id": "na-htm/faction_se_turn135/0",
+              "score": 1.62,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 1,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_se_turn135/0"
+              },
+              "confidence": 0.34,
+              "exact": false
+            },
+            {
+              "id": "na-htm/faction_se_turn135/1",
+              "score": 2.06,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 3,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_se_turn135/1"
+              },
+              "confidence": 0.82,
+              "exact": false
+            },
+            {
+              "id": "na-htm/faction_se_turn135/2",
+              "score": 1.69,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 1,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_se_turn135/2"
+              },
+              "confidence": 0.28,
+              "exact": false
+            },
+            {
+              "id": "na-htm/faction_se_turn135/3",
+              "score": 2.13,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 3,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_se_turn135/3"
+              },
+              "confidence": 0.75,
+              "exact": false
+            },
+            {
+              "id": "na-htm/faction_se_turn135/4",
+              "score": 2.05,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 3,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_se_turn135/4"
+              },
+              "confidence": 0.71,
+              "exact": false
+            },
+            {
+              "id": "na-htm/faction_se_turn135/5",
+              "score": 1.58,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 1,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_se_turn135/5"
+              },
+              "confidence": 0.35,
+              "exact": false
+            },
+            {
+              "id": "na-htm/faction_se_turn135/6",
+              "score": 2.01,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 3,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_se_turn135/6"
+              },
+              "confidence": 0.88,
+              "exact": false
+            },
+            {
+              "id": "na-htm/faction_se_turn135/7",
+              "score": 1.96,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 3,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_se_turn135/7"
+              },
+              "confidence": 0.83,
+              "exact": false
+            },
+            {
+              "id": "na-htm/faction_tech_turn135/0",
+              "score": 1.73,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 1,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_tech_turn135/0"
+              },
+              "confidence": 0.26,
+              "exact": false
+            },
+            {
+              "id": "na-htm/faction_tech_turn135/1",
+              "score": 2.23,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 1,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_tech_turn135/1"
+              },
+              "confidence": 0.0,
+              "exact": false
+            },
+            {
+              "id": "na-htm/faction_tech_turn135/2",
+              "score": 2.29,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 1,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_tech_turn135/2"
+              },
+              "confidence": 0.0,
+              "exact": false
+            },
+            {
+              "id": "na-htm/faction_tech_turn135/3",
+              "score": 2.1,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 1,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_tech_turn135/3"
+              },
+              "confidence": 0.0,
+              "exact": false
+            },
+            {
+              "id": "na-htm/faction_tech_turn135/4",
+              "score": 2.07,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 1,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#na-htm/faction_tech_turn135/4"
+              },
+              "confidence": 0.0,
+              "exact": false
+            }
+          ]
+        },
+        "human": {
+          "n": 0,
+          "exact": null,
+          "within_one": null,
+          "mae": null,
+          "quadratic_weighted_kappa": null,
+          "conf_agree": null,
+          "conf_agree_n": 0,
+          "conf_miss": null,
+          "conf_miss_n": 0,
+          "labelled": 0,
+          "missing_labels": 28,
+          "rows": []
+        }
+      }
+    }
+  ]
+}

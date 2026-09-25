@@ -1,0 +1,74 @@
+{
+  "slot": "ordinal",
+  "status": "advisory",
+  "sourceKind": "inferred",
+  "plane": "quarantine",
+  "trusted": false,
+  "n": 1,
+  "observed": 1,
+  "unavailable": 0,
+  "dataset_sha256": "4778f6b56eb4a864fdef031209e4787025784852cee15c856abe8a91c8ab91a6",
+  "rounding": "nearest level, ties upward",
+  "input_tokens": 758,
+  "usage_scope": "observed responses only; failed calls may still be billed",
+  "abstain_rate": null,
+  "abstention": "score has no abstain option",
+  "groups": [
+    {
+      "rubric_sha256": "9ca080a487bd68218111b85db980fac9ea3e4592d07ad6dea4391aa909f074e9",
+      "rubric": {
+        "instructions": "How sufficient is the supplied evidence for the stated, single-test claim? Judge only supplied evidence, do not infer missing provenance or claim broader conformance. This is advisory evidence quality, never a pass/fail verdict.",
+        "levels": [
+          "No supplied evidence supports the bounded claim, or the supplied evidence contradicts it.",
+          "Only an unsupported assertion or aggregate summary supports the bounded claim.",
+          "A matching test result row supports the bounded claim, but suite or implementation identity is missing.",
+          "A matching test result row and pinned suite and implementation identities support the bounded claim, but producer or reproduction evidence is incomplete.",
+          "A matching result row, pinned suite and implementation identities, named producer and reproduction procedure support the bounded claim. This does not independently verify execution."
+        ]
+      },
+      "n": 1,
+      "comparisons": {
+        "reference": {
+          "n": 1,
+          "exact": 1.0,
+          "within_one": 1.0,
+          "mae": 0.009999999999999787,
+          "quadratic_weighted_kappa": null,
+          "conf_agree": 0.99,
+          "conf_agree_n": 1,
+          "conf_miss": null,
+          "conf_miss_n": 0,
+          "labelled": 1,
+          "missing_labels": 0,
+          "rows": [
+            {
+              "id": "quipu-evidence/complete",
+              "score": 3.99,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 4,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#quipu-evidence/complete"
+              },
+              "confidence": 0.99,
+              "exact": true
+            }
+          ]
+        },
+        "human": {
+          "n": 0,
+          "exact": null,
+          "within_one": null,
+          "mae": null,
+          "quadratic_weighted_kappa": null,
+          "conf_agree": null,
+          "conf_agree_n": 0,
+          "conf_miss": null,
+          "conf_miss_n": 0,
+          "labelled": 0,
+          "missing_labels": 1,
+          "rows": []
+        }
+      }
+    }
+  ]
+}

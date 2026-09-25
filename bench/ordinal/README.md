@@ -1,7 +1,8 @@
 # Ordered rubric judge pilot
 
-Status: implemented offline, **uncalibrated and advisory**. No independent
-reference or human labels, or paid Jev observations, are included. The existing
+Status: implemented, **uncalibrated and advisory**. Independent agent reference
+labels are recorded in [reference-ian](reference-ian/README.md); there are no
+human labels. Paid observations require a separate recorded spend decision. The existing
 NA evaluator and deterministic Quipu conformance/provenance gates remain the
 authorities. These fixtures establish no agreement percentage or cost saving.
 

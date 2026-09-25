@@ -1,0 +1,16 @@
+{
+  "calls": 36,
+  "input_tokens": 60659,
+  "output_tokens": 612,
+  "models": [
+    "jev-1.13.0"
+  ],
+  "api_reported_charge": null,
+  "list_price_usd_per_million_input_tokens": "0.042",
+  "list_price_output_tokens": "free",
+  "calculated_list_price_usd": "0.002547678",
+  "pricing_source": "https://docs.typesafe.ai/models",
+  "pricing_observed_date": "2026-09-25",
+  "billing_limit": "API response carries tokens, not charge; actual invoice debit unverified",
+  "authorization": "aegis-4hhqoe.8 Sattler 2026-09-25 one run 28+8 calls no retries"
+}
