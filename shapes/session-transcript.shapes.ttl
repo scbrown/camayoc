@@ -14,4 +14,7 @@ a:SessionTranscriptShape a sh:NodeShape ; sh:targetSubjectsOf a:transcriptOf ;
 a:SessionLinkShape a sh:NodeShape ; sh:targetSubjectsOf a:transcript ;
     sh:property [ sh:path a:transcript ; sh:maxCount 1 ] ;
     sh:property [ sh:path a:sessionHarness ; sh:maxCount 1 ; sh:in ( "claude" "codex" ) ] ;
-    sh:property [ sh:path a:lastActivityAt ; sh:maxCount 1 ; sh:datatype xsd:dateTime ] .
+    sh:property [ sh:path a:lastActivityAt ; sh:maxCount 1 ; sh:datatype xsd:dateTime ] ;
+    # A st task boundary is a declaration, not proof of coverage; it only ever
+    # names a tracker item IRI, never a literal.
+    sh:property [ sh:path a:declaredWorkItem ; sh:nodeKind sh:IRI ] .

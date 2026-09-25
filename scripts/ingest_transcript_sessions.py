@@ -2,6 +2,8 @@
 """Link every archived agent transcript to its Session in the observed plane.
 
     Principal  <--aegis:actor--  Session  --aegis:transcript-->  Artifact
+                                     |
+                                     +--aegis:declaredWorkItem-->  WorkItem   (st task boundaries)
                                                                   aegis:reference  "garage-hla:hla/agent-transcripts/<agent>/<file>"
                                                                   aegis:contentSha256
 
@@ -38,6 +40,15 @@ same transaction. Both do, on every snapshot. Nothing else is shared: every
 transcript fact lives on the Artifact or on a predicate only this producer
 writes.
 
+DECLARED WORK ITEMS, NOT PROVEN ONES
+====================================
+
+`st agent stats --begin-task <bead>` records a paired, session-local task
+boundary in st's stats.sqlite (`task_contexts`). Each paired start becomes
+`aegis:declaredWorkItem`. The name is deliberate: st itself says a scope is a
+declaration, not proof that it covers every action. A session with no
+declaration gets no edge, which reads as UNKNOWN, never as "worked on nothing".
+
 QUIESCENCE
 ==========
 
@@ -58,6 +69,7 @@ import datetime
 import hashlib
 import json
 import re
+import sqlite3
 import sys
 import time
 from pathlib import Path
@@ -110,8 +122,32 @@ def excluded(path: Path) -> set[str]:
     return {line.strip().lstrip("/") for line in path.read_text().splitlines() if line.strip()}
 
 
+TASK = re.compile(r"[A-Za-z][A-Za-z0-9_]*-[A-Za-z0-9][A-Za-z0-9_.-]{0,95}")
+
+
+def declared_tasks(stats_db: Path | None) -> dict[str, list[str]]:
+    """Paired task boundaries per session, read-only. None means not asked."""
+    if stats_db is None:
+        return {}
+    with sqlite3.connect(f"file:{stats_db}?mode=ro", uri=True) as conn:
+        rows = conn.execute("SELECT session, task FROM task_contexts WHERE paired_start = 1").fetchall()
+    tasks: dict[str, set[str]] = {}
+    for session, task in rows:
+        if TASK.fullmatch(task or ""):
+            tasks.setdefault(session, set()).add(task)
+    return {session: sorted(found) for session, found in tasks.items()}
+
+
+def digest(record: dict) -> str:
+    # Transcript-only sessions keep the bare sha, so adding declarations
+    # re-publishes only the sessions that have them.
+    tasks = record.get("tasks") or []
+    return record["sha256"] + (":" + ",".join(tasks) if tasks else "")
+
+
 def scan(corpus: Path, quiet_seconds: float, now: float,
-         unpublished: set[str] = frozenset()) -> tuple[list[dict], dict]:
+         unpublished: set[str] = frozenset(),
+         tasks: dict[str, list[str]] | None = None) -> tuple[list[dict], dict]:
     records, stats = [], {"files": 0, "linked": 0, "active": 0, "skipped": {}}
 
     def skip(reason):
@@ -144,6 +180,7 @@ def scan(corpus: Path, quiet_seconds: float, now: float,
             "session": sid, "agent": agent, "harness": meta["harness"],
             "at": meta.get("timestamp", ""), "key": f"{REMOTE}/{agent}/{path.name}",
             "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data),
+            "tasks": (tasks or {}).get(sid, []),
         })
         stats["linked"] += 1
     return records, stats
@@ -177,6 +214,8 @@ def turtle(record: dict) -> str:
         f'    <{o}sourceKind> "observed" ;',
         f"    <{o}transcriptOf> <{session}> .",
     ]
+    for task in record.get("tasks") or []:
+        out.append(f"<{session}> <{o}declaredWorkItem> <{o}{task}> .")
     if record["at"]:
         out.append(f'<{session}> <{o}lastActivityAt> "{esc(record["at"])}"^^xsd:dateTime .')
     return "\n".join(out) + "\n"
@@ -210,7 +249,7 @@ def publish(records: list[dict], actor: str, state_path: Path, limit: int) -> di
         # The previous write's outcome is unknown. Never blind-retry: an
         # operator reconciles the named snapshot by read-back first.
         raise ValueError(f"previous graph write indeterminate; reconcile {marker} before retry")
-    pending = [r for r in records if state.get(r["session"]) != r["sha256"]]
+    pending = [r for r in records if state.get(r["session"]) != digest(r)]
     receipt = {"pending": len(pending), "posted": 0, "tx": []}
     for record in pending[:limit]:
         payload = body(record, actor)
@@ -224,7 +263,7 @@ def publish(records: list[dict], actor: str, state_path: Path, limit: int) -> di
             raise ValueError(f"graph refused transcript snapshot for {record['session']}: {response}")
         if not read_back(record):
             raise ValueError(f"snapshot accepted but read-back unproven for {record['session']}")
-        state[record["session"]] = record["sha256"]
+        state[record["session"]] = digest(record)
         temporary = state_path.with_suffix(".tmp")
         temporary.write_text(json.dumps(state, sort_keys=True))
         temporary.replace(state_path)
@@ -265,6 +304,8 @@ def main() -> int:
     ap.add_argument("--exclude-file", type=Path,
                     default=Path.home() / ".local/state/aegis/snapshot-publication/exclude.txt",
                     help="the publication gate's rsync exclude list (required to exist)")
+    ap.add_argument("--stats-db", type=Path,
+                    help="st stats.sqlite; its paired task boundaries become declaredWorkItem edges")
     ap.add_argument("--actor", default="camayoc-transcripts")
     ap.add_argument("--quiet-minutes", type=float, default=60)
     ap.add_argument("--limit", type=int, default=40,
@@ -278,7 +319,7 @@ def main() -> int:
     now = time.time()
     try:
         records, stats = scan(args.corpus, args.quiet_minutes * 60, now,
-                              excluded(args.exclude_file))
+                              excluded(args.exclude_file), declared_tasks(args.stats_db))
         # THE DENOMINATOR, always: a run that linked a tenth of the archive
         # must not read like one that linked all of it.
         print(json.dumps({"scan": stats}), file=sys.stderr)
