@@ -110,9 +110,9 @@ options, `score` over ordered levels) instead of text, in one parallel pass.
   promotes, and plane routing stays deterministic.
 
 ```bash
-export TYPESAFE_API_KEY=$(cd ~/workspace/goldblum && just infisical get TYPESAFE_API_KEY)
-python3 scripts/competency.py --method jev "which metrics can we retrieve for kota right now?"
-python3 scripts/competency.py --method lexical "which metrics can we retrieve for kota right now?"
+export TYPESAFE_API_KEY=...   # from your secret store
+python3 scripts/competency.py --method jev "which metrics can we retrieve for the database host right now?"
+python3 scripts/competency.py --method lexical "which metrics can we retrieve for the database host right now?"
 python3 scripts/jev.py noul --state "..." --ask "Does this message request a refund?" --dry-run
 ```
 

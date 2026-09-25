@@ -1,0 +1,44 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+# Publishes the mdBook to the `gh-pages` branch (contents:write), which GitHub
+# Pages then serves, the same path yupana uses. One-time setup:
+# Settings -> Pages -> "Deploy from a branch" -> gh-pages / (root).
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-pages
+  cancel-in-progress: false
+
+jobs:
+  build-deploy:
+    name: Build docs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mdbook
+        run: cargo install mdbook --version "^0.4" --locked
+      - name: Build book
+        run: mdbook build docs
+      - name: Deploy to gh-pages
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./book-out
+          publish_branch: gh-pages
