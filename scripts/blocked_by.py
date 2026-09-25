@@ -139,7 +139,22 @@ def latest_observation(post, item: str) -> str | None:
         at = select(post, f"SELECT ?at WHERE {{ <{A}{obs}> <{A}observedAt> ?at }}")
         if at:
             stamped.append((str(at[0]["at"]), obs))
-    return max(stamped)[1] if stamped else None
+    if not stamped:
+        return None
+    newest = max(at for at, _ in stamped)
+    tied = sorted(obs for at, obs in stamped if at == newest)
+    if len(tied) == 1:
+        return tied[0]
+    # observedAt is the tracker's updated_at, so two Observations share it only
+    # when the SAME tracker state was projected twice by different code: the
+    # one minted after the projection landed carries observedStatus, the older
+    # one does not. br bumps updated_at on dep add/remove (measured), so a
+    # dependency change never ties. Without this the name decided, and a bead
+    # untouched since the projection read as having no status and no blockers
+    # (aegis-3b3nrb, measured on aegis-sfpfwf).
+    projected = [obs for obs in tied
+                 if select(post, f"SELECT ?st WHERE {{ <{A}{obs}> <{A}observedStatus> ?st }}")]
+    return (projected or tied)[0]
 
 
 # ---- typed probes: FIXED code, parameters from the graph (aegis-c0awwp) ----
