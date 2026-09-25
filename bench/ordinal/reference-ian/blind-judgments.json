@@ -1,0 +1,198 @@
+{
+  "judge": "ian / GPT-6 Codex",
+  "channel": "reference",
+  "source_commit": "261592b8111495fcd102e73a116cefbc866b583d",
+  "frozen_at": "2026-09-25T21:56:54.553455+00:00",
+  "viewed_fields": [
+    "item",
+    "rubric"
+  ],
+  "jev_responses_viewed": false,
+  "other_annotator_labels_viewed": false,
+  "scores": {
+    "na-htm": [
+      {
+        "index": 0,
+        "score": 3,
+        "reason": "Separates founding another base from growing the producing base; the menu includes a growth facility, so this distinguishes expansion from local growth. No stated objective makes either compulsory."
+      },
+      {
+        "index": 1,
+        "score": 2,
+        "reason": "Explains the offered crawler's resource-transfer outcome. It gives no local shortage, destination need, or comparative constraint."
+      },
+      {
+        "index": 2,
+        "score": 2,
+        "reason": "Explains the offered probe team's infiltration and sabotage outcome, without a rival-specific requirement or comparative payoff."
+      },
+      {
+        "index": 3,
+        "score": 2,
+        "reason": "Identifies what building the offered Mind Worms achieves: a general combat unit. No threat or matchup establishes an important tradeoff."
+      },
+      {
+        "index": 4,
+        "score": 2,
+        "reason": "Explains the offered Isle's land-unit transport function. No crossing requirement or transport shortage makes it decisive."
+      },
+      {
+        "index": 5,
+        "score": 2,
+        "reason": "Explains the offered launcher's attack function; it does not provide an enemy, tactical advantage, or limiting requirement."
+      },
+      {
+        "index": 6,
+        "score": 2,
+        "reason": "Explains the offered garrison's defensive outcome. The item gives no immediate danger or required defense threshold."
+      },
+      {
+        "index": 7,
+        "score": 3,
+        "reason": "States recurring upkeep together with growth, efficiency and morale benefits, exposing a resource-cost versus benefit tradeoff among production choices. No budget or objective makes it decisive."
+      },
+      {
+        "index": 8,
+        "score": 2,
+        "reason": "Explains that the offered colony pod founds elsewhere and cannot grow this base. This menu supplies no explicit competing local-growth action or goal establishing a decisive choice."
+      },
+      {
+        "index": 9,
+        "score": 2,
+        "reason": "Explains that producing Formers enables terrain improvements and better yields; no tile condition or urgency establishes a stronger comparative constraint."
+      },
+      {
+        "index": 10,
+        "score": 2,
+        "reason": "Explains the offered scout's exploration function without a scouting requirement or a payoff comparison."
+      },
+      {
+        "index": 11,
+        "score": 1,
+        "reason": "Names the offered Recycling Tanks but supplies no effect or consequence. The action menu's resource bonus cannot be attributed to this name-only fact."
+      },
+      {
+        "index": 12,
+        "score": 3,
+        "reason": "Pairs a labs benefit with recurring upkeep, distinguishing a research-versus-resource-cost tradeoff against the offered production alternatives. No stated budget or research target decides it."
+      },
+      {
+        "index": 13,
+        "score": 2,
+        "reason": "States the offered project's consequence of one extra Talent in each base. No supplied population or unrest situation makes that consequence decisive."
+      },
+      {
+        "index": 14,
+        "score": 2,
+        "reason": "Quantifies the offered project's terraforming-rate benefit. It supplies neither active terraforming demand nor a competing downside."
+      },
+      {
+        "index": 15,
+        "score": 1,
+        "reason": "Only identifies Frontier, an offered politics choice; it supplies no effect or comparison."
+      },
+      {
+        "index": 16,
+        "score": 3,
+        "reason": "Explicit police and support gains versus efficiency loss establish a tradeoff among social choices. No faction conditions make that tradeoff decisive."
+      },
+      {
+        "index": 17,
+        "score": 1,
+        "reason": "Only identifies Simple, an offered economics choice; it supplies no effect or comparison."
+      },
+      {
+        "index": 18,
+        "score": 3,
+        "reason": "Economy gain opposed to planet and police penalties explicitly distinguishes the Free Market tradeoff. No supplied faction state establishes a mandatory choice."
+      },
+      {
+        "index": 19,
+        "score": 3,
+        "reason": "Growth and industry gains opposed to efficiency loss explicitly describe a tradeoff. No local constraint makes Planned necessary or impossible."
+      },
+      {
+        "index": 20,
+        "score": 1,
+        "reason": "Only identifies Survival, an offered values choice; it supplies no effect or comparison."
+      },
+      {
+        "index": 21,
+        "score": 3,
+        "reason": "Morale and support gains opposed to industry loss distinguish the Power tradeoff. No stated strategic requirement resolves it."
+      },
+      {
+        "index": 22,
+        "score": 3,
+        "reason": "Industry and economy gains opposed to morale loss distinguish the Wealth tradeoff. No stated strategic requirement resolves it."
+      },
+      {
+        "index": 23,
+        "score": 1,
+        "reason": "Only names the offered Polymorphic Software technology; no unlock, consequence or decision constraint is supplied by the fact."
+      },
+      {
+        "index": 24,
+        "score": 1,
+        "reason": "Only names the offered Doctrine: Air Power technology; do not infer unlocks from its name."
+      },
+      {
+        "index": 25,
+        "score": 1,
+        "reason": "Only names the offered Secrets of the Human Brain technology; no consequence or constraint is stated."
+      },
+      {
+        "index": 26,
+        "score": 1,
+        "reason": "Only names the offered Cyberethics technology; no consequence or constraint is stated."
+      },
+      {
+        "index": 27,
+        "score": 1,
+        "reason": "Only names the offered Progenitor Psych technology; no consequence or constraint is stated."
+      }
+    ],
+    "quipu-evidence": [
+      {
+        "index": 0,
+        "score": 4,
+        "reason": "The supplied row matches the named test and passed claim; both suite and implementation revisions, a named producer and a reproduction command are supplied. This meets the documentary top level without independently verifying execution or resolving the command's environment variables."
+      },
+      {
+        "index": 1,
+        "score": 3,
+        "reason": "A matching passed row and both pinned revisions are supplied, with a reproduction procedure, but the producer is missing."
+      },
+      {
+        "index": 2,
+        "score": 3,
+        "reason": "A matching passed row, both pinned revisions and a producer are supplied, but the reproduction procedure is missing."
+      },
+      {
+        "index": 3,
+        "score": 2,
+        "reason": "The row matches the bounded test and passed claim, but neither the suite nor implementation identity is supplied."
+      },
+      {
+        "index": 4,
+        "score": 2,
+        "reason": "The matching passed row has a suite revision but lacks the implementation identity; both identities are required for the next level."
+      },
+      {
+        "index": 5,
+        "score": 0,
+        "reason": "The evidence object is empty. The claim itself is the proposition being judged, not independently supplied support."
+      },
+      {
+        "index": 6,
+        "score": 1,
+        "reason": "Only an aggregate all-passed summary is supplied. It does not identify this test's result row or establish the pinned identities."
+      },
+      {
+        "index": 7,
+        "score": 0,
+        "reason": "The matching test row says failed and reports differing results, directly contradicting the claimed pass despite the accompanying provenance and reproduction fields."
+      }
+    ]
+  }
+}
