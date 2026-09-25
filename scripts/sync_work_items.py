@@ -48,17 +48,78 @@ def records_from(payload):
             (r.get('status') in ('open', 'blocked') and r.get('assignee'))]
 
 
-def collect(db):
-    result = subprocess.run(['br', '--db', str(db), 'list', '--status', 'open',
-                             '--status', 'in_progress', '--status', 'blocked',
-                             '--deferred', '--limit', '0', '--json'],
-                            check=True, capture_output=True, text=True, timeout=15)
+def fetch_ids(db, ids, run=None):
+    """Tracker records for these ids, closed ones included, in bounded chunks."""
+    run = run or subprocess.run
+    out = []
+    ids = sorted(ids)
+    for start in range(0, len(ids), 100):
+        argv = ['br', '--db', str(db), 'list', '--all', '--limit', '0', '--json']
+        for item in ids[start:start + 100]:
+            argv += ['--id', item]
+        result = run(argv, check=True, capture_output=True, text=True, timeout=15)
+        payload = json.loads(result.stdout)
+        records = payload.get('issues') if isinstance(payload, dict) else payload
+        if not isinstance(records, list):
+            raise ValueError('tracker id lookup returned no records')
+        out += [r for r in records if isinstance(r, dict)]
+    return out
+
+
+def collect(db, tracked=(), run=None, deps_cache=None):
+    """Current work, plus the records whose TRANSITIONS it depends on (aegis-3b3nrb).
+
+    Current work alone never observes a close: a bead leaves the current set at
+    the moment it closes, so its last Observation said open forever and
+    everything blocked on it read BLOCKED (measured on aegis-c6wun4, closed
+    2026-09-24 04:16Z, still "open" in the graph 36 h later). Two more sets are
+    fetched and marked `trailing`: every `blocks` target of current work,
+    whatever its status or assignee, and every tracked item that has left the
+    current set, until its final state is verified.
+    """
+    run = run or subprocess.run
+    result = run(['br', '--db', str(db), 'list', '--status', 'open',
+                  '--status', 'in_progress', '--status', 'blocked',
+                  '--deferred', '--limit', '0', '--json'],
+                 check=True, capture_output=True, text=True, timeout=15)
     records = records_from(json.loads(result.stdout))
     # Same dependency set the backfill projects (aegis-3b3nrb), so both writers
     # mint the SAME Observation version and never two competing "latest" ones.
+    have = {r['id'] for r in records}
+    attach_deps(records, db, deps_cache)
+    want = set(tracked) | {t for r in records for t in r.get('blocked_on') or []}
+    extra = [r for r in fetch_ids(db, want - have, run=run) if r.get('id') not in have]
+    for record in extra:
+        record['trailing'] = True
+    attach_deps(extra, db, deps_cache)
+    return records + extra
+
+
+def attach_deps(records, db, cache=None):
+    """attach_blocked_on, looking up only records whose updated_at moved.
+
+    br bumps a record's updated_at on `dep add` and `dep remove` (measured on
+    two scratch beads, 2026-09-25), so an unchanged updated_at means an
+    unchanged dependency set. One lookup costs ~0.34 s; re-reading all of them
+    every minute cost 33 s of each 60 s tick.
+    """
     from ingest_work_items import attach_blocked_on
-    attach_blocked_on(records, db)
-    return records
+    if cache is None:
+        attach_blocked_on(records, db)
+        return
+    stale = []
+    for record in records:
+        if not record.get('dependency_count'):
+            continue
+        hit = cache.get(record['id'])
+        if hit and hit[0] == record.get('updated_at'):
+            record['blocked_on'] = list(hit[1])
+        else:
+            stale.append(record)
+    attach_blocked_on(stale, db)
+    for record in stale:
+        if not record.get('dep_unknown'):
+            cache[record['id']] = [record.get('updated_at'), record.get('blocked_on') or []]
 
 
 def readback(body, post):
@@ -114,6 +175,10 @@ def tick(records, state, path, *, actor, source, now, post):
             entry['due_since'] = now
         entry['priority'] = record.get('priority', 4)
         entry['active'] = record.get('status') == 'in_progress'
+        entry['trailing'] = bool(record.get('trailing'))
+        entry['closed'] = record.get('status') == 'closed'
+        if not entry['trailing']:
+            entry.pop('final', None)  # back in current work: follow it again
         entry['created_at'] = record['created_at']
     candidates = []
     for item, entry in entries.items():
@@ -135,7 +200,11 @@ def tick(records, state, path, *, actor, source, now, post):
     # Fairness: never-attempted work first, then least recently attempted. A
     # poisoned item cannot occupy the front forever. Current claims win ties.
     candidates.sort(key=lambda i: entries[i].get('created_at', ''), reverse=True)
-    candidates.sort(key=lambda i: (entries[i]['last_attempt'],
+    # A version change (a real transition) goes ahead of the periodic recheck
+    # rotation; otherwise it waited behind every current item at one per tick.
+    candidates.sort(key=lambda i: (not (entries[i].get('pending')
+                                        or entries[i].get('version') != current[i]['name']),
+                                   entries[i]['last_attempt'],
                                    not entries[i].get('active'),
                                    entries[i].get('priority', 4)))
     # Reconcile indeterminate writes ahead of the fresh backlog. Alternate
@@ -201,6 +270,8 @@ def tick(records, state, path, *, actor, source, now, post):
                 entry.pop('pending', None)
                 entry.pop('due_since', None)
                 receipt['verified'] = 1
+            if entry.get('trailing') and entry.get('closed'):
+                entry['final'] = True  # its last transition is in the graph
             entry.pop('error', None)
             entry.pop('not_before', None)
         except Exception as exc:
@@ -249,7 +320,12 @@ def main():
         receipt = {'status': 'UNKNOWN'}
         try:
             state = json.loads(args.state.read_text()) if args.state.exists() else {}
-            receipt = tick(collect(args.db), state, args.state, actor=args.actor,
+            tracked = [i for i, e in state.get('items', {}).items() if not e.get('final')]
+            cache = state.setdefault('deps_cache', {})
+            records = collect(args.db, tracked, deps_cache=cache)
+            live = {r['id'] for r in records}
+            state['deps_cache'] = {i: v for i, v in cache.items() if i in live}
+            receipt = tick(records, state, args.state, actor=args.actor,
                            source=args.source, now=started,
                            post=lambda endpoint, body: planes._post(endpoint, body, client='camayoc-ingress'))
         except Exception as exc:
