@@ -79,3 +79,12 @@ bd.db
 # They would override fork protection in .git/info/exclude.
 # Config files (metadata.json, config.yaml) are tracked by git by default
 # since no pattern above ignores them.
+
+# br's SQLite store FILE. metadata.json names the store "dolt" (a legacy value), so br
+# creates .beads/dolt as a regular file. A trailing-slash `dolt/` rule matches only a
+# directory and misses it. A local store must never be committed.
+/dolt
+/dolt-shm
+/dolt-wal
+/dolt-wal-cert*
+/dolt.fsqlite-migration-state
