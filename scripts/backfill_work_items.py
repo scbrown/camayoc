@@ -47,6 +47,24 @@ from ingest_work_items import BASE_NS, WorkItemError, episode_for  # noqa: E402
 CLIENT = "camayoc-ingress"
 IDENTIFIER_QUERY = f"SELECT ?w ?id WHERE {{ ?w <{BASE_NS}identifier> ?id }}"
 WORKITEM_QUERY = f"SELECT ?w WHERE {{ ?w a ?t . FILTER(?t = <{BASE_NS}WorkItem>) }}"
+#: quipu caps one result at 10,000 rows and says so with `truncated`. The
+#: crew:records plane passed 10,000 WorkItems on 2026-09-25 and every run from
+#: 15:40Z refused, correctly, on a truncated answer. So both reads page.
+PAGE = 5000
+
+
+def paged(post, query: str, scope: dict, name: str, graph) -> list[dict]:
+    """Every row of `query`, in ORDER BY pages, refusing any truncated page."""
+    rows: list[dict] = []
+    var = query.split()[1]  # the first projected variable, a stable sort key
+    for offset in range(0, 10_000_000, PAGE):
+        result = post("/query", {"query": f"{query} ORDER BY {var} LIMIT {PAGE} OFFSET {offset}", **scope})
+        if not isinstance(result.get("rows"), list) or result.get("truncated"):
+            raise ValueError(f"{name} query unproven in {graph or 'default'} (truncated or malformed)")
+        rows += result["rows"]
+        if len(result["rows"]) < PAGE:
+            return rows
+    raise ValueError(f"{name} query did not end in {graph or 'default'}")
 
 
 def all_beads(db: Path, run=subprocess.run) -> list[dict]:
@@ -84,14 +102,11 @@ def covered(post) -> set[str]:
     any_rows = False
     for graph in graphs():
         scope = {"graph": graph} if graph else {}
-        workitems = post("/query", {"query": WORKITEM_QUERY, **scope})
-        pairs = post("/query", {"query": IDENTIFIER_QUERY, **scope})
-        for name, result in (("WorkItem", workitems), ("identifier", pairs)):
-            if not isinstance(result.get("rows"), list) or result.get("truncated"):
-                raise ValueError(f"{name} query unproven in {graph or 'default'} (truncated or malformed)")
-        any_rows = any_rows or bool(workitems["rows"])
-        wi |= {_local(r["w"]) for r in workitems["rows"]}
-        for r in pairs["rows"]:
+        workitems = paged(post, WORKITEM_QUERY, scope, "WorkItem", graph)
+        pairs = paged(post, IDENTIFIER_QUERY, scope, "identifier", graph)
+        any_rows = any_rows or bool(workitems)
+        wi |= {_local(r["w"]) for r in workitems}
+        for r in pairs:
             ids.setdefault(_local(r["w"]), set()).add(r["id"].strip('"'))
     if not any_rows:
         # CONTROL: a store with zero WorkItems is a broken instrument here, not
