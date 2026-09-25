@@ -266,5 +266,84 @@ class TrackerFormats(unittest.TestCase):
         self.assertEqual('0', argv[argv.index('--limit') + 1])
 
 
+class Transitions(unittest.TestCase):
+    """aegis-3b3nrb: closes and blocker changes reach the graph, promptly."""
+
+    def fake_br(self, current, by_id):
+        calls = []
+
+        def run(argv, **kw):
+            calls.append(argv)
+            out = type('R', (), {})()
+            if '--id' in argv:
+                wanted = [argv[i + 1] for i, a in enumerate(argv) if a == '--id']
+                out.stdout = json.dumps([by_id[i] for i in wanted if i in by_id])
+            else:
+                out.stdout = json.dumps(current)
+            return out
+        return run, calls
+
+    def test_a_tracked_item_that_closed_is_fetched_as_trailing(self):
+        closed = {**RECORD, 'id': 'proj-done', 'status': 'closed', 'closed_at': '2026-09-24T04:16:21Z'}
+        run, calls = self.fake_br([RECORD], {'proj-done': closed})
+        records = sync.collect(Path('/tmp/f.db'), tracked=['proj-a', 'proj-done'], run=run)
+        got = {r['id']: r for r in records}
+        self.assertEqual('closed', got['proj-done']['status'])
+        self.assertTrue(got['proj-done']['trailing'])
+        self.assertNotIn('trailing', got['proj-a'])
+        self.assertTrue(any('--all' in c for c in calls), 'closed records need --all')
+
+    def test_an_unassigned_blocker_of_current_work_is_fetched(self):
+        blocker = {**RECORD, 'id': 'proj-dep', 'status': 'open', 'assignee': None}
+        run, _ = self.fake_br([{**RECORD, 'blocked_on': ['proj-dep']}], {'proj-dep': blocker})
+        with patch('ingest_work_items.attach_blocked_on', lambda records, db: []):
+            records = sync.collect(Path('/tmp/f.db'), run=run)
+        self.assertIn('proj-dep', {r['id'] for r in records})
+
+    def test_a_change_goes_ahead_of_the_recheck_rotation(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        path = Path(temp.name) / 'state.json'
+        a, b = {**RECORD, 'id': 'proj-a'}, {**RECORD, 'id': 'proj-b'}
+        post = lambda endpoint, body: ({'outcome': 'created'} if endpoint == '/episode'
+                                       else {'rows': [{'s': 'c', 't': 'WorkItem', 'o': 'Observation'}]})
+        state = {}
+        for now in (1000, 1060):  # both written and verified
+            sync.tick([a, b], state, path, actor='t', source='br:x', now=now, post=post)
+        # b changes; a has the OLDER last_attempt and is due for its recheck
+        b2 = {**b, 'status': 'closed', 'updated_at': '2026-09-25T00:00:00Z'}
+        later = 1060 + sync.RECHECK + 120
+        receipt = sync.tick([a, b2], state, path, actor='t', source='br:x', now=later, post=post)
+        self.assertEqual('proj-b', receipt['item'], 'the transition must not wait behind a recheck')
+
+    def test_a_closed_trailing_item_is_final_once_verified(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        path = Path(temp.name) / 'state.json'
+        done = {**RECORD, 'id': 'proj-done', 'status': 'closed', 'trailing': True}
+        post = lambda endpoint, body: ({'outcome': 'created'} if endpoint == '/episode'
+                                       else {'rows': [{'s': 'c', 't': 'WorkItem', 'o': 'Observation'}]})
+        state = {}
+        sync.tick([done], state, path, actor='t', source='br:x', now=1000, post=post)
+        self.assertTrue(state['items']['proj-done'].get('final'))
+
+    def test_dependencies_are_looked_up_only_when_updated_at_moves(self):
+        looked = []
+
+        def fake_attach(records, db):
+            for r in records:
+                looked.append(r['id'])
+                r['blocked_on'] = ['proj-dep']
+        a = {**RECORD, 'dependency_count': 1, 'updated_at': 't1'}
+        cache = {}
+        with patch('ingest_work_items.attach_blocked_on', fake_attach):
+            sync.attach_deps([dict(a)], None, cache)
+            again = dict(a)
+            sync.attach_deps([again], None, cache)          # same updated_at: cached
+            sync.attach_deps([{**a, 'updated_at': 't2'}], None, cache)  # moved: looked up
+        self.assertEqual(['proj-a', 'proj-a'], looked)
+        self.assertEqual(['proj-dep'], again['blocked_on'])
+
+
 if __name__ == '__main__':
     unittest.main()
