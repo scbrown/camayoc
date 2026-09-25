@@ -135,6 +135,16 @@ class TrackerProjection(unittest.TestCase):
                   + item("d", "open"))
         self.assertNotIn("w", run(s), "an item with no current blocker is not reported")
 
+    def test_a_same_instant_pre_projection_observation_does_not_win(self):
+        # Measured on aegis-sfpfwf: the tracker state was observed before the
+        # projection landed ("zz", no status, no deps) and again after it
+        # ("aa"), with the SAME observedAt. The name used to decide the tie,
+        # and "zz" won, so the item read as having no blockers.
+        s = Store([("w", "a", "WorkItem"), ("w", "observes", "zz"), ("zz", "observedAt", "2026-09-20")]
+                  + self.obs("w", "aa", "2026-09-20", "blocked", ["d"])
+                  + item("d", "open"))
+        self.assertEqual(run(s)["w"]["verdict"], "BLOCKED")
+
     def test_one_item_reads_only_its_latest_observation(self):
         s = Store([("w", "a", "WorkItem")] + self.obs("w", "o1", "2026-09-20", "blocked", ["d"])
                   + item("d", "open"))
