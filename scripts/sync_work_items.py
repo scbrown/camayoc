@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bounded standing delivery of current authoritative br WorkItems.
 
-One record, at most one write and two reads per tick. The scheduler supplies
+A bounded batch, at most one write and two reads per record. The scheduler supplies
 an explicit tracker database; this adapter never reads cost attribution.
 """
 from __future__ import annotations
@@ -22,6 +22,7 @@ INTERVAL = 60
 RECHECK = 6 * 3600
 MAX_BODY = 256 * 1024
 MAX_ATTEMPTS = 3
+MAX_ITEMS = 4
 
 
 def save(path, value):
@@ -143,10 +144,12 @@ def readback(body, post):
     return bool(found['rows'])
 
 
-def tick(records, state, path, *, actor, source, now, post):
+def tick(records, state, path, *, actor, source, now, post, max_items=MAX_ITEMS):
+    if isinstance(max_items, bool) or not isinstance(max_items, int) or not 1 <= max_items <= MAX_ITEMS:
+        raise ValueError(f"max_items must be between 1 and {MAX_ITEMS}")
     if now < state.get('next_tick', 0):
         return {**state.get('receipt', {'status': 'UNKNOWN'}), 'mode': 'BACKOFF',
-                'requests': 0, 'writes': 0, 'verified': 0}
+                'requests': 0, 'writes': 0, 'verified': 0, 'processed': 0, 'items': []}
     state['next_tick'] = now + INTERVAL
     entries = state.setdefault('items', {})
     # Preserve pending bodies even when a task closes or its tracker fields change.
@@ -191,11 +194,15 @@ def tick(records, state, path, *, actor, source, now, post):
             if now >= entry.get('not_before', 0):
                 candidates.append(item)
     receipt = {'status': 'OK', 'requests': 0, 'writes': 0, 'verified': 0,
-               'current': len(current), 'invalid': len(invalid), 'parked': invalid[:20]}
+               'current': len(current), 'invalid': len(invalid), 'parked': invalid[:20],
+               'processed': 0, 'items': [], 'max_items': max_items}
+    item_requests = 0
     def request(endpoint, body):
-        receipt['requests'] += 1
-        if receipt['requests'] > 3:
+        nonlocal item_requests
+        if item_requests >= 3 or receipt['requests'] >= 3 * max_items:
             raise ValueError('ingress request budget exhausted')
+        item_requests += 1
+        receipt['requests'] += 1
         return post(endpoint, body)
     # Fairness: never-attempted work first, then least recently attempted. A
     # poisoned item cannot occupy the front forever. Current claims win ties.
@@ -217,8 +224,12 @@ def tick(records, state, path, *, actor, source, now, post):
         candidates.remove(recovery[0])
         candidates.insert(0, recovery[0])
     state['last_was_recovery'] = prefer_recovery
-    if candidates:
-        item = candidates[0]
+    # Snapshot each candidate once: two absent reads must still happen on
+    # separate scheduled ticks, never by revisiting an item inside this batch.
+    for item in candidates[:max_items]:
+        item_requests = 0
+        receipt['processed'] += 1
+        receipt['items'].append(item)
         entry = entries[item]
         receipt['item'] = item
         entry['last_attempt'] = now
@@ -231,7 +242,7 @@ def tick(records, state, path, *, actor, source, now, post):
                     pending['attempts'] += 1
                     pending['absent_reads'] = 0
                     save(path, state)
-                    receipt['writes'] = 1
+                    receipt['writes'] += 1
                     response = request('/episode', pending['body'])
                     entry['write_receipt'] = {k: response.get(k) for k in ('outcome', 'tx_id', 'count')}
                     if response.get('outcome') not in ('created', 'updated', 'unchanged'):
@@ -246,16 +257,16 @@ def tick(records, state, path, *, actor, source, now, post):
                 if entry.get('version') == body['name'] and readback(body, request):
                     entry['verified_at'] = now
                     entry.pop('due_since', None)
-                    receipt['verified'] = 1
+                    receipt['verified'] += 1
                 else:
                     pending = {'body': body, 'attempts': 0, 'absent_reads': 0}
                     entry['pending'] = pending
                     # A failed periodic recheck used two requests: leave the
                     # exact pending body for later, without a same-tick write.
-                    if receipt['requests'] == 0:
+                    if item_requests == 0:
                         pending['attempts'] = 1
                         save(path, state)
-                        receipt['writes'] = 1
+                        receipt['writes'] += 1
                         response = request('/episode', body)
                         entry['write_receipt'] = {k: response.get(k) for k in ('outcome', 'tx_id', 'count')}
                         if response.get('outcome') not in ('created', 'updated', 'unchanged'):
@@ -269,7 +280,7 @@ def tick(records, state, path, *, actor, source, now, post):
                 entry['verified_at'] = now
                 entry.pop('pending', None)
                 entry.pop('due_since', None)
-                receipt['verified'] = 1
+                receipt['verified'] += 1
             if entry.get('trailing') and entry.get('closed'):
                 entry['final'] = True  # its last transition is in the graph
             entry.pop('error', None)

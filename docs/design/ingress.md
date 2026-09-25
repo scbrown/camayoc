@@ -343,8 +343,15 @@ including deferred assignments. It accepts the legacy array or a complete list
 envelope; a truncated response is UNKNOWN. This is independent of cost records:
 only the authoritative tracker can supply canonical WorkItem identity.
 
-Each tick handles one record, at most one episode write and two verification
-reads, with a persisted 60-second minimum interval and a 256-KiB episode cap.
+Each tick handles at most four distinct records, with at most one episode write
+and two verification reads per record (four writes and twelve requests total),
+a persisted 60-second minimum interval and a 256-KiB cap per episode. A record
+appears only once in a batch, so retry reads remain separated by scheduled ticks.
+Receipts report aggregate requests, writes and verifications plus the processed
+item IDs. The bounded batch leaves room for periodic rechecks and fresh changes;
+a single-record minute schedule cannot recheck more than 360 records in six hours,
+and scheduler jitter can further reduce eligible ticks. The minimum interval
+and controlled retry rules are unchanged.
 Current claims win initial ties, then priority and newer creation time. The least
 recently attempted record wins subsequent turns, so a bad record cannot monopolize
 the lane. Initial backlog drains gradually; consumers continue refusing absent
