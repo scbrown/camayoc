@@ -1,0 +1,17 @@
+@prefix a: <http://aegis.gastown.local/ontology/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+# aegis-9lri74: a transcript is a POINTER to the published object, never its
+# content. One key and one digest per artifact; a second would mean two
+# snapshots claimed the same session and neither can be trusted.
+a:SessionTranscriptShape a sh:NodeShape ; sh:targetSubjectsOf a:transcriptOf ;
+    sh:property [ sh:path rdfs:label ; sh:minCount 1 ] ;
+    sh:property [ sh:path a:reference ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^garage-hla:hla/agent-transcripts/" ] ;
+    sh:property [ sh:path a:contentSha256 ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ; sh:pattern "^[0-9a-f]{64}$" ] ;
+    sh:property [ sh:path a:contentBytes ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:property [ sh:path a:transcriptOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:class a:Session ] .
+a:SessionLinkShape a sh:NodeShape ; sh:targetSubjectsOf a:transcript ;
+    sh:property [ sh:path a:transcript ; sh:maxCount 1 ] ;
+    sh:property [ sh:path a:sessionHarness ; sh:maxCount 1 ; sh:in ( "claude" "codex" ) ] ;
+    sh:property [ sh:path a:lastActivityAt ; sh:maxCount 1 ; sh:datatype xsd:dateTime ] .
