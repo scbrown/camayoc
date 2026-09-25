@@ -10,6 +10,10 @@ check:
 test:
     python3 -m unittest discover -s tests -v
 
+# Benchmark competency or ordered rubrics; ordinal defaults to a keyless dry run.
+jev-bench *args:
+    @python3 scripts/jev_bench.py {{args}}
+
 # Emit the work-item provenance chain from git history (docs/design/ingress.md
 # §3.3). Deterministic and abstaining: a commit naming no recognised work item
 # emits nothing. Pass --project for every tracker prefix in play — an

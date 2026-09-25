@@ -84,6 +84,7 @@ guarantee everything else rests on. Stop the server with
 |---|---|
 | check whether a question is covered by the competency suite | `python3 camayoc/scripts/competency.py "<question>"` |
 | map a question to a stored query with Jev (needs a TypeSafe key) | `python3 camayoc/scripts/competency.py --map "<question>"` |
+| preview an advisory ordered-rubric benchmark without a key | `just jev-bench bench/ordinal/na-htm.jsonl --slot ordinal` ([pilot and replay](bench/ordinal/README.md)) |
 | see which competency questions have a stored query | `python3 camayoc/scripts/query_coverage.py` |
 | check a proposal against decisions already made | `python3 camayoc/scripts/settled_decisions.py "<proposal>" --declared <file>` |
 | see the quarantine planes and their labels | `python3 camayoc/scripts/planes.py status` |
