@@ -38,9 +38,10 @@ class Delivery(unittest.TestCase):
             return {'rows': [{'s': 'control'}] if self.control else []}
         return {'rows': [{'t': 'WorkItem', 'o': 'Observation'}] if self.present else []}
 
-    def tick(self, records=None, now=1000):
+    def tick(self, records=None, now=1000, max_items=1):
         return sync.tick([RECORD] if records is None else records, self.state, self.path,
-                         actor='tracker', source='br:authoritative', now=now, post=self.post)
+                         actor='tracker', source='br:authoritative', now=now, post=self.post,
+                         max_items=max_items)
 
     def test_one_record_write_plus_two_reads_and_named_plane(self):
         result = self.tick([RECORD, {**RECORD, 'id': 'proj-b'}])
@@ -233,6 +234,89 @@ class Delivery(unittest.TestCase):
         self.state['items']['proj-a'].update(due_since=1000, not_before=10000)
         self.assertEqual('UNKNOWN', self.tick(records, now=2060)['status'])
 
+    def test_default_batch_drains_four_distinct_records_with_twelve_requests(self):
+        records = [{**RECORD, 'id': f'proj-{i}'} for i in range(9)]
+        result = sync.tick(records, self.state, self.path, actor='tracker',
+                           source='br:authoritative', now=1000, post=self.post)
+        self.assertEqual((4, 4, 4, 12, 5), tuple(result[k] for k in
+                         ('processed', 'writes', 'verified', 'requests', 'backlog')))
+        self.assertEqual(4, len(set(result['items'])))
+        result = self.tick(records, now=1059, max_items=4)
+        self.assertEqual(('BACKOFF', 0, 0, []), tuple(result[k] for k in
+                         ('mode', 'requests', 'processed', 'items')))
+        result = self.tick(records, now=1060, max_items=4)
+        self.assertEqual((4, 1), (result['verified'], result['backlog']))
+        result = self.tick(records, now=1120, max_items=4)
+        self.assertEqual((1, 0), (result['verified'], result['backlog']))
+
+    def test_batch_does_not_spend_another_items_read_budget_or_retry_early(self):
+        records = [{**RECORD, 'id': f'proj-{i}'} for i in range(4)]
+        self.tick(records, max_items=4)
+        self.calls.clear()
+        self.present = False
+        result = self.tick(records, now=1000 + sync.RECHECK, max_items=4)
+        self.assertEqual((8, 0, 0, 4), tuple(result[k] for k in
+                         ('requests', 'writes', 'verified', 'indeterminate')))
+        # Each retraction got exactly one controlled absent read; the newly
+        # pending payload gets its next read on a different scheduled tick.
+        for entry in self.state['items'].values():
+            self.assertEqual(0, entry['pending']['absent_reads'])
+            self.assertEqual(0, entry['pending']['attempts'])
+        self.tick(records, now=1060 + sync.RECHECK, max_items=4)
+        self.tick(records, now=1120 + sync.RECHECK, max_items=4)
+        self.assertFalse(any(p == '/episode' for p, _ in self.calls))
+        self.present = True
+        result = self.tick(records, now=1180 + sync.RECHECK, max_items=4)
+        self.assertEqual((12, 4, 4, 0), tuple(result[k] for k in
+                         ('requests', 'writes', 'verified', 'indeterminate')))
+
+    def test_failed_first_write_keeps_exact_pending_body_and_other_items_progress(self):
+        records = [{**RECORD, 'id': f'proj-{i}'} for i in range(4)]
+        original = self.post
+        def post(endpoint, body):
+            self.lost = endpoint == '/episode' and body['nodes'][0]['name'] == 'proj-0'
+            return original(endpoint, body)
+        with patch.object(self, 'post', side_effect=post):
+            result = self.tick(records, max_items=4)
+        self.assertEqual(('DEGRADED', 10, 4, 3, 1), tuple(result[k] for k in
+                         ('status', 'requests', 'writes', 'verified', 'indeterminate')))
+        pending = copy.deepcopy(self.state['items']['proj-0']['pending'])
+        self.assertEqual(1, pending['attempts'])
+        self.assertEqual(0, pending['absent_reads'])
+        self.lost = False
+        result = self.tick(records, now=1060, max_items=4)
+        self.assertEqual((0, 1, 0), tuple(result[k] for k in
+                         ('writes', 'verified', 'indeterminate')))
+
+    def test_invalid_batch_budget_never_writes_state_or_requests(self):
+        for value in (0, 5, True, 1.5):
+            with self.assertRaises(ValueError):
+                self.tick(max_items=value)
+        self.assertFalse(self.path.exists())
+        self.assertEqual([], self.calls)
+
+    def test_full_population_rechecks_fit_six_hour_cycle_with_cron_jitter(self):
+        records = [{**RECORD, 'id': f'proj-{i}'} for i in range(570)]
+        outcomes = {}
+        for budget in (1, 4):
+            verified = {}
+            # Preseed already-delivered records: measure recheck capacity,
+            # not only the initial burst. Alternate 59.6/60.4-second cron gaps.
+            for record in records:
+                body = sync.episode_for(record, actor='tracker',
+                                        source=f"br:authoritative#{record['id']}")
+                verified[record['id']] = {'version': body['name'], 'verified_at': 1,
+                                          'last_attempt': 1, 'first_seen': 1}
+            self.state = {'items': verified}
+            start = 1 + sync.RECHECK
+            for minute in range(360):
+                self.tick(records, now=start + minute * 60 + (0.4 if minute % 2 else 0),
+                          max_items=budget)
+            outcomes[budget] = sum(e['verified_at'] >= start
+                                   for e in self.state['items'].values())
+        self.assertEqual({1: 181, 4: 570}, outcomes)
+        self.assertFalse(any(p == '/episode' for p, _ in self.calls))
+
 
 class TrackerFormats(unittest.TestCase):
     def test_old_list_and_complete_envelope(self):
@@ -309,11 +393,11 @@ class Transitions(unittest.TestCase):
                                        else {'rows': [{'s': 'c', 't': 'WorkItem', 'o': 'Observation'}]})
         state = {}
         for now in (1000, 1060):  # both written and verified
-            sync.tick([a, b], state, path, actor='t', source='br:x', now=now, post=post)
+            sync.tick([a, b], state, path, actor='t', source='br:x', now=now, post=post, max_items=1)
         # b changes; a has the OLDER last_attempt and is due for its recheck
         b2 = {**b, 'status': 'closed', 'updated_at': '2026-09-25T00:00:00Z'}
         later = 1060 + sync.RECHECK + 120
-        receipt = sync.tick([a, b2], state, path, actor='t', source='br:x', now=later, post=post)
+        receipt = sync.tick([a, b2], state, path, actor='t', source='br:x', now=later, post=post, max_items=1)
         self.assertEqual('proj-b', receipt['item'], 'the transition must not wait behind a recheck')
 
     def test_a_closed_trailing_item_is_final_once_verified(self):
