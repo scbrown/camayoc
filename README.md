@@ -36,7 +36,7 @@ was read back out of them.
   fails loudly if the store accepts one.
 
 The long form (its place in the stack, what runs today, what it deliberately is
-not): [Why camayoc](docs/why-camayoc.md).
+not): [Why camayoc](https://scbrown.github.io/camayoc/why-camayoc.html).
 
 ## Install
 
@@ -88,7 +88,7 @@ guarantee everything else rests on. Stop the server with
 | check a proposal against decisions already made | `python3 camayoc/scripts/settled_decisions.py "<proposal>" --declared <file>` |
 | see the quarantine planes and their labels | `python3 camayoc/scripts/planes.py status` |
 
-Every script: [Reference](docs/reference.md).
+Every script: [Reference](https://scbrown.github.io/camayoc/reference.html).
 
 ## Wire it into your agent
 
@@ -104,7 +104,7 @@ From then on every session opens with a memory status line (`ACTIVE`,
 agent to query first, record at the moment, and tag honestly. Without the
 plugin, `bash camayoc/scripts/bootstrap.sh --with-claude-hooks` adds the same
 status hook to `.claude/settings.json`. The plugin also declares a `jev` MCP
-server for typed decisions. Details: [Using it with agents](docs/agents.md).
+server for typed decisions. Details: [Using it with agents](https://scbrown.github.io/camayoc/agents.html).
 
 ## Before you start
 
@@ -114,13 +114,13 @@ your `PATH`. The scripts need `bash`, `curl` and `python3`.
 
 **Exit codes.** Bootstrap exits 1 if nothing could be installed, 2 if the store
 accepted a record it must refuse, and 3 if no verdict could be reached. See
-[Getting started](docs/getting-started.md#when-something-fails).
+[Getting started](https://scbrown.github.io/camayoc/getting-started.html#when-something-fails).
 
 ## What's next
 
-- [The camayoc book](docs/SUMMARY.md): getting started, agents, reference and the design notes, in reading order
-- [Docs map](docs/docs-map.md): every document in this repository, routed
-- [Ingress](docs/design/ingress.md): how knowledge earns its way into the graph
+- [The camayoc book](https://scbrown.github.io/camayoc/): getting started, agents, reference and the design notes, in reading order
+- [Docs map](https://scbrown.github.io/camayoc/docs-map.html): every document in this repository, routed
+- [Ingress](https://scbrown.github.io/camayoc/design/ingress.html): how knowledge earns its way into the graph
 
 ## 🧺 The stack
 
