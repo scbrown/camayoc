@@ -146,5 +146,42 @@ class DependencyLookup(unittest.TestCase):
         self.assertEqual(report["written"], 1)
 
 
+class Paging(unittest.TestCase):
+    """quipu caps a result at 10,000 rows; the crew:records plane passed that on
+    2026-09-25 and every backfill run refused a truncated read (aegis-jrobfn)."""
+
+    def pages(self, total, cap=10_000):
+        rows = [{"w": f"aegis:w{i:06d}"} for i in range(total)]
+        calls = []
+
+        def post(endpoint, body):
+            calls.append(body["query"])
+            q = body["query"]
+            if "LIMIT" not in q:  # the old unpaged read
+                return {"rows": rows[:cap], "truncated": total > cap}
+            limit = int(q.split("LIMIT ")[1].split()[0])
+            offset = int(q.split("OFFSET ")[1].split()[0])
+            page = rows[offset:offset + limit]
+            return {"rows": page[:cap], "truncated": len(page) > cap}
+        return post, calls
+
+    def test_more_rows_than_the_server_cap_are_all_read(self):
+        post, calls = self.pages(12_345)
+        got = bf.paged(post, bf.WORKITEM_QUERY, {}, "WorkItem", None)
+        self.assertEqual(12_345, len(got))
+        self.assertEqual(12_345, len({r["w"] for r in got}))
+        self.assertTrue(all("ORDER BY ?w" in q for q in calls))
+
+    def test_an_exact_multiple_of_the_page_ends_on_an_empty_page(self):
+        post, calls = self.pages(2 * bf.PAGE)
+        self.assertEqual(2 * bf.PAGE, len(bf.paged(post, bf.WORKITEM_QUERY, {}, "WorkItem", None)))
+        self.assertEqual(3, len(calls))
+
+    def test_a_truncated_page_is_still_refused(self):
+        post, _ = self.pages(12_000, cap=100)  # a server cap below the page size
+        with self.assertRaises(ValueError):
+            bf.paged(post, bf.WORKITEM_QUERY, {}, "WorkItem", None)
+
+
 if __name__ == "__main__":
     unittest.main()
