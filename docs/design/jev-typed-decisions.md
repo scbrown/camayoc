@@ -100,9 +100,9 @@ model, the confidence, the none probability, and `abstained`, which forces
 Run it:
 
 ```bash
-export TYPESAFE_API_KEY=$(cd ~/workspace/goldblum && just infisical get TYPESAFE_API_KEY)
-python3 scripts/competency.py --method jev "what did we decide about the vati reboot?"
-python3 scripts/competency.py --method lexical "what did we decide about the vati reboot?"
+export TYPESAFE_API_KEY=...   # from your secret store
+python3 scripts/competency.py --method jev "what did we decide about the build-host reboot?"
+python3 scripts/competency.py --method lexical "what did we decide about the build-host reboot?"
 ```
 
 ## 6. Blockers before any of it
@@ -111,8 +111,8 @@ python3 scripts/competency.py --method lexical "what did we decide about the vat
   Infisical as `TYPESAFE_API_KEY` (aegis-6016ma rule); scripts read it from the
   environment only.
 - ~~Egress~~ Measured 2026-09-21: `POST api.typesafe.ai/v1/systemone` answers
-  403 (reachable, unauthenticated) in 0.24 s from both the Mac and vati. kota
-  still unmeasured.
+  403 (reachable, unauthenticated) in 0.24 s from both crew hosts. The database host
+  is still unmeasured.
 - Quipu "deliberately contains no LLM" — Jev calls live in camayoc scripts (the
   ingress layer), never in the store.
 
@@ -139,7 +139,7 @@ places than camayoc. Each row is a bead under the epic named at the bottom.
 | bobbin | retrieval floor: does this chunk answer the query | `noul` per chunk | strong | aegis-xd2nko (insufficient context) |
 | yupana | grounded-predicate evaluator for edit policies | `noul` per predicate | strong | aegis-vwvjwl |
 | shantytown | board hygiene: route by domain, duplicate?, escalation severity | `choice` / `noul` / `score` | strong (volume) | aegis-cvd2xu context |
-| goldblum | alert triage: severity + owner; governor stop deliberate-or-fault | `score` + `choice` | good | — |
+| homelab ops | alert triage: severity + owner; governor stop deliberate-or-fault | `score` + `choice` | good | — |
 | NeuralAmplifier | grounding-fact rank, tier routing, semantic guard | `score` / `choice` / `noul` | good | na-htm |
 | evals | rubric judge for NA evals and quipu conformance | `score` | good | — |
 | resume (hammond) | recruiter inbound disposition | `choice` + `noul`s | immediate | job-patrol skill |
