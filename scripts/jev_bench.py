@@ -66,8 +66,24 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--suite", default=str(Path(__file__).resolve().parents[1] / "competency"))
     ap.add_argument("--arm", choices=("lexical", "jev", "jev-hier", "both", "all"), default="both")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--slot", choices=("competency", "ordinal"), default="competency")
+    ap.add_argument("--responses", type=Path, help="Replay ordinal responses without a model")
+    ap.add_argument("--live", action="store_true", help="Explicitly enable paid ordinal calls")
+    ap.add_argument("--max-calls", type=int, help="Hard call ceiling; no automatic retries")
+    ap.add_argument("--output", type=Path, help="New ordinal response JSONL; never overwritten")
     a = ap.parse_args(argv)
     items = [json.loads(l) for l in a.labelled.read_text().splitlines() if l.strip()]
+    if a.slot == "ordinal":
+        import jev_ordinal
+        try:
+            result = jev_ordinal.run(items, a.responses, a.live, a.max_calls, a.output)
+        except (ValueError, OSError) as exc:
+            print(f"ordinal: {exc}", file=sys.stderr)
+            return 2
+        print(json.dumps(result, indent=2, allow_nan=False))
+        return 1 if result.get("unavailable", 0) else 0
+    if a.responses or a.live or a.max_calls is not None or a.output:
+        ap.error("ordinal options require --slot ordinal")
     suite = competency.parse_suite(Path(a.suite))
     arms = {"both": ["lexical", "jev"], "all": ["lexical", "jev", "jev-hier"]}.get(a.arm, [a.arm])
     results = []

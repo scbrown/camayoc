@@ -1,0 +1,140 @@
+{
+  "slot": "ordinal",
+  "status": "advisory",
+  "sourceKind": "inferred",
+  "plane": "quarantine",
+  "trusted": false,
+  "n": 7,
+  "observed": 7,
+  "unavailable": 0,
+  "dataset_sha256": "85e7ba4a9a6cc2388779a92ed0fb9a1f77e4a103bb4ef11bb5f8add4ebb03770",
+  "rounding": "nearest level, ties upward",
+  "input_tokens": 4365,
+  "usage_scope": "observed responses only; failed calls may still be billed",
+  "abstain_rate": null,
+  "abstention": "score has no abstain option",
+  "groups": [
+    {
+      "rubric_sha256": "9ca080a487bd68218111b85db980fac9ea3e4592d07ad6dea4391aa909f074e9",
+      "rubric": {
+        "instructions": "How sufficient is the supplied evidence for the stated, single-test claim? Judge only supplied evidence, do not infer missing provenance or claim broader conformance. This is advisory evidence quality, never a pass/fail verdict.",
+        "levels": [
+          "No supplied evidence supports the bounded claim, or the supplied evidence contradicts it.",
+          "Only an unsupported assertion or aggregate summary supports the bounded claim.",
+          "A matching test result row supports the bounded claim, but suite or implementation identity is missing.",
+          "A matching test result row and pinned suite and implementation identities support the bounded claim, but producer or reproduction evidence is incomplete.",
+          "A matching result row, pinned suite and implementation identities, named producer and reproduction procedure support the bounded claim. This does not independently verify execution."
+        ]
+      },
+      "n": 7,
+      "comparisons": {
+        "reference": {
+          "n": 7,
+          "exact": 0.5714285714285714,
+          "within_one": 1.0,
+          "mae": 0.34428571428571425,
+          "quadratic_weighted_kappa": 0.896551724137931,
+          "conf_agree": 0.9675,
+          "conf_agree_n": 4,
+          "conf_miss": 0.7866666666666666,
+          "conf_miss_n": 3,
+          "labelled": 7,
+          "missing_labels": 0,
+          "rows": [
+            {
+              "id": "quipu-evidence/no-producer",
+              "score": 3.86,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 3,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#quipu-evidence/no-producer"
+              },
+              "confidence": 0.89,
+              "exact": false
+            },
+            {
+              "id": "quipu-evidence/no-reproduction",
+              "score": 3.88,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 3,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#quipu-evidence/no-reproduction"
+              },
+              "confidence": 0.9,
+              "exact": false
+            },
+            {
+              "id": "quipu-evidence/row-only",
+              "score": 2.07,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#quipu-evidence/row-only"
+              },
+              "confidence": 0.93,
+              "exact": true
+            },
+            {
+              "id": "quipu-evidence/no-implementation",
+              "score": 2.52,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 2,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#quipu-evidence/no-implementation"
+              },
+              "confidence": 0.57,
+              "exact": false
+            },
+            {
+              "id": "quipu-evidence/no-evidence",
+              "score": 0.01,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 0,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#quipu-evidence/no-evidence"
+              },
+              "confidence": 0.99,
+              "exact": true
+            },
+            {
+              "id": "quipu-evidence/summary-only",
+              "score": 1.0,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 1,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#quipu-evidence/summary-only"
+              },
+              "confidence": 1.0,
+              "exact": true
+            },
+            {
+              "id": "quipu-evidence/contradictory-row",
+              "score": 0.07,
+              "label": {
+                "judge": "ian / GPT-6 Codex",
+                "score": 0,
+                "source": "bench/ordinal/reference-ian/annotations.jsonl#quipu-evidence/contradictory-row"
+              },
+              "confidence": 0.95,
+              "exact": true
+            }
+          ]
+        },
+        "human": {
+          "n": 0,
+          "exact": null,
+          "within_one": null,
+          "mae": null,
+          "quadratic_weighted_kappa": null,
+          "conf_agree": null,
+          "conf_agree_n": 0,
+          "conf_miss": null,
+          "conf_miss_n": 0,
+          "labelled": 0,
+          "missing_labels": 7,
+          "rows": []
+        }
+      }
+    }
+  ]
+}
