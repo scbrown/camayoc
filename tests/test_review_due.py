@@ -109,6 +109,41 @@ class Combination(unittest.TestCase):
         self.assertNotEqual(a, run([("f", "reviewAfter", '"2026-09-21"')])["f"]["evidence"])
 
 
+class DueEventId(unittest.TestCase):
+    """sattler's ruling (aegis-2qo001), applied to the due event: a deterministic id."""
+
+    def test_a_due_entity_gets_a_stable_event_id(self):
+        a = run([("f", "reviewAfter", '"2026-09-20"')])["f"]
+        b = run([("f", "reviewAfter", '"2026-09-20"')])["f"]
+        self.assertEqual("DUE", a["verdict"])
+        self.assertEqual(a["event_id"], b["event_id"])
+
+    def test_a_new_declared_instant_is_a_new_event(self):
+        a = run([("f", "reviewAfter", '"2026-09-20"')])["f"]["event_id"]
+        self.assertNotEqual(a, run([("f", "reviewAfter", '"2026-09-21"')])["f"]["event_id"])
+
+    def test_not_due_carries_no_event(self):
+        self.assertNotIn("event_id", run([("f", "reviewAfter", '"2026-10-01"')])["f"])
+
+    def deliver_with_a_crash(self, mint):
+        received, checkpoint = set(), set()
+        for attempt in range(2):
+            key = mint(run([("f", "reviewAfter", '"2026-09-20"')])["f"])
+            if key in checkpoint:
+                continue
+            received.add(key)
+            if attempt:
+                checkpoint.add(key)
+        return received
+
+    def test_a_crash_between_send_and_checkpoint_delivers_exactly_one(self):
+        self.assertEqual(1, len(self.deliver_with_a_crash(lambda r: r["event_id"])))
+
+    def test_SABOTAGE_a_send_time_uuid_would_deliver_two(self):
+        import uuid
+        self.assertEqual(2, len(self.deliver_with_a_crash(lambda r: str(uuid.uuid4()))))
+
+
 class ShapeAndReaderAgree(unittest.TestCase):
     """The write must refuse exactly what the reader cannot use (sattler, review of #28)."""
 
