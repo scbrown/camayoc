@@ -274,5 +274,54 @@ class AdapterRecord(unittest.TestCase):
         self.assertIsNone(run(s)["w"]["assignee"])
 
 
+class EventId(unittest.TestCase):
+    """aegis-2qo001, sattler's ruling: at-least-once delivery, receiver dedupes on
+    a DETERMINISTIC event id derived from (WorkItem, causing transition)."""
+
+    def unblocked(self, close_obs="obs-close-1", closed_at="2026-09-23T00:00:00Z"):
+        return Store(item("w", "blocked") + item("d", "closed", at=closed_at, obs=close_obs)
+                     + [("w", "blockedOn", "d")])
+
+    def test_replaying_the_same_transition_gives_the_same_id(self):
+        first = run(self.unblocked())["w"]
+        second = run(self.unblocked())["w"]
+        self.assertEqual("UNBLOCKED", first["verdict"])
+        self.assertEqual(first["event_id"], second["event_id"])
+
+    def test_a_genuine_second_unblock_is_a_new_id(self):
+        # the blocker was reopened and closed again: a new, content-addressed Observation
+        first = run(self.unblocked("obs-close-1", "2026-09-23T00:00:00Z"))["w"]["event_id"]
+        again = run(self.unblocked("obs-close-2", "2026-09-25T00:00:00Z"))["w"]["event_id"]
+        self.assertNotEqual(first, again)
+
+    def test_a_blocked_verdict_carries_no_event(self):
+        s = Store(item("w", "blocked") + item("d", "open") + [("w", "blockedOn", "d")])
+        self.assertNotIn("event_id", run(s)["w"])
+
+    def deliver_with_a_crash(self, mint):
+        """Send, crash before the checkpoint, re-run: what does the receiver hold?"""
+        received = set()  # the idempotent receiver dedupes on the event id
+        checkpoint = set()
+        for attempt in range(2):
+            verdict = run(self.unblocked())["w"]
+            key = mint(verdict)
+            if key in checkpoint:
+                continue
+            received.add(key)  # the send succeeds...
+            if attempt == 0:
+                continue  # ...and the process dies before it records the checkpoint
+            checkpoint.add(key)
+        return received
+
+    def test_a_crash_between_send_and_checkpoint_delivers_exactly_one_event(self):
+        self.assertEqual(1, len(self.deliver_with_a_crash(lambda v: v["event_id"])))
+
+    def test_SABOTAGE_a_send_time_uuid_would_deliver_two(self):
+        # The arm that proves the test above can fail: an id minted at send time
+        # (what the ruling forbids) makes the receiver's dedupe vacuous.
+        import uuid
+        self.assertEqual(2, len(self.deliver_with_a_crash(lambda v: str(uuid.uuid4()))))
+
+
 if __name__ == "__main__":
     unittest.main()

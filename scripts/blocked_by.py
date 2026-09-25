@@ -129,6 +129,30 @@ def evidence_id(item: str, judged: list[tuple[str, str]]) -> str:
     return "sha256:" + hashlib.sha256(basis.encode()).hexdigest()
 
 
+def event_id(post, item: str, names: list[str], judged: list[tuple[str, str]]) -> str:
+    """The id of the 'unblocked' event this verdict would cause (aegis-2qo001).
+
+    sattler's ruling (2026-09-25): delivery is at-least-once with an idempotent
+    receiver that dedupes on this id, so it must be DETERMINISTIC from (the
+    WorkItem, the transition that caused it), never minted at send time. A
+    re-emit after a send-then-crash must carry the same id or the receiver's
+    dedupe is vacuous in exactly the case it exists for.
+
+    The causing transition is each blocker's RESOLVING FACT. For a WorkItem
+    blocker that is its latest Observation, which is content-addressed and so
+    differs for a close, a reopen and a second close: a genuine later
+    unblock is a NEW id, a replay of the same one is the SAME id. For a typed
+    Blocker it is the evaluated condition (kind, parameters, answer), which is
+    already deterministic.
+    """
+    facts = []
+    for target, (state, why) in zip(names, judged):
+        fact = latest_observation(post, target) if why == f"{target}: closed" else None
+        facts.append([target, fact or why])
+    basis = json.dumps([A + item, sorted(facts)], separators=(",", ":"))
+    return "sha256:" + hashlib.sha256(basis.encode()).hexdigest()
+
+
 def latest_observation(post, item: str) -> str | None:
     """The WorkItem's Observation with the latest observedAt, or None."""
     # Two BOUND single-pattern queries, never a join: quipu plans even a
@@ -306,7 +330,9 @@ def evaluate(post, *, item: str | None = None, today: dt.date | None = None,
             continue
         names = sorted(set(targets))
         judged = [blocker_state(post, t, today, probes) for t in names]
-        out.append({"item": w, "verdict": verdict([s for s, _ in judged]),
+        state = verdict([s for s, _ in judged])
+        out.append({"item": w, "verdict": state,
+                    **({"event_id": event_id(post, w, names, judged)} if state == UNBLOCKED else {}),
                     "evidence": evidence_id(w, [(t, s) for t, (s, _) in zip(names, judged)]),
                     "assignee": current_assignee(post, w),
                     "blockers": [{"target": t, "state": s, "why": why}
