@@ -113,7 +113,15 @@ def judge(post, entity: str, now: dt.datetime) -> dict:
     owners = [_local(r["v"]) for r in select(post, f"SELECT ?v WHERE {{ <{A}{entity}> <{A}ownedBy> ?v }}")]
     ident = json.dumps([entity, sorted((b["age"], b["value"], b["due_at"] or "") for b in basis)],
                        separators=(",", ":"))
+    passed = [t for t in known if t <= now]
+    # The 'due' event's id (aegis-kxjack; sattler's delivery ruling on
+    # aegis-2qo001): DETERMINISTIC from (entity, the due instant it crossed),
+    # never minted at send time, so a re-emit after send-then-crash dedupes.
+    # A re-verification moves a maxAge anchor, so a later lapse is a new id.
+    event = (json.dumps([A + entity, min(passed).isoformat()], separators=(",", ":"))
+             if verdict == DUE else None)
     return {"entity": entity, "verdict": verdict,
+            **({"event_id": "sha256:" + hashlib.sha256(event.encode()).hexdigest()} if event else {}),
             "due_at": min(known).isoformat() if known else None,
             "evidence": "sha256:" + hashlib.sha256(ident.encode()).hexdigest(),
             "owner": sorted(owners)[0] if owners else None, "basis": basis}
