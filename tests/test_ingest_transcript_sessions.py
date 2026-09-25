@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import os
+import sqlite3
 import sys
 import unittest
 from pathlib import Path
@@ -114,6 +115,43 @@ class Turtle(unittest.TestCase):
             path = record(Path(tmp), "wu", f"{CLAUDE_ID}.md", "claude", CLAUDE_ID)
             records, _ = mod.scan(Path(tmp), 0, path.stat().st_mtime + 7200)
         self.assertNotIn("body is hashed", mod.turtle(records[0]))
+
+
+
+class DeclaredWorkItems(unittest.TestCase):
+    def stats_db(self, root: Path, rows) -> Path:
+        path = root / "stats.sqlite"
+        with sqlite3.connect(path) as conn:
+            conn.execute("CREATE TABLE task_contexts (id INTEGER PRIMARY KEY, ts REAL, agent TEXT,"
+                         " session TEXT, task TEXT, paired_start INTEGER)")
+            conn.executemany("INSERT INTO task_contexts (ts, agent, session, task, paired_start)"
+                             " VALUES (0, 'wu', ?, ?, ?)", rows)
+        return path
+
+    def test_only_paired_valid_starts_become_edges(self):
+        with TemporaryDirectory() as tmp:
+            db = self.stats_db(Path(tmp), [(CLAUDE_ID, "aegis-9lri74", 1),
+                                           (CLAUDE_ID, "aegis-unpaired", 0),
+                                           (CLAUDE_ID, "not a task", 1),
+                                           (CLAUDE_ID, "aegis-9lri74", 1)])
+            self.assertEqual(mod.declared_tasks(db), {CLAUDE_ID: ["aegis-9lri74"]})
+
+    def test_edges_are_in_the_snapshot_and_the_digest(self):
+        with TemporaryDirectory() as tmp:
+            path = record(Path(tmp), "wu", f"{CLAUDE_ID}.md", "claude", CLAUDE_ID)
+            records, _ = mod.scan(Path(tmp), 0, path.stat().st_mtime + 7200,
+                                  tasks={CLAUDE_ID: ["aegis-9lri74"]})
+        rec = records[0]
+        self.assertIn(f"declaredWorkItem> <{ingest_session_usage.ONTOLOGY}aegis-9lri74>", mod.turtle(rec))
+        self.assertEqual(mod.digest(rec), rec["sha256"] + ":aegis-9lri74")
+
+    def test_sessions_without_declarations_keep_the_bare_digest(self):
+        # Existing state stores the bare sha; adding step (b) must not
+        # re-publish every transcript-only session.
+        self.assertEqual(mod.digest({"sha256": "ab", "tasks": []}), "ab")
+
+    def test_no_stats_db_means_no_edges_not_an_error(self):
+        self.assertEqual(mod.declared_tasks(None), {})
 
 
 if __name__ == "__main__":
