@@ -1,0 +1,410 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Golden paths - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="design-golden-paths--verified-trajectories-blessed-and-enforced"><a class="header" href="#design-golden-paths--verified-trajectories-blessed-and-enforced">Design: Golden Paths — verified trajectories, blessed and enforced</a></h1>
+<blockquote>
+<p><strong>Implementation status (2026-08-22, camayoc-gp1 + gp2):</strong> 🟡 <strong>Camayoc's
+slice is done to its deferral line: terms minted, gates armed, queries
+stored at 12/16.</strong> The competency suite
+(<a href="../../competency/golden-paths.html">competency/golden-paths.md</a>) is written;
+the slice decided (see the §3 note) and the vocabulary is minted in
+<code>ontology/core.ttl</code> with shapes in <code>shapes/core.shapes.ttl</code> and three
+refusal arms in <code>scripts/gate_probe.sh</code> (proven able to fail by
+<code>tests/test_gate_probe.py</code>). Q1–Q13 minus Q5 run as named stored queries
+(<code>queries/camayoc_gp_*.json</code>) against a seeded fixture
+(<code>tests/fixtures/golden-paths.ttl</code>, positive + control-negative arms in
+<code>tests/test_golden_path_queries.py</code>; camayoc-gp2). The four gaps are
+blocked outside this repo, still, as of this date: <strong>Q5</strong> waits on quipu's
+<code>path cone</code> command (quipu-gp2, design-only — the term for per-step cone
+membership is deliberately unminted until that command's output shape
+decides it); <strong>Q14–Q15</strong> are deferred with the L5 ladder levels per the
+suite's acceptance note — <code>aegis:derivedConstraint</code> is minted but the
+Policy/grant/act records to join against only exist once quipu's
+verdict-signing-gated constraint derivation does; <strong>Q16</strong> waits on
+guard-written conformance records at scale (yupana FR-41, design-only —
+<code>aegis:deviatesAt</code> is minted and ready). Mechanisms remain design-only in
+quipu and yupana. Mechanism designs live with their owners:
+<a href="https://github.com/scbrown/quipu/blob/main/docs/design/golden-paths-blessing.md">quipu docs/design/golden-paths-blessing.md</a>
+(storage, pruning aid, backtest, promotion) and
+<a href="https://github.com/scbrown/yupana/blob/main/docs/golden-path-guard.md">yupana docs/golden-path-guard.md</a>
+(conformance guard, plan pre-check).</p>
+</blockquote>
+<h2 id="1-the-arc"><a class="header" href="#1-the-arc">1. The arc</a></h2>
+<p>An agent picks up a work item and uses the graph to understand it. When a
+work item completes with <strong>verified results</strong>, its trajectory — the ordered
+steps that actually got it done — becomes raw material. Trajectories that
+earn it are <strong>pruned</strong> (steps that were correct but didn't serve the goal are
+cut, with humans ruling on anything the deterministic analysis can't) and
+<strong>promoted</strong> into <strong>golden paths</strong>: blessed trajectories that guide similar
+future work. At the far end of the ladder, a blessed path backs <strong>authz
+constraints</strong> — an agent is permitted to act <em>because</em> its plan instantiates
+a path that demonstrably worked.</p>
+<p>Blessing is earned two ways, and only two:</p>
+<ul>
+<li><strong>Deterministic verification.</strong> Falsifier-gated Verifications on the
+result, provenance-cone analysis on the steps, backtests over recorded
+history. Small, checkable, mechanical — the kernel that untrusted work must
+satisfy. (This is the honest extent of the Lean 4 parallel: a tiny trusted
+checker, untrusted generators producing artifacts it can refuse. Nothing
+here is theorem proving; everything here is refusable evidence.)</li>
+<li><strong>Human promotion.</strong> Every level transition is a human act, recorded as a
+fact with provenance. The machinery narrows what a human must look at; it
+never replaces the looking.</li>
+</ul>
+<h2 id="2-reuse-before-minting"><a class="header" href="#2-reuse-before-minting">2. Reuse before minting</a></h2>
+<p>The slice reuses settled vocabulary first; camayoc mints only what no owner
+has.</p>
+<div class="table-wrapper"><table><thead><tr><th>Existing term</th><th>Owner</th><th>Reused for</th></tr></thead><tbody>
+<tr><td><code>aegis:WorkItem</code>, <code>aegis:outcome</code>, <code>aegis:closedAt</code></td><td>camayoc core (slice 1)</td><td>the unit of work and its close disposition</td></tr>
+<tr><td><code>aegis:Decision</code> (<code>chose</code>, <code>over</code>, <code>rationale</code>, <code>decidedBy</code>)</td><td>camayoc core (slice 1)</td><td>pruning rulings and promotion rulings</td></tr>
+<tr><td><code>aegis:Verification</code> + <code>aegis:falsifier</code></td><td>camayoc core (slice 2)</td><td>the "verified results" admissibility gate</td></tr>
+<tr><td><code>aegis:supersededBy</code></td><td>camayoc core (slice 1)</td><td>path demotion/replacement, never deletion</td></tr>
+<tr><td><code>aegis:sourceKind</code></td><td>camayoc core (ingress)</td><td>observed trajectory vs declared intent vs inferred similarity</td></tr>
+<tr><td><code>aegis:exemplar</code></td><td>quipu governance (<code>shapes/governance.ttl</code>)</td><td>a path citing the concrete trajectories it was distilled from</td></tr>
+<tr><td><code>aegis:Policy</code>, <code>aegis:effect</code>, <code>aegis:OperatingPoint</code></td><td>quipu governance</td><td>the constraint a blessed path eventually backs</td></tr>
+<tr><td><code>prov:</code> activity/derivation</td><td>W3C PROV-O (quipu episodes)</td><td>step ordering and the provenance cone</td></tr>
+</tbody></table>
+</div>
+<h2 id="3-candidate-terms-the-slice-decides"><a class="header" href="#3-candidate-terms-the-slice-decides">3. Candidate terms (the slice decides)</a></h2>
+<p>Each candidate is owed to a competency question (cited). All are minted in
+the store's base namespace per the core.ttl namespace note, <code>rdfs:range</code>
+only, never <code>rdfs:domain</code>.</p>
+<blockquote>
+<p><strong>Slice decisions at minting (camayoc-gp1):</strong> omissions and promotions are
+reified — <code>omitsStep</code> points at a <strong><code>PathOmission</code></strong> node (<code>omittedStep</code> +
+mandatory <code>omissionAuthority</code> of <code>cone-analysis|human-decision</code>, optional
+<code>omissionRuling</code> → Decision), and the promotion properties live on a
+<strong><code>PathPromotion</code></strong> event node (<code>promotes</code>, <code>blessingLevel</code>, <code>promotedBy</code>,
+<code>promotedAt</code>, <code>promotionEvidence</code>) — so each ruling carries its authority
+without waiting for statement-level attachment. And the required
+provenance of a GoldenPath is <strong><code>prunedFrom</code></strong> (an in-graph exemplar
+Trajectory); <code>aegis:exemplar</code> stays available, optional, for exemplars
+living outside the graph, matching quipu's governance use.</p>
+</blockquote>
+<div class="table-wrapper"><table><thead><tr><th>Candidate</th><th>Kind</th><th>Owed to</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>Trajectory</code></td><td>class</td><td>Q1, Q2</td><td>The observed, immutable record of the steps a work item actually took. Never edited after the fact; pruning creates a new entity, it never touches this one.</td></tr>
+<tr><td><code>Step</code></td><td>class</td><td>Q1, Q4, Q5</td><td>One action in a trajectory: actor, action kind, target, the Decision it enacted, the Verification it produced (if any), order.</td></tr>
+<tr><td><code>GoldenPath</code></td><td>class</td><td>Q6–Q16</td><td>A pruned, promoted trajectory class. Cites its exemplar Trajectories via <code>aegis:exemplar</code>; carries its blessing history.</td></tr>
+<tr><td><code>stepOf</code> / <code>stepOrder</code></td><td>property</td><td>Q1</td><td>Step membership and total order within a Trajectory.</td></tr>
+<tr><td><code>enacts</code> / <code>verifiedBy</code></td><td>property</td><td>Q1, Q4</td><td>Step → Decision it enacts; Step (or terminal claim) → Verification. <code>verifiedBy</code> ranges over <code>aegis:Verification</code>, so the falsifier discipline applies unchanged.</td></tr>
+<tr><td><code>prunedFrom</code></td><td>property</td><td>Q5, Q6</td><td>GoldenPath → exemplar Trajectory it was distilled from (alongside <code>aegis:exemplar</code>, which may point outside the graph).</td></tr>
+<tr><td><code>omitsStep</code></td><td>property</td><td>Q6, Q7</td><td>GoldenPath → Step it deliberately excludes, each omission carrying its authority: cone-analysis or a human Decision.</td></tr>
+<tr><td><code>deadEnd</code></td><td>property</td><td>Q7</td><td>GoldenPath → an abandoned branch preserved as a hazard: "exemplars tried this; it did not help." Negative knowledge, kept queryable.</td></tr>
+<tr><td><code>blessingLevel</code></td><td>property</td><td>Q8</td><td>The level set at promotion time — a fact of the promotion event, like <code>aegis:outcome</code> at close. Never a stored decaying judgment of current fitness (Q16 is answered at read time).</td></tr>
+<tr><td><code>promotedBy</code> / <code>promotedAt</code> / <code>promotionEvidence</code></td><td>property</td><td>Q8, Q10</td><td>The human act and its cited evidence (backtest run, verification set).</td></tr>
+<tr><td><code>followsPath</code></td><td>property</td><td>Q11, Q12</td><td>A live trajectory's declared claim to be an instance of a GoldenPath. A claim, not a verdict — conformance is evaluated, not asserted.</td></tr>
+<tr><td><code>deviatesAt</code></td><td>property</td><td>Q12</td><td>Where an evaluated trajectory departs from its declared path: the step and the manner.</td></tr>
+<tr><td><code>derivedConstraint</code></td><td>property</td><td>Q14, Q15</td><td>GoldenPath → the <code>aegis:Policy</code> it backs, closing the audit chain constraint ← path ← exemplars.</td></tr>
+</tbody></table>
+</div>
+<h2 id="4-the-blessing-ladder"><a class="header" href="#4-the-blessing-ladder">4. The blessing ladder</a></h2>
+<p>Multiple levels, because "correct" is not one thing. Every transition upward
+is a recorded human promotion sitting on a deterministic admission gate;
+every level can be left, downward, by supersession.</p>
+<div class="table-wrapper"><table><thead><tr><th>Level</th><th>Name</th><th>Deterministic gate (machine-refusable)</th><th>Human act</th></tr></thead><tbody>
+<tr><td>L0</td><td>recorded</td><td>the trajectory parsed from real records (<code>sourceKind observed</code>)</td><td>none — everything is recorded</td></tr>
+<tr><td>L1</td><td>verified</td><td>work item closed <code>done</code> AND terminal claim carries falsifier-gated Verifications</td><td>none — admissibility is mechanical (Q3)</td></tr>
+<tr><td>L2</td><td>candidate</td><td>pruning complete (every omission carries cone-analysis or a Decision); backtest run and recorded (Q13)</td><td>the pruning rulings on in-cone steps</td></tr>
+<tr><td>L3</td><td>advisory</td><td>projected and served warn-tier; conformance recorded, nothing blocked</td><td>promotion to advisory, citing the backtest</td></tr>
+<tr><td>L4</td><td>blessed</td><td>advisory period elapsed with conformance evidence accumulated</td><td>promotion to blessed; deviation now warns loudly, deny opt-in</td></tr>
+<tr><td>L5</td><td>constraint-backing</td><td>verdict signing exists (see the yupana addendum's Phase-4 caveat — honestly far-horizon)</td><td>promotion of the derived <code>aegis:Policy</code> through the existing advisory→enforcing gates</td></tr>
+</tbody></table>
+</div>
+<p>The ladder deliberately maps onto quipu's existing effect ladder
+(<code>warn</code> → enforcing) and its promotion gates — golden paths do not get a
+second, parallel promotion machinery.</p>
+<h2 id="5-pruning-semantics"><a class="header" href="#5-pruning-semantics">5. Pruning semantics</a></h2>
+<p>A successful trajectory usually contains steps that were <em>correct</em> but did
+not serve the goal — exploration, a branch that was walked back, scaffolding.
+Pruning is how a trajectory becomes a path, and it has one rule: <strong>the raw
+Trajectory is immutable</strong>. Pruning authors a new GoldenPath that cites what
+it keeps and records what it omits.</p>
+<p>The deterministic aid: compute the <strong>provenance cone</strong> of the verified result
+— the transitive derivation closure from the terminal Verifications back
+through the steps' outputs. A step outside the cone contributed nothing the
+verified result depends on: <strong>mechanically prunable</strong>, no human needed
+(Q5). A step inside the cone is load-bearing: pruning it requires a human
+<code>aegis:Decision</code> with rationale (Q6), because the cone says it mattered and a
+human is overruling the cone.</p>
+<p>Pruned branches that represent genuine exploration are preserved as
+<code>deadEnd</code> hazards (Q7): a follower of the path should know what the
+exemplars tried that didn't help. Pruning is curation, never erasure —
+bitemporality keeps everything anyway; this just keeps it <em>meaningful</em>.</p>
+<h2 id="6-mechanism-assignment"><a class="header" href="#6-mechanism-assignment">6. Mechanism assignment</a></h2>
+<p>Camayoc owns what these facts mean and how they earn their way in. The
+machinery lives with its owners:</p>
+<div class="table-wrapper"><table><thead><tr><th>Mechanism</th><th>Owner</th><th>Reuses</th></tr></thead><tbody>
+<tr><td>Trajectory ingestion (episodes, PROV)</td><td>quipu</td><td><code>/episode</code> path, auto-provenance</td></tr>
+<tr><td>Provenance-cone computation</td><td>quipu</td><td><code>Store::speculate</code> / impact machinery</td></tr>
+<tr><td>Path backtest over history</td><td>quipu</td><td><code>src/governance/backtest.rs</code> pattern, generalized from single-edit exemplars to trajectories</td></tr>
+<tr><td>Candidate drafting, born advisory</td><td>quipu</td><td><code>quipu policy draft</code> scaffold; policy-by-example step 2, generalized</td></tr>
+<tr><td>Promotion / demotion gates</td><td>quipu</td><td>existing advisory→enforcing gates, <code>aegis:supersededBy</code></td></tr>
+<tr><td>Path projection to the guard</td><td>yupana</td><td>quipu→yupana policy-projection path, projection freshness served</td></tr>
+<tr><td>Conformance guard (warn / opt-in deny)</td><td>yupana</td><td>FR-30 pre-edit hook + FR-35 game-state guard, generalized to steps</td></tr>
+<tr><td>Plan pre-check (what-if over a step sequence)</td><td>yupana</td><td><code>yupana_impact</code> / <code>whatif</code></td></tr>
+<tr><td>Named stored queries for this suite</td><td>quipu</td><td>the quipu #79 pattern</td></tr>
+</tbody></table>
+</div>
+<p>This is <a href="https://github.com/scbrown/quipu/blob/main/docs/design/policy-by-example.md">policy-by-example</a>
+generalized from <strong>point exemplars</strong> (one observed edit) to <strong>trajectory
+exemplars</strong> (one observed success): the same four-step gesture — point,
+draft, backtest, born-advisory — applied to a sequence instead of a hunk.</p>
+<h2 id="7-related-work"><a class="header" href="#7-related-work">7. Related work</a></h2>
+<p>The blessing ladder's nearest published relative is <strong>ActiveGraph</strong>
+(Nakajima, <em>The Log is the Agent: Event-Sourced Reactive Graphs for
+Auditable, Forkable Agentic Systems</em>,
+<a href="https://arxiv.org/abs/2605.21997">arXiv:2605.21997</a>): an event-sourced
+agent runtime whose fork→test→promote loop is this design's promotion arc
+with the same auditability motive — every mutation traces to its events,
+runs replay deterministically, and hypotheses are cheap forks. The
+convergence is real and worth citing; the difference is the evidence bar.
+ActiveGraph's lineage records <em>what happened</em>; this design additionally
+demands what happened <strong>earn</strong> its standing — falsifier-gated verification
+before admissibility, cone-checked pruning, a backtest before a rule is
+born, and a recorded human act before anything enforces. Its
+fork-at-any-event ergonomics are worth adopting on quipu's speculate
+machinery (filed as quipu-gp5), with one constraint stated up front: a
+promoted fork re-enters through the write gates, so fork convenience never
+becomes a gate bypass.</p>
+<h2 id="8-what-this-slice-refuses-to-do"><a class="header" href="#8-what-this-slice-refuses-to-do">8. What this slice refuses to do</a></h2>
+<ul>
+<li><strong>No stored "still good".</strong> A path's current fitness (Q16) is a read-time
+judgment over conformance evidence; only promotion <em>events</em> are stored.</li>
+<li><strong>No model-asserted blessing.</strong> Similarity suggestions and drafted
+candidates may be model-produced, but they land as inferred-plane facts,
+tagged, and nothing above L1 happens without a recorded human act.</li>
+<li><strong>No second promotion machinery.</strong> Levels ride quipu's existing gates.</li>
+<li><strong>No L5 before signing.</strong> Constraint-backing authorization waits on signed
+verdicts; until then the ladder honestly stops at L4.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../design/workflow-and-archive.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../design/certified-knowledge-packs.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../design/workflow-and-archive.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../design/certified-knowledge-packs.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

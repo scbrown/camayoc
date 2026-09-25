@@ -1,0 +1,469 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>The implemented set (historical) - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="the-implemented-set--what-the-paper-may-claim"><a class="header" href="#the-implemented-set--what-the-paper-may-claim">The implemented set — what the paper may claim</a></h1>
+<blockquote>
+<p><strong>Implementation status (2026-08-25):</strong> ✅ <strong>Current — re-measured.</strong> Every
+row below was measured against this repo on this date, with the grep or file
+that produced it. Re-run before drafting; do not carry a row forward on
+trust. This re-measure changed one verdict: <strong>aspect 3 is no longer partial</strong>
+— the retraction half of the move landed with the workflow slice on
+2026-08-24 (<code>camayoc-913</code>) and the row had been carried forward on trust
+against the row two lines above it, which already said so. The 2026-08-22
+re-measure had changed two: aspects 2 and 3 were design-only on 2026-08-17
+and are no longer (<code>camayoc-s0h</code> and <code>camayoc-mip</code> closed 2026-08-18 with
+<code>scripts/planes.py</code> and <code>scripts/promote_plane.py</code>).</p>
+</blockquote>
+<p><code>camayoc-100</code> exists because a provisional patent and a systems paper have
+different standards of proof. <strong>A patent may claim constructively reduced
+embodiments. A systems paper may claim only what is built and measured.</strong>
+Provisional D discloses eight aspects. This document states, per aspect, what
+is built, what is partial, and what is design-only — so drafting starts from
+the implemented set rather than from D's table of contents.</p>
+<p>Getting this wrong is the fastest route to an unrecoverable review: a reviewer
+who finds one unbuilt claim stops believing the built ones.</p>
+<h2 id="verdict-table"><a class="header" href="#verdict-table">Verdict table</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>#</th><th>D aspect</th><th>State</th><th>Evidence</th></tr></thead><tbody>
+<tr><td>1</td><td>Provenance-refusing ingress</td><td>✅ <strong>Built</strong></td><td><code>shapes/core.shapes.ttl</code> makes <code>aegis:sourceKind</code> mandatory; <code>shapes/code-entities.ttl:50</code> constrains it to the closed <code>observed|declared|inferred</code> vocabulary. Refusal proven, not asserted — <code>tests/test_knot_provenance.py</code> (216 lines).</td></tr>
+<tr><td>2</td><td>Quarantined inference</td><td>✅ <strong>Built</strong> (camayoc-s0h, 2026-08-18)</td><td><code>scripts/planes.py</code> registers the planes as quipu named graphs and labels them in the trust lattice — both or neither, and <code>plane_for</code> refuses an unknown <code>sourceKind</code> rather than defaulting to ROOT. Refusals pinned by <code>tests/test_planes.py</code> (13 tests): <code>inferred</code> never shares a plane with <code>observed</code> and always ranks strictly below it. Runtime caveat to state: it requires quipu's <code>POST /graph/create</code> + <code>/graph/label</code> routes (added upstream for the bead); against an older quipu it reports UNAVAILABLE and bootstrap <em>fails</em> rather than writing to ROOT. See <code>docs/design/ingress.md</code> §2.1.</td></tr>
+<tr><td>2b</td><td>Windowed operational ingress + the move rule</td><td>✅ <strong>Built</strong> (2026-08-24)</td><td>Routing is 2-D: <code>plane_for(source_kind, data_kind)</code> refuses <code>operational</code> toward the static planes; <code>scripts/windows.py</code> creates-and-labels month windows (<code>operational</code>/<code>fresh</code>/<code>soleRecord</code>) for deep freeze; the same change landed the promotion move rule, which is now carried by aspect 3's row rather than duplicated here. Pinned by <code>tests/test_planes_2d.py</code> (16 tests). See <code>docs/design/workflow-and-archive.md</code>.</td></tr>
+<tr><td>3</td><td>Governed promotion</td><td>✅ <strong>Built</strong> (camayoc-mip 2026-08-18; the move half, camayoc-913, 2026-08-24)</td><td><code>scripts/promote_plane.py</code>: authority-gated (fails closed on a missing <code>config/plane-authority.json</code>), refuses self-promotion, refuses non-upward moves, refuses promoting what is not in the source plane; records <code>camayoc:planePromotion</code> with full provenance. 15 tests in <code>tests/test_promote_plane.py</code>, almost all refusals, plus the happy-path control. It is now a graph <strong>move</strong>, not a copy-up: <code>promote()</code> returns <code>(assert, close)</code> and <code>main</code> commits assert → <code>POST /episode/retract</code> on <code>--source-episode</code> (<code>on_orphan: preserve</code>) → record. The retraction is a <strong>bitemporal interval close, never a delete</strong>, which is what answered the governance question that held this row open: valid-time replay still shows the fact where and when it lived (competency/workflow-and-archive.md Q13). Commit order is load-bearing and tested both ways — a failed close leaves the fact readable in two planes at different trust (exit 4, stated out loud with the exact retry body), where close-then-failed-assert would lose it outright. Absent <code>--source-episode</code> the record carries <code>camayoc:sourceLeftOpen true</code> rather than implying a close that never happened. Pinned by <code>tests/test_planes_2d.py</code> <code>MoveRuleTests</code> + <code>MoveRuleCommitOrderTests</code> (8 tests).</td></tr>
+<tr><td>4</td><td>Falsifier-gated verification</td><td>✅ <strong>Built</strong></td><td><code>shapes/core.shapes.ttl:89-95</code> — <code>aegis:falsifier</code>, <code>sh:minCount 1</code> on <code>Verification</code>, with the refusal message. Probed by <code>scripts/gate_probe.sh</code>; the probe's own discrimination is <code>camayoc-104</code>.</td></tr>
+<tr><td>5</td><td>Liveness by deliberate absence</td><td>🟡 <strong>Partial — and the partiality is the point</strong></td><td>The <em>vocabulary</em> exists (<code>ontology/core.ttl:34, :120</code> — <code>aegis:ExecutionPath</code>, <code>aegis:ownedBy</code>; the 2026-08-17 row cited two term names that do not appear in the file), and the deliberate absence is explicit at <code>shapes/core.shapes.ttl:130</code>: liveness "belongs with hank/quipu, not a made-up write-time liveness rule". What does <strong>not</strong> exist is the read-time side: the liveness-join questions (verification-and-liveness #6, #8, #9) have <strong>no stored queries</strong> — #10 gained one (<code>camayoc_blockers_by_evidence_kind</code>) with <code>camayoc-102</code>, and #7 gained <code>camayoc_blocked_on_closed_dependency</code> with <code>camayoc-89e</code> (2026-08-22; not a liveness join — it needs only <code>blockedOn</code> and the already-modelled <code>closedAt</code>). See §2.</td></tr>
+<tr><td>6</td><td>Installation-time gate proof</td><td>✅ <strong>Built, and now independence-proven</strong></td><td><code>scripts/gate_probe.sh</code> with <code>tests/test_gate_probe.py</code> holding the probes to being able to fail. <code>camayoc-104</code> closed the remaining gap: each probe is shown to omit exactly one required property (parsed from the shapes, not hardcoded), and a store enforcing one shape at a time proves only its own arm. Claimable as stated.</td></tr>
+<tr><td>7</td><td>Tier-honest serving</td><td>🟡 <strong>Partial</strong></td><td><code>aegis:tier</code> is carried on policies (<code>shapes/policies/edit-grounding.ttl:49, :71, :78</code>) and the tier vocabulary is in <code>ontology/core.ttl:54</code>. But camayoc does not <em>serve</em> facts — yupana does. What camayoc owns is the tag's definition and its mandatory-ness, not the serving. <strong>Claim the vocabulary; do not claim the serving.</strong></td></tr>
+<tr><td>8</td><td>Typed non-answers</td><td>🟡 <strong>Partial, one instance</strong></td><td>Fully realised in exactly one place: <code>scripts/competency.py</code> returns <code>Empty | Partial | Full</code> with a <code>NO COVERAGE</code> verdict, method/threshold/watermark carried, 18 tests. That is a real instance of the discipline. It is <strong>one</strong> instance, on the ontology's own coverage, not a general non-answer taxonomy across camayoc's surfaces.</td></tr>
+</tbody></table>
+</div>
+<p><strong>Summary: five built (1, 2, 3, 4, 6), three partial (5, 7, 8), none
+design-only.</strong> (On 2026-08-17 this read three/three/two; aspects 2 and 3
+landed on 2026-08-18, and aspect 3's remaining half — the retraction — on
+2026-08-24, which is what moved the count to five/three.)</p>
+<h2 id="1-what-this-means-for-the-paper"><a class="header" href="#1-what-this-means-for-the-paper">1. What this means for the paper</a></h2>
+<p><strong>Claim without qualification (aspects 1, 4, 6).</strong> Provenance-refusing ingress,
+falsifier-gated verification, and installation-time gate proof are built, tested,
+and — critically — their <em>refusals</em> are tested, not just their acceptances. These
+three are the paper's spine and they are strong: the falsifier shape in
+particular is a genuinely unusual constraint to enforce at write time, and it is
+enforced.</p>
+<p><strong>Claim narrowly, with the boundary stated (aspects 5, 7, 8).</strong></p>
+<ul>
+<li><em>Liveness by deliberate absence</em> should be claimed as a <strong>design position</strong>
+with a vocabulary, not as a mechanism. The position is defensible and
+interesting — refusing to synthesise a write-time liveness predicate, because
+liveness is a read-time join against a store that actually knows — and
+<code>shapes/core.shapes.ttl:140</code> shows the refusal was deliberate rather than
+an omission. But the paper must not imply the liveness questions are
+answerable today. They are not; see §2.</li>
+<li><em>Tier-honest serving</em> is yupana's, not camayoc's. Camayoc defines and mandates
+the tag; yupana serves under it. Claim the former. This is also the cleanest
+illustration of the boundary in <code>docs/design/paper.md</code> §2.</li>
+<li><em>Typed non-answers</em> should be claimed as <strong>one worked instance</strong>
+(<code>NO COVERAGE</code> on ontology coverage) that demonstrates the discipline, with
+the general taxonomy attributed to yupana's guard, which has ten distinctions
+and the incidents that forced each.</li>
+</ul>
+<p><strong>Now claimable, carefully (aspects 2, 3).</strong> On 2026-08-17 this section said
+<em>do not claim, at all</em> — quarantined inference and governed promotion were D's
+headline pairing and were not built, both blocked on quipu routes. On
+2026-08-18 both landed (<code>camayoc-s0h</code>, <code>camayoc-mip</code>; the quipu routes were
+added upstream on the same branch). The claims the paper may now make, with
+their edges stated:</p>
+<ul>
+<li><em>Quarantined inference</em> is claimable as built: inferred facts route to a
+named graph labelled low in the trust lattice, registration and labelling
+are atomic, and an unroutable write fails rather than landing in ROOT. The
+caveat to state is deployment-shaped, not mechanism-shaped: it requires a
+quipu with the <code>/graph/create</code> + <code>/graph/label</code> routes, and the failure
+against an older store is a refusal, which is the honest direction.</li>
+</ul>
+<blockquote>
+<p><strong>Cross-repo blocker, as of 2026-09-05 (muldoon).</strong> These two rows depend on
+quipu, and a row whose truth lives in a sibling repo goes stale without anyone
+here touching anything — this banner's trigger is <em>drafting</em>, which never
+fires on a dependency. So the blocker carries its OWN date, separate from the
+re-measure date above:</p>
+<div class="table-wrapper"><table><thead><tr><th>quipu-side mechanism</th><th>as of 2026-09-05</th><th>evidence</th></tr></thead><tbody>
+<tr><td>quarantined materialisation</td><td><strong>BUILT</strong> (landed 2026-08-27, <code>df36f72</code>)</td><td><code>src/store/inferred.rs</code>, 17,732 bytes, 13 functions; companion inferred graphs + write guard</td></tr>
+<tr><td>governed promotion</td><td><strong>NOT built</strong></td><td><code>grep -ci promote src/store/inferred.rs</code> -&gt; <code>0</code>; quipu's <code>entailment-regime.md</code> still lists it under REMAINING</td></tr>
+</tbody></table>
+</div>
+<p>The first half cleared <strong>two days after</strong> the 2026-08-25 re-measure above, so
+that re-measure was correct when taken and wrong eleven days later. That is
+the failure mode this table exists to make visible, not a lapse.</p>
+</blockquote>
+<ul>
+<li><em>Governed promotion</em> is claimable as <strong>built, both halves</strong>: the governance
+half — authority-gated, self-promotion-refused, upward-only,
+provenance-recorded, with fifteen tests that are almost all refusals — and,
+since 2026-08-24, the <strong>move</strong> half. <code>camayoc-913</code> was open because
+retracting from <code>crew:inferred</code> looked like erasing the low-trust past;
+bitemporality answers it, and the close is an interval close on the source
+<em>episode</em> rather than a delete, so as-of replay still finds the fact in the
+plane it was written to. The edge the paper must still state is the honest
+one the mechanism states itself: when the caller cannot name the source
+episode, the promotion proceeds with <code>camayoc:sourceLeftOpen true</code> on the
+record — a copy-up that says so, not a move that pretends. Saying
+"promotion" while meaning "copy-up with an audit record" <em>without</em> that
+flag would be exactly the adjacency defect the corpus documents; the flag
+is what keeps the claim clean.</li>
+</ul>
+<h2 id="2-the-gap-the-audit-surfaced-liveness-is-unqueryable"><a class="header" href="#2-the-gap-the-audit-surfaced-liveness-is-unqueryable">2. The gap the audit surfaced: liveness is unqueryable</a></h2>
+<p>Aspect 5 turned up something the bead did not anticipate and that
+<code>camayoc-102</code> needs.</p>
+<p><em>As this audit was written</em> the competency suite was 47 questions across three
+files (<code>sha256:7a0cc4abad386885</code>) and the repository contained <strong>four</strong> stored
+queries, all in <code>queries/</code>, all four serving the <em>metrics</em> slice. The figures
+in this paragraph and the block quotes under it are kept in past tense on
+purpose: they are the record of what was measured when, and the update chain
+below is what supersedes them. The current figures are <code>just competency-list</code>
+and <code>just query-coverage</code>, never this page.</p>
+<pre><code class="language-console">$ ls queries/
+camayoc_metric_reachability_candidates.json
+camayoc_metric_retrieval_method.json
+camayoc_metrics_for_subject.json
+camayoc_unvalidated_metric_claims.json
+</code></pre>
+<p>So the <strong>verification-and-liveness slice had zero stored queries</strong> — including
+the four-beads-one-cause family (#6-#10) that <code>camayoc-101</code> proposes as the
+paper's empirical core, and the falsifier questions (#1-#5) that motivate the
+aspect the paper is strongest on.</p>
+<p>That was a coverage figure of <strong>4/47 ≈ 9%</strong> when this audit was written.</p>
+<blockquote>
+<p><strong>Update after <code>camayoc-102</code>:</strong> the verification-and-liveness slice now has
+<strong>5 of its 13</strong> questions stored and executing (<code>just query-coverage</code>), and
+working it produced a better finding than the count. <strong>Only five of the
+thirteen can be expressed at all</strong> with today's vocabulary; the remaining
+eight name terms the ontology does not carry, so they are <em>competency gaps</em>
+rather than unwritten queries. Aspect 5's read-time gap above is the largest
+of them: Q6 and Q8 need a <code>Principal</code> and an observed liveness record to join
+against, and neither is modelled.</p>
+<p><strong>Update 2026-08-22:</strong> the suite is now five files (golden paths and
+document-structure/chunks joined it) and <code>queries/</code> holds <strong>21</strong> stored
+queries. <code>just query-coverage</code> is the living figure and reports two slices:
+verification-and-liveness <strong>5/19</strong> — the denominator grew from 13 because
+the slice's own §D (cost accounting, Q16–21) had been left out of the
+coverage table, and an uncounted question is a gap unreported — and
+golden-paths <strong>12/16</strong>, whose four gaps are all blocked outside this repo
+(quipu <code>path cone</code>; L5 verdict signing; yupana's guard). The eight original
+verification gaps are unchanged: nothing minted since covers them, and the
+five that are single-edge mints are tracked as <code>camayoc-89e</code>; the §D six as
+<code>camayoc-e29</code>.</p>
+<p><strong>Update 2026-08-22, later the same day:</strong> both beads landed. <code>camayoc-89e</code>
+minted the five single edges (<code>verifiedAt</code>/<code>verifies</code>,
+<code>adversariallyProvenBy</code>, <code>dependsOnVariable</code>, <code>blockedOn</code>,
+<code>artifactDigest</code>/<code>sourceDigest</code>) and <code>camayoc-e29</code> the §D cost vocabulary
+(<code>Session</code>, <code>UsageRecord</code>, <code>provider</code>, <code>tokensConsumed</code>, <code>inSession</code>,
+<code>attributedTo</code>, with <code>observedAt</code> and <code>actor</code> reused). <code>queries/</code> now holds
+<strong>32</strong> stored queries and verification-and-liveness stands at <strong>16/19</strong>,
+pinned by test. The three that remain — Q6, Q8, Q9 — are all the
+Principal/liveness modelling: <code>Session</code> gives them a principal-bearing
+node but no observed stop/heartbeat record, so aspect 5's read-time gap
+above is now the WHOLE remaining gap of the slice.</p>
+<p><strong>Update 2026-08-25 — the same defect, one level up, and a structural fix.</strong>
+The 2026-08-22 entry above congratulates itself on catching an undercounted
+denominator inside a slice. The tool was undercounting SLICES at the same
+time: <code>SLICES</code> listed two of the suite's six files, so <code>crew-task-lifecycle</code>
+(15), <code>document-structure-and-chunks</code> (14), <code>metrics-and-requirements</code> (13)
+and <code>workflow-and-archive</code> (14) — <strong>56 questions</strong> — carried no verdict at
+all. It also <em>understated</em> real coverage, which is the detail worth keeping:
+four stored queries shipped for the metrics slice on 2026-08-07 and counted
+toward nothing, so the tool reported less than the repo had while appearing
+complete.</p>
+<p>Restating the lesson is what failed, twice. The fix is a test, not a note:
+<code>tests/test_coverage_slices.py</code> asserts set equality between the coverage
+tables and <code>competency/*.md</code>, and between each table's question numbers and
+the questions the suite parser finds, so a slice or a question cannot land
+without a row. The report also now separates <strong>UNWRITTEN</strong> (the ontology
+carries the terms; nobody wrote the query) from <strong>GAP</strong> (the ontology cannot
+express it) — levels the tool's own docstring had always distinguished and
+its output had always collapsed.</p>
+<p>The honest suite-wide figure, first computable on this date: <strong>32 of 91
+stored across six slices, 29 expressible and unwritten, 30 competency
+gaps.</strong> Per slice: verification-and-liveness 16/19, golden-paths 12/16,
+metrics-and-requirements 4/13, and 0/15, 0/14, 0/14 for the three that had
+never been counted. Nothing regressed — 32 was always the number of stored
+queries; what changed is that there is now a denominator to put it over.</p>
+<p><strong>Update 2026-08-25, later the same day — <code>camayoc-rkb</code>: 32 → 40 of 91.</strong>
+The workflow-and-archive slice went from <strong>0/14 to 8/14</strong>. Q1–Q5, Q7, Q8 and
+Q13 are stored queries in <code>queries/camayoc_wf_*.json</code>, executing against
+<code>tests/fixtures/workflow-archive.trig</code> — a TriG <strong>dataset</strong>, not a graph,
+because this slice's questions are about where facts live as much as what
+they say. 36 tests in <code>tests/test_workflow_queries.py</code>, each with a seeded
+positive and a control negative, and the controls are the interesting half:
+the same query composed against the wrong graphs returns a quietly short
+answer rather than an error, which is the failure the window scheme exists
+to prevent.</p>
+<p><strong>One gap closed by a tool fix, none by minting.</strong> Q7 was recorded as
+blocked partly because <code>query_coverage.py</code>'s grounding self-check read only
+MINTED terms, so a stored query correctly reusing a quipu-owned aegis term
+(<code>signature</code>, <code>VerifierRegistration</code>, <code>verifier</code>) was reported UNGROUNDED —
+the tool penalising this repo's own reuse-before-minting rule. The fix is a
+reuse block in <code>ontology/core.ttl</code> recording each term's owner with
+<code>rdfs:isDefinedBy</code> and no minting declaration, which the check now reads.
+Nothing was minted in the aegis namespace to close a gap.</p>
+<p><strong>What stayed a gap, on purpose.</strong> Six of fourteen. Q9–Q12 and Q14 are one
+boundary: graph kinds, freeze state, thaw records and composed dataset
+labels are quipu meta-graph and store-table properties served by
+<code>GET /graphs</code>, not triples SPARQL can reach — camayoc is the wrong place to
+answer them from and says so. Q6 is a different one: it asks whether a
+signature VERIFIES, and SPARQL can fetch a public key but cannot evaluate
+an ed25519 signature against it. Reporting the retrieval as coverage would
+let "a key is registered" pass for "the signature is good". The
+Principal / Session-stop / StateTransition family was not touched at all;
+<code>ontology/core.ttl</code>'s decision not to pre-empt that design stands.</p>
+<p>Suite-wide: <strong>40 of 91 stored across six slices, 22 expressible and
+unwritten, 29 competency gaps.</strong> Per slice: verification-and-liveness 16/19,
+golden-paths 12/16, workflow-and-archive 8/14, metrics-and-requirements
+4/13, crew-task-lifecycle 0/15, document-structure-and-chunks 0/14.</p>
+</blockquote>
+<p>The consequence for drafting order is narrowed and concrete: <code>camayoc-101</code>
+writes up the incident night as a labelled corpus, and the natural reviewer
+question is "could your system have <em>answered</em> these questions at the time?".
+For section A (verification integrity) and §D (cost) the answer is now yes,
+against fixtures with both arms; for section B (held-work liveness) it is
+still no — a measured and attributable no, three questions blocked on the
+Principal/liveness modelling. The paper states that the liveness corpus
+motivates a capability rather than demonstrating one.</p>
+<h2 id="3-method"><a class="header" href="#3-method">3. Method</a></h2>
+<p>Each row was produced by grepping for the mechanism outside <code>docs/</code> and
+<code>competency/</code> — a term that appears only in design prose is design-only by
+definition, which is exactly how aspects 2 and 3 were classified on 2026-08-17
+— and how their reclassification was verified on 2026-08-22 (<code>scripts/planes.py</code>
+and <code>scripts/promote_plane.py</code> exist outside <code>docs/</code>, with their tests). Gates
+green at the time of writing: <code>just test</code> 46 passed (1 skipped), <code>just check</code> 0
+issues across 17 files. After <code>camayoc-102</code> and <code>camayoc-104</code>: 65 passed, 21
+files. At the 2026-08-22 re-measure: 145 ran, 0 failed (32 skipped — the
+server-backed arms skip without a <code>quipu-server</code> binary), 24 files. At the
+2026-08-25 re-measure: 210 ran, 0 failed (52 skipped, same reason), 26 files.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../design/paper.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../design/incident-corpus.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../design/paper.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../design/incident-corpus.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

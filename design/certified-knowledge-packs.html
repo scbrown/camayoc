@@ -1,0 +1,407 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Certified knowledge packs - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="design-certified-knowledge-packs"><a class="header" href="#design-certified-knowledge-packs">Design: certified knowledge packs</a></h1>
+<blockquote>
+<p><strong>Implementation status (2026-08-29):</strong> 🟩 <strong>Producer certification and
+digest-addressed distribution built.</strong> Quipu implements <code>.qpack.db</code>
+creation, deterministic content hashing, verification, attach/import, and the
+<code>CertifiedShareBundle</code> SHACL envelope. Camayoc's <code>certify_pack.py</code> invokes
+pack+verify, reads the authoritative manifest hash, and emits the separate
+publisher/certifier claims plus external-truth mapping. It verifies distinct
+Ed25519 keys, computes the hash from a conforming JSON SHACL report, and scans
+the complete SQLite artifact before asserting scrub success. The RML executor
+remains a separate acceptance gate.</p>
+</blockquote>
+<p>Camayoc has one distribution artifact, not a Camayoc pack beside a Quipu share
+bundle. A Camayoc knowledge pack <strong>is</strong> a Quipu <code>CertifiedShareBundle</code>; its
+physical archive encoding is <code>.qpack.db</code>.</p>
+<h2 id="1-normative-artifact-contract"><a class="header" href="#1-normative-artifact-contract">1. Normative artifact contract</a></h2>
+<p>Quipu owns the bytes and their identity:</p>
+<ul>
+<li><code>quipu pack</code> writes the <code>.qpack.db</code> SQLite artifact.</li>
+<li><code>pack_manifest.content_hash</code> is the canonical graph hash: SHA-256 over the
+lexically sorted, deduplicated N-Triples of graph, shapes, stored queries,
+and labels.</li>
+<li>The same content hash names the artifact in git, OCI, Garage, and the graph.
+Upload location and filename are copies, never new identities.</li>
+<li><code>quipu pack --verify</code> establishes integrity only. It does not establish who
+published the pack or whether its knowledge passed certification.</li>
+</ul>
+<p>Camayoc owns the certification envelope. One RDF node typed
+<code>aegis:CertifiedShareBundle</code> carries exactly one canonical graph hash, shapes
+bundle version, provenance manifest, publisher attestation, and certification
+seal. The two signatures are separate claims:</p>
+<ol>
+<li><code>aegis:PublisherAttestation</code> binds the publisher's registered key and
+signature to the bundle.</li>
+<li><code>aegis:KnowledgeCertificationSeal</code> binds an independent certifier's
+registered key and signature to the same canonical graph hash, the shapes
+version, SHACL report hash, passing outward-scrub result, and provenance
+manifest.</li>
+</ol>
+<p>Both keys are existing <code>aegis:VerifierRegistration</code> nodes. A Shuttle-derived
+bundle additionally binds the seal to the frozen operational-window IRI.
+Static packs do not invent a window merely to satisfy the generic envelope.</p>
+<h2 id="2-production-and-verification-sequence"><a class="header" href="#2-production-and-verification-sequence">2. Production and verification sequence</a></h2>
+<p>The producer MUST execute these steps in order:</p>
+<ol>
+<li>Close the source graph or Shuttle window to further writes.</li>
+<li>Run <code>quipu pack</code> with explicit shapes and stored queries.</li>
+<li>Read <code>pack_manifest.content_hash</code>; never compute a competing identity.</li>
+<li>Run <code>quipu pack --verify</code> against the emitted file.</li>
+<li>Run SHACL validation and the outward-share scrub over the bounded content.</li>
+<li>Emit the publisher attestation and independent certification seal over the
+same hash and manifest inputs.</li>
+<li>Validate the complete RDF envelope against Quipu's loaded governance
+shapes.</li>
+<li>Store the file under a content-addressed Garage key and record an
+external-truth mapping (<code>source_uri</code>, <code>access_via</code>, <code>freshness</code>,
+<code>verified_by</code>) on the bundle entity.</li>
+</ol>
+<p>A consumer given only the bundle IRI resolves the mapping, fetches the bytes,
+recomputes the manifest hash, verifies both registered signatures, verifies
+the SHACL and scrub evidence, and only then attaches or imports. Import remains
+Quipu's quarantined staging flow; certification never grants implicit
+promotion.</p>
+<p>Garage is the durable cold copy, not the trust root. A successful upload proves
+only storage acceptance. The manifest hash proves content identity; the two
+registered signatures prove publisher and certifier claims. Retention, bucket
+policy, and credential custody are deployment inputs and MUST be audited before
+the first production upload.</p>
+<p>The implemented producer boundary is:</p>
+<pre><code class="language-bash">scripts/certify_pack.py &lt;graph-iri&gt; --db &lt;source.db&gt; --out &lt;name.qpack.db&gt; \
+  --name &lt;name&gt; --version &lt;version&gt; --shape &lt;shape-set&gt; --query &lt;query-name&gt; \
+  --shacl-report &lt;conforming-report.json&gt; --publish-dir &lt;durable-root&gt; \
+  # plus two distinct public-key/key-IRI/signature inputs and mapping fields
+</code></pre>
+<p>It executes Quipu through argument arrays (never a shell), runs <code>pack --verify</code>,
+and reads <code>pack_manifest.content_hash</code> read-only. A Shuttle-derived invocation
+without <code>--frozen-window-iri</code> refuses. Signatures use Quipu's Ed25519 hex
+convention and cover domain-separated canonical claim messages. The producer
+refuses a bad signature, reused key identity, non-conforming report, mismatched
+report hash, or artifact scrub finding; callers do not supply the scrub boolean
+or SHACL hash. Publication is atomic at
+<code>&lt;durable-root&gt;/sha256/&lt;manifest-digest&gt;.qpack.db</code>; <code>source_uri</code> must identify
+that exact content-addressed copy.</p>
+<h2 id="3-relationship-to-the-quipu-v1-share-interface"><a class="header" href="#3-relationship-to-the-quipu-v1-share-interface">3. Relationship to the Quipu v1 share interface</a></h2>
+<p>The <code>aegis-33cgl</code> v1 share directory and a Camayoc <code>.qpack.db</code> are two physical
+projections of one governed semantic object, not competing knowledge formats:</p>
+<ul>
+<li><code>.qpack.db</code> is the single-file, directly attachable Camayoc distribution
+artifact. Its <code>pack_manifest.content_hash</code> is the bundle's
+<code>canonicalGraphHash</code>.</li>
+<li><code>{manifest.json, export.nt, shapes.ttl}</code> is Quipu's git-native projection for
+review, lineage, diff, and <code>/import</code>. Its <code>share_id</code> identifies that transport
+envelope and parent chain; it never replaces the canonical graph identity.</li>
+<li>Camayoc invokes Quipu to create either projection. It does not reimplement
+canonical RDF serialization, share-manifest hashing, resolution, or
+quarantine.</li>
+<li><code>manifest.producer.name = "quipu"</code> identifies the canonicalizer. The
+publisher key identifies authorship, and the independent certifier key
+identifies conformance; those three roles must not be collapsed.</li>
+</ul>
+<p>Consumers preserve every v1 manifest field and follow Quipu's import contract:
+hash/version/path mismatch refuses before parsing; exact entity matches may be
+rewritten locally; fuzzy matches remain review candidates; non-conforming or
+off-vocabulary facts remain quarantined; certification never promotes directly
+to ROOT. The certified bundle's external-truth mapping is the discovery path to
+the digest-addressed artifact, while the v1 share directory is the composition
+path. Both name the same bounded source and named shapes version.</p>
+<p>Garage/S3, git, and OCI are storage or transport adapters over the digest key.
+They are not trust roots, do not mint new bundle identities, and do not change
+the signed claims. The producer implements both an atomic filesystem adapter
+and an S3-compatible adapter. Both preserve the exact
+<code>sha256/&lt;digest&gt;.qpack.db</code> key contract; the S3 path verifies retained size and
+canonical-hash metadata with a separate HEAD before recording its URI.</p>
+<h2 id="4-declarative-ingress-the-camayoc-rml-subset"><a class="header" href="#4-declarative-ingress-the-camayoc-rml-subset">4. Declarative ingress: the Camayoc RML subset</a></h2>
+<p>Camayoc also owns the executor for declarative source-to-graph mappings because
+this is knowledge ingress, not storage. Mappings are RDF data governed in
+Quipu and may travel inside the certified pack above. The normative executor
+contract is <a href="rml-executor.html">rml-executor.md</a>; this section only fixes its
+relationship to pack production.</p>
+<p>The first implementation is a principled materializing subset:</p>
+<ul>
+<li>logical sources: JSON, CSV, and SQLite;</li>
+<li>iterators: JSON paths, CSV rows, and one parameterized SQLite query;</li>
+<li>term maps: constant, reference, and template;</li>
+<li>subject maps and predicate-object maps;</li>
+<li>explicit target type, target graph, source kind, and mapping IRI;</li>
+<li>output through Camayoc's governed Quipu write lane with the mapping IRI as
+provenance;</li>
+<li>deterministic ordering and stable entity names, so executing the same
+mapping twice is byte-identical and idempotent.</li>
+</ul>
+<p>The vocabulary stays aligned with RML/R2RML so a mapping remains portable.
+Camayoc does not claim spec completeness. Version 1 excludes joins across
+logical sources, custom functions, XML, streaming sources, and virtual
+query-time federation. Unsupported terms refuse before reading or writing a
+source; they never degrade to a best-effort interpretation.</p>
+<p>The external-truth quartet delivered by <code>aegis-jsyl2</code> is a source-discovery
+contract, not executable transformation logic. An executable mapping adds
+standard RML/R2RML triples-map data and refers to a governed external-truth
+subject. Quipu's loaded vocabulary does not yet include those standard mapping
+classes, so loading the Camayoc RML subset shapes is a prerequisite, not work
+the executor may silently route around.</p>
+<p>The first conformance fixture is a bounded bead-store slice. One declared
+mapping must materialize it twice with the same entity names and episode body,
+produce one logical result, and name the mapping IRI in provenance. Subsequent
+fixtures cover <code>services.json</code> and Prometheus scrape targets.</p>
+<h2 id="5-interfaces-and-ownership"><a class="header" href="#5-interfaces-and-ownership">5. Interfaces and ownership</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Concern</th><th>Owner</th><th>Interface</th></tr></thead><tbody>
+<tr><td>Pack bytes, manifest hash, attach/import</td><td>Quipu</td><td><code>.qpack.db</code>, <code>pack_manifest</code>, pack CLI</td></tr>
+<tr><td>Meaning, mapping vocabulary, ingress policy</td><td>Camayoc</td><td>RDF mappings + governed shapes</td></tr>
+<tr><td>Publisher signature</td><td>Producing principal</td><td><code>PublisherAttestation</code></td></tr>
+<tr><td>Knowledge certification</td><td>Independent certifier</td><td><code>KnowledgeCertificationSeal</code></td></tr>
+<tr><td>Operational source windows</td><td>Shuttle</td><td>Frozen-window IRI</td></tr>
+<tr><td>Durable byte storage</td><td>Garage</td><td>Content-addressed object key</td></tr>
+</tbody></table>
+</div>
+<p>There is no second pack class, manifest hash, archive extension, or signature
+shortcut. In particular, a Shuttle <code>TransitionEvent</code> signature cannot stand in
+for either the publisher or certifier claim: it authenticates a transition,
+not the finished bounded artifact.</p>
+<h2 id="6-acceptance-gates"><a class="header" href="#6-acceptance-gates">6. Acceptance gates</a></h2>
+<ul>
+<li>A static pack and a Shuttle-window pack both conform to the loaded Quipu
+certification shapes; removing either signature or setting scrub pass false
+is refused.</li>
+<li>One source graph produces one <code>.qpack.db</code>; its manifest hash is unchanged by
+relocation through git, OCI, and Garage.</li>
+<li>An independent consumer fetches from only the graph mapping, verifies hash
+and both claims, then imports into quarantine.</li>
+<li>The bead-store mapping executes twice byte-identically and yields one logical
+result with provenance naming the mapping IRI.</li>
+<li>Unsupported RML features fail before any Quipu write.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../design/golden-paths.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../design/entity-mentions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../design/golden-paths.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../design/entity-mentions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

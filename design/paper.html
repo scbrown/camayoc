@@ -1,0 +1,559 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Paper plan - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="design-camayoc-paper-plan--how-knowledge-earns-its-way-into-the-graph"><a class="header" href="#design-camayoc-paper-plan--how-knowledge-earns-its-way-into-the-graph">Design: Camayoc paper plan — how knowledge earns its way into the graph</a></h1>
+<blockquote>
+<p><strong>Implementation status (2026-08-22, second revision):</strong> 🟡 <strong>Planned.</strong>
+Nothing drafted. The evaluation is no longer thin: <strong>16 of the verification
+slice's 19</strong> competency questions run as stored queries
+(<code>just query-coverage</code>), after <code>camayoc-89e</code> landed the five single-edge
+mints (Q3/Q4/Q5/Q7/Q12) and <code>camayoc-e29</code> the §D cost-accounting vocabulary
+(Q16–21), both on 2026-08-22. The figure's history matters for §5: it was
+reported as 5/13 until earlier the same day, when the coverage tool was
+found to be omitting §D from its denominator (5/19 once counted). The
+three gaps that remain — Q6, Q8, Q9 — are all the Principal/liveness
+modelling, which is a design decision, not an edge. A newer slice, golden
+paths, stands at 12/16 stored. Read
+<a href="implemented-set.html"><code>implemented-set.md</code></a> before drafting a single sentence;
+it is the gate on what this paper may claim.</p>
+</blockquote>
+<h2 id="status"><a class="header" href="#status">Status</a></h2>
+<ul>
+<li><strong>Date:</strong> 2026-08-22 (rev 2; rev 1 2026-08-17)</li>
+<li><strong>Status:</strong> Planning. Boundary agreed; implemented set measured; evaluation gap narrowed to the liveness family (Q6/Q8/Q9) and quantified.</li>
+<li><strong>Related:</strong> <a href="implemented-set.html"><code>implemented-set.md</code></a> (what may be claimed),
+<a href="thesis-boundary.html"><code>thesis-boundary.md</code></a> (the camayoc/yupana split),
+<a href="incident-corpus.html"><code>incident-corpus.md</code></a> (the empirical core),
+<a href="ingress.html"><code>ingress.md</code></a> (the mechanism),
+<a href="../vision.html"><code>../vision.md</code></a> (the TrustGraph foil),
+the provisional filing (kept privately) (D — <strong>claims more than is built</strong>).</li>
+</ul>
+<h2 id="1-intent-and-thesis"><a class="header" href="#1-intent-and-thesis">1. Intent and thesis</a></h2>
+<p><strong>Thesis, from the README:</strong> <em>how knowledge earns its way into the graph, so
+that the store never has to trust an extractor.</em></p>
+<p>Sharpened for a paper:</p>
+<blockquote>
+<p>A knowledge store that accepts machine-written facts has a trust problem it
+cannot solve internally, because by the time a fact is in the store the
+question "why should I believe this?" has already been answered — badly.
+<strong>The answer must be a refusal at admission, not a confidence score at read
+time.</strong> And the refusal must itself be falsifiable, or it is decoration.</p>
+</blockquote>
+<p>Two halves, and the second is what makes it a paper rather than a design note.
+Anyone can add a mandatory provenance tag. The contribution is applying the
+same standard <em>to the checks themselves</em>: a <code>Verification</code> is refused at ingress
+unless it names the result that would have proved it wrong.</p>
+<p>That constraint sounds pedantic until you have field data. We have field data
+(§4), and it says that on one night on a live crew, <strong>eleven separate checks
+could not have failed</strong> and were reported as verification by careful people.</p>
+<h2 id="2-positioning"><a class="header" href="#2-positioning">2. Positioning</a></h2>
+<h3 id="the-three-paper-program"><a class="header" href="#the-three-paper-program">The three-paper program</a></h3>
+<p>Worded identically here and in yupana's plan:</p>
+<ul>
+<li><strong>quipu</strong> compiles SARC into the <strong>store</strong> — submitted, <code>arXiv:submit/7961151</code>.</li>
+<li><strong>yupana</strong> compiles it into the <strong>action</strong>.</li>
+<li><strong>camayoc</strong> governs <strong>admission</strong> — what may enter at all.</li>
+</ul>
+<p>The nearest external anchor is <strong>SARC-DQ</strong>, which quipu's related-work section
+describes as gating evidence quality. Evidence quality is precisely camayoc's
+territory rather than yupana's, and that is the one-sentence justification for
+the admission leg being its own paper.</p>
+<h3 id="the-named-foil-trustgraph"><a class="header" href="#the-named-foil-trustgraph">The named foil: TrustGraph</a></h3>
+<p>Already stated in <a href="../vision.html"><code>../vision.md</code></a> and it should open the paper,
+because it is concrete and it is a real system rather than a straw one:</p>
+<blockquote>
+<p>The temptation is to bolt an extraction pipeline onto the store. TrustGraph
+and its peers do exactly that, and it works — until you ask "why should I
+believe this fact?" and the answer is "a model wrote it during ingestion."</p>
+</blockquote>
+<p>The paper's structural claim follows: <strong>the extraction layer must live outside
+the store, with its own discipline, its own tests, and its own refusals.</strong> Be
+fair to the foil — the integrated approach has real ergonomic advantages, and
+the paper is stronger for saying so before arguing the trade is wrong for
+agent-written knowledge specifically.</p>
+<h3 id="the-boundary-with-yupana"><a class="header" href="#the-boundary-with-yupana">The boundary with yupana</a></h3>
+<p>Settled in <a href="thesis-boundary.html"><code>thesis-boundary.md</code></a> and mirrored in yupana's
+plan §2.1. Short version: camayoc owns <strong>admission</strong>, yupana owns <strong>the guard's
+non-answers at the action boundary</strong>, neither claims the shared principle, each
+cites the other. Two collisions were found and resolved there — the installer
+gate proof (camayoc's, yupana cites) and <code>Empty|Partial|Full</code> coverage
+reporting (convergent, both keep, neither claims).</p>
+<h2 id="3-contributions"><a class="header" href="#3-contributions">3. Contributions</a></h2>
+<ul>
+<li><strong>C1 — Provenance-refusing ingress with a closed, per-class-narrowed
+vocabulary.</strong> <code>aegis:sourceKind</code> is mandatory and constrained to
+<code>observed | declared | inferred</code>; a write carrying an unrecognised value fails
+now, not at read time. Built; refusal tested
+(<code>tests/test_knot_provenance.py</code>).</li>
+<li><strong>C2 — Falsifier-gated verification.</strong> <code>aegis:falsifier</code>, <code>sh:minCount 1</code>, on
+every <code>Verification</code>. A verification that does not name what would have
+disproved it is refused at ingress rather than stored and believed. Built.
+<strong>This is the paper's sharpest single mechanism</strong> and the one with no obvious
+precedent in knowledge-graph ingress.</li>
+<li><strong>C3 — The incident corpus.</strong> Eleven measured instances of unfalsifiable
+verification and a four-mechanism/one-missing-predicate liveness family, from
+one night on a live crew, taxonomized into seven recurring forms. See §4 and
+<a href="incident-corpus.html"><code>incident-corpus.md</code></a>. <strong>Most papers about verification
+integrity have no field data at all.</strong></li>
+<li><strong>C4 — Installation-time gate proof.</strong> Each refusal gate is proven by a probe
+that omits exactly one required property, so the arms discriminate — the
+paper's own thesis applied to the paper's own installer. Built
+(<code>scripts/gate_probe.sh</code>, <code>tests/test_gate_probe.py</code>), and <strong>independence is
+now established</strong> (<code>camayoc-104</code>): each probe provably omits exactly one
+required property, and a store enforcing one shape at a time proves only its
+own arm. Claimable as stated.</li>
+<li><strong>C5 — Liveness by deliberate absence, as a design position.</strong> Judgments that
+decay are never stored; liveness is a read-time join. Claim the position and
+the vocabulary. <strong>Do not claim the mechanism</strong> — see §6.</li>
+</ul>
+<h2 id="4-the-empirical-core"><a class="header" href="#4-the-empirical-core">4. The empirical core</a></h2>
+<p>Full write-up in <a href="incident-corpus.html"><code>incident-corpus.md</code></a>; source is
+<code>competency/verification-and-liveness.md</code>, recorded contemporaneously on
+2026-08-06/07.</p>
+<p><strong>Section A — verification integrity.</strong> Seven forms, each measured at least
+once:</p>
+<ol>
+<li>a guard documented as belt-and-braces that was the <em>only</em> mechanism</li>
+<li>a byte-identity test that passed against a read-write open</li>
+<li>a schema check comparing <code>(type, name)</code> only, so <code>ADD COLUMN</code> was invisible</li>
+<li>a binding condition whose two branches were the same function</li>
+<li>a <code>grep -c</code> matching the <em>description</em> of the bug in the test payload</li>
+<li>a <code>grep</code> against an empty capture whose <code>0</code> read as "absent"</li>
+<li>a "corroboration" equally consistent with both competing hypotheses</li>
+</ol>
+<p>The unifying shape — and the sentence the paper should be built around — is
+that none of these was a wrong answer. Each was <strong>a check performed against
+something adjacent to the claim, and reported as verification.</strong></p>
+<p><strong>Section B — held-work liveness.</strong> Four simultaneous P1s, one root cause:
+every routing mechanism recorded an owner without checking the owner was alive.
+Bead assignment, alert keeper labels, <code>BLOCKED</code> status, <code>in_progress</code> status —
+four mechanisms, one missing predicate, identical worst-case consequence: <em>a
+thing correctly detected and correctly recorded is indistinguishable, from every
+dashboard, from a thing that was never detected at all.</em> The sharpest instance
+is recursive and should be quoted verbatim: the bead <em>documenting</em> invisible
+in-progress work, sitting in-progress, invisible, on a stopped agent.</p>
+<p><strong>Section C — armed ≠ merged ≠ correct.</strong> A guard correct in git and absent
+from every execution path for 24h; a rules file six weeks stale reaching agents
+while the current one sat in the repo.</p>
+<h3 id="the-two-attacks-this-section-must-survive"><a class="header" href="#the-two-attacks-this-section-must-survive">The two attacks this section must survive</a></h3>
+<p>Named in <code>camayoc-101</code> and both are fair:</p>
+<ul>
+<li><strong>Selection bias.</strong> Were these found by looking for them? What is the
+denominator? A corpus assembled by searching for instances of a pattern
+proves the pattern is findable, not that it is common.</li>
+<li><strong>Count vs rate.</strong> "Eleven instances" is unanchored. Eleven out of what, over
+what period, on how many agents?</li>
+</ul>
+<p><a href="incident-corpus.html"><code>incident-corpus.md</code></a> answers both explicitly, including
+where the honest answer is "we cannot compute this from the record we kept".
+<strong>Do not paper over that.</strong> A corpus with a stated denominator gap is credible;
+a corpus with a silent one is not, and the paper's own thesis is that a claim
+must name what would falsify it.</p>
+<h2 id="5-evaluation--and-its-honest-state"><a class="header" href="#5-evaluation--and-its-honest-state">5. Evaluation — and its honest state</a></h2>
+<p><strong>Methodology: competency questions, which are the standard for ontology work.</strong>
+The suite is 91 questions across six slices, machine-readable and watermarked
+(<code>sha256:65bc4c5ad3d84752</code>, <code>just competency-list</code>). The suite sets its own bar:
+<em>every question must eventually run as a named stored query.</em></p>
+<p><strong>Coverage of the verification-and-liveness slice: 16 of 19 (<code>Partial</code>).</strong>
+Reported per question by <code>scripts/query_coverage.py</code> (<code>just query-coverage</code>),
+and the figure is pinned by a test so it cannot drift silently.</p>
+<p>The figure's history is itself evaluation material. <code>camayoc-102</code> measured
+5/13; the 2026-08-22 audit found the coverage tool omitting the slice's own
+§D (cost accounting, Q16–21) from its denominator — 5/19 once counted, an
+uncounted question being a gap unreported. Later the same day <code>camayoc-89e</code>
+landed the five single-edge mints (Q3/Q4/Q5/Q7/Q12) and <code>camayoc-e29</code> the §D
+vocabulary (Q16–21), each term owed to its question: 16/19.</p>
+<blockquote>
+<p><strong>A suite-wide denominator now exists, and this section does not yet use
+it (2026-08-25).</strong> The same defect recurred one level up: <code>SLICES</code> in the
+coverage tool listed two of the suite's six files, so four slices and 56
+questions carried no verdict — and four already-stored metrics queries
+counted toward nothing, meaning the tool understated real coverage while
+appearing complete. All six slices now have tables, a test asserts set
+equality between them and <code>competency/*.md</code> so an uncounted slice cannot
+land again, and <code>just query-coverage</code> prints a suite total: <strong>40 of 91
+stored, 22 expressible and unwritten, 29 competency gaps</strong> (32/91 when the
+denominator first existed; <code>camayoc-rkb</code> took workflow-and-archive from
+0/14 to 8/14 later the same day). The per-slice figures above are unchanged
+and remain correct.</p>
+<p><strong>What number this section should lead with is an authorial decision and is
+deliberately left open.</strong> 16/19 is the strongest true statement available
+and 40/91 is the most complete one; they are not in conflict, and choosing
+between them — or reporting both, with the three states kept apart, since
+an unwritten query and a competency gap are different claims about the
+ontology — is a framing call for whoever drafts §5, not a figure to be
+swapped in by a sweep.</p>
+</blockquote>
+<div class="table-wrapper"><table><thead><tr><th></th><th>Questions</th><th>State</th></tr></thead><tbody>
+<tr><td>Stored and executing</td><td>Q1–Q5, Q7, Q10–Q13, Q16–Q21</td><td>falsifier retrieval and staleness, adversarial proof, variable dependence, closed-dependency blocks, blockers by evidence kind, execution paths and drift, cost accounting</td></tr>
+<tr><td><strong>Competency gaps</strong></td><td>Q6, Q8, Q9</td><td>all the Principal/liveness modelling, each reported with the terms it would need</td></tr>
+</tbody></table>
+</div>
+<p>The remaining gaps are one family, and it is the pointed one:</p>
+<ul>
+<li><strong>Q6, Q8 and Q9 (liveness) block the family §4 leads with.</strong> There is no
+<code>Principal</code> and no observed stop/heartbeat record. This is <em>correctly</em> not a
+stored fact — ingress rule 5 forbids storing judgments that decay — but a
+read-time join still needs something to join <em>to</em>, and nothing is modelled
+(<code>aegis:Session</code>, minted for §D, carries a principal but says nothing about
+running). <strong>The paper must say this plainly: the four-beads-one-cause
+corpus motivates a capability the ontology cannot yet express.</strong></li>
+<li><strong>Q4 is now a closed loop worth a paragraph.</strong> <code>camayoc-104</code> established
+proven-able-to-fail for the gate probes; <code>aegis:adversariallyProvenBy</code> now
+records the same property about any check, and the proof node is itself a
+falsifier-gated <code>Verification</code>. The system practises the discipline <em>and</em>
+can describe it — and the date each half landed is in the history.</li>
+<li><strong>Q2 has a subtlety worth a footnote.</strong> A <code>Verification</code> without a falsifier
+cannot be written through a gated ingress, so Q2's population is precisely the
+store's <em>pre-gate legacy</em>, and against a store that was always gated it
+correctly returns nothing. The fixture seeds pre-gate rows so the query is
+proven able to find them.</li>
+<li><strong>§D's acceptance is self-application again.</strong> Q16 and Q18 run against a
+fixture whose totals are stated independently (what the harness files
+print) and reproduced by the queries — a usage reader checkable only
+against itself being the section-A defect in an accountant's hat. The
+UNKNOWN-never-zero rule is tested from both sides: unmeasured items and
+decisions return no row, and Q19 returns the unmeasured session itself.</li>
+</ul>
+<p>Every stored query executes against a fixture with <strong>both arms</strong> — a seeded
+positive finding and a control negative — per the suite's own acceptance
+criterion: <em>a query that cannot return findings has the same defect as the
+checks in section A, one level up.</em> That self-application is the sentence to
+put in §7.</p>
+<p><strong>What this means for the claim.</strong> The liveness corpus in §4 still
+<strong>motivates</strong> a capability rather than demonstrating one, and the paper must
+say so — but the shortfall is now three questions, one named family. The
+verification-integrity and cost-accounting halves of the slice are
+demonstrable, not merely motivated.</p>
+<h2 id="6-scope-boundaries-honest"><a class="header" href="#6-scope-boundaries-honest">6. Scope boundaries (honest)</a></h2>
+<p>From <a href="implemented-set.html"><code>implemented-set.md</code></a>, which is authoritative:</p>
+<ul>
+<li>
+<p><strong>Quarantined inference and governed promotion are BUILT; one quipu-side
+mechanism is not.</strong> This bullet said the opposite until 2026-09-05, and was
+contradicting the very document it cites as authoritative — see the note
+below, which is kept because how it went stale is the reusable part.
+Re-measured 2026-09-05:</p>
+<ul>
+<li><em>Quarantined inference</em> — built on both sides. Camayoc routes inferred
+facts to a distinct named graph labelled low in the trust lattice
+(<code>scripts/planes.py</code>, 13 tests) since 2026-08-18; quipu materialises into
+companion inferred graphs with a write guard (<code>src/store/inferred.rs</code>,
+17,732 bytes, 13 functions) since 2026-08-27, <code>df36f72</code>.</li>
+<li><em>Governed promotion</em> — camayoc's half is built (<code>scripts/promote_plane.py</code>,
+15 tests, authority-gated and self-promotion-refused, move half since
+2026-08-24). <strong>Quipu's promotion mechanism is not</strong>: <code>grep -ci promote src/store/inferred.rs</code> -&gt; <code>0</code>, and quipu's own <code>entailment-regime.md</code> still
+lists <em>"REMAINING under quipu-0b6: the promotion mechanism (§3 —
+authority-gated…)"</em>.</li>
+</ul>
+<p>So future work names <strong>one</strong> blocker, not two, and it is quipu-side rather
+than camayoc-side.</p>
+<blockquote>
+<p><strong>How this went stale, recorded because the mechanism is the point.</strong> The
+claim was true when written (2026-08-22). <code>implemented-set.md</code> re-measured
+on 2026-08-25 and moved both aspects to Built; quipu's half landed
+2026-08-27. This bullet moved on neither date, and for fourteen days
+asserted "NOT built" while naming as authoritative a document that said
+"Built" — a contradiction inside one repo, which no cross-repo watch would
+have caught. <code>tests/test_paper_claims.py</code> now fails on exactly that shape.
+It also carried a falsifiable claim, <em>"Zero non-doc references exist"</em>,
+which was false by two scripts and 28 tests.</p>
+</blockquote>
+</li>
+<li>
+<p><strong>Tier-honest serving is yupana's.</strong> Camayoc defines and mandates the tag;
+yupana serves under it. Claim the vocabulary, not the serving.</p>
+</li>
+<li>
+<p><strong>Typed non-answers: one instance, not a taxonomy.</strong> <code>NO COVERAGE</code> on the
+ontology's own coverage. The systematic taxonomy is yupana's.</p>
+</li>
+<li>
+<p><strong>Liveness: a position and a vocabulary, not a mechanism.</strong> The terms exist
+(<code>ontology/core.ttl:93, :120</code>) and the refusal to synthesise a write-time
+liveness predicate is explicit and deliberate
+(<code>shapes/core.shapes.ttl:140</code>). The read-time queries do not exist.</p>
+</li>
+</ul>
+<h2 id="7-paper-outline"><a class="header" href="#7-paper-outline">7. Paper outline</a></h2>
+<ol>
+<li><strong>Introduction</strong> — the TrustGraph question: why should I believe this fact?</li>
+<li><strong>Background</strong> — SARC and SARC-DQ; the three-paper program; what quipu and
+yupana already claim.</li>
+<li><strong>The admission problem</strong> — why a store cannot solve trust internally.</li>
+<li><strong>Mechanism</strong> — closed provenance vocabulary, write-time refusal, the
+falsifier constraint on <code>Verification</code>.</li>
+<li><strong>Proving the gates</strong> — installation-time probes, one omitted property each,
+arms that discriminate. Self-application of the thesis.</li>
+<li><strong>Field evidence</strong> — the incident corpus, with denominator and rate stated.</li>
+<li><strong>Evaluation</strong> — competency questions, per-question coverage, gaps as
+findings.</li>
+<li><strong>Limitations</strong> — §6, in full and unhedged.</li>
+<li><strong>Related work</strong> — TrustGraph and extraction-in-store platforms; SARC-DQ;
+provenance vocabularies (PROV-O — say plainly why <code>sourceKind</code> is narrower
+and why narrowness is the point); SHACL validation as a gate rather than a
+report; ontology competency questions (Grüninger &amp; Fox) as evaluation
+methodology.</li>
+<li><strong>Conclusion.</strong></li>
+</ol>
+<h2 id="8-build-order"><a class="header" href="#8-build-order">8. Build order</a></h2>
+<ol>
+<li><del>Agree the yupana boundary</del> — done, <a href="thesis-boundary.html"><code>thesis-boundary.md</code></a>.</li>
+<li><del>Produce the implemented set</del> — done, <a href="implemented-set.html"><code>implemented-set.md</code></a>.</li>
+<li><del>Write up the incident corpus with denominator and rate</del> — done, <a href="incident-corpus.html"><code>incident-corpus.md</code></a>.</li>
+<li><del>Prove the gate probes adversarially</del> — done (<code>camayoc-104</code>); C4 is claimable.</li>
+<li><del>Close the competency-query gap for the verification slice</del> — done
+(<code>camayoc-102</code>), reaching 5/13 at the time and converting the other 8 into
+named ontology gaps. (Recounted as 5/19 on 2026-08-22 when the slice's §D
+entered the denominator — six more named gaps, no lost queries. The five
+single-edge mints landed as <code>camayoc-89e</code> and the §D cost vocabulary as
+<code>camayoc-e29</code>, both 2026-08-22: 16/19.)</li>
+<li><strong>Decide whether to close the liveness gap before drafting.</strong> Q6/Q8/Q9
+(the Principal/liveness modelling) is all that remains, and it is the one
+that changes what §4 can claim; it can also ship as future work with the
+blocker named. This is now the only open build decision, and it is ian's.</li>
+<li>Draft §§1–5 from the mechanism docs; they are stable.</li>
+<li>Draft §7 last, against whatever coverage step 6 settles on.</li>
+</ol>
+<h2 id="9-what-this-paper-is-not"><a class="header" href="#9-what-this-paper-is-not">9. What this paper is not</a></h2>
+<ul>
+<li>Not a retrieval paper. That is bobbin's, and its own measurement problems are
+documented there.</li>
+<li>Not a store paper. Quipu's is submitted and its evaluation is spent.</li>
+<li>Not a guard paper. Yupana owns the action boundary and the non-answer
+taxonomy.</li>
+<li>Not a claim that quipu-side <em>promotion</em> of quarantined facts is built — it is
+not (see §6). Quarantined inference itself is built and claimable; this line
+said otherwise until 2026-09-05.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../design/thesis-boundary.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../design/implemented-set.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../design/thesis-boundary.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../design/implemented-set.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,419 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Jev: typed decisions - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="design-jev--typed-decisions-in-the-ingress-path-exploration"><a class="header" href="#design-jev--typed-decisions-in-the-ingress-path-exploration">Design: Jev — typed decisions in the ingress path (exploration)</a></h1>
+<blockquote>
+<p><strong>Status: EXPLORATION, FIRST ARM BUILT (2026-09-21).</strong> Stiwi has a TypeSafe
+account (console.typesafe.ai, created 2026-09-20). Slot 2 below ships as
+<code>competency.py --method jev</code> over <code>scripts/jev.py</code>; nothing is decided. This doc exists so the question stays open in the repo rather than in
+a chat. It records what Jev is, where a typed decision would slot into camayoc
+and into NeuralAmplifier, what the ingress discipline demands of it, and what
+has to be true before the first experiment runs. Tracked on the aegis board;
+see the bead named at the bottom.</p>
+</blockquote>
+<h2 id="1-what-jev-is-measured-from-public-sources-not-from-use"><a class="header" href="#1-what-jev-is-measured-from-public-sources-not-from-use">1. What Jev is (measured from public sources, not from use)</a></h2>
+<p>Jev is TypeSafe AI's first "System One" model (announced 2026-09-15). It
+generates no text. A request carries a <code>state</code> (string, object or array) and a
+map of named questions; the reply carries every answer in one parallel pass.</p>
+<div class="table-wrapper"><table><thead><tr><th>Primitive</th><th>Input</th><th>Output</th></tr></thead><tbody>
+<tr><td><code>noul</code></td><td>a yes/no proposition</td><td>one probability in [0,1]</td></tr>
+<tr><td><code>choice</code></td><td>up to 255 named options</td><td>winner, probability per option, confidence</td></tr>
+<tr><td><code>score</code></td><td>2–10 ordered rubric levels</td><td>probability-weighted position, distribution, confidence</td></tr>
+</tbody></table>
+</div>
+<p><code>POST https://api.typesafe.ai/v1/systemone</code>, bearer key, model <code>jev-latest</code>.
+Questions in one request are evaluated independently. Public figures: 70–500 ms
+per call; input $0.042 per million tokens, output unmetered; ~$0.0004 per
+decision. TypeSafe's classification benchmark: Jev 67.8% vs Claude Opus 5 73.1%.
+Langfuse's 6,003-check eval benchmark: 91.5% agreement with Claude Fable 5.1 at
+$160 per million answers vs $33,000. Early access behind a waitlist as of
+2026-09-20.</p>
+<p>Three properties shape every use below:</p>
+<ol>
+<li><strong>It cannot abstain.</strong> A <code>choice</code> with no fitting option still picks one.
+Every choice we pose carries an explicit "none of these" option, and a
+confidence floor decides whether the answer is used at all.</li>
+<li><strong>It gives no rationale.</strong> An auditable decision must reconstruct its trace
+from the state and the question, which is why the verdict record must carry
+both verbatim.</li>
+<li><strong>It degrades on long, noisy state</strong> ("context rot", Langfuse). State is
+assembled by deterministic code, minimal, and its size recorded.</li>
+</ol>
+<h2 id="2-what-the-ingress-discipline-demands"><a class="header" href="#2-what-the-ingress-discipline-demands">2. What the ingress discipline demands</a></h2>
+<p>A Jev answer is a model judgment. Ingress rule 4 applies without exception:</p>
+<ul>
+<li>Every verdict is tagged <code>aegis:sourceKind "inferred"</code> and routed through
+<code>planes.plane_for("inferred")</code>. Never ROOT, never an observed plane.</li>
+<li>The verdict record carries <code>method: "jev-latest"</code>, <code>semantic: true</code>, the
+question text, the criteria as posed, the raw probabilities, the confidence,
+the threshold used, and the state watermark — the same honesty
+<code>settled_decisions.py</code> and <code>competency.py</code> already enforce on their lexical
+scorers. A lexical verdict may not masquerade as semantic; a semantic one may
+not hide its numbers.</li>
+<li><strong>Jev never promotes.</strong> Plane promotion stays behind
+<code>config/plane-authority.json</code> and <code>scripts/promote_plane.py</code>. Jev may <em>rank</em>
+the promotion queue for a human; it holds no authority.</li>
+<li><strong>Routing by <code>sourceKind</code> stays deterministic.</strong> No model decides which plane
+a fact enters.</li>
+</ul>
+<h2 id="3-candidate-uses-in-camayoc-ranked-by-fit"><a class="header" href="#3-candidate-uses-in-camayoc-ranked-by-fit">3. Candidate uses in camayoc, ranked by fit</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>#</th><th>Slot</th><th>Today</th><th>Jev shape</th><th>Fit</th><th>Why</th></tr></thead><tbody>
+<tr><td>1</td><td>Settled-decision collision (<code>settled_decisions.py</code>, camayoc-7lt)</td><td>lexical, advisory, says so</td><td>one <code>noul</code> per standing decision: "does the new Decision duplicate or conflict with this one"</td><td>strong</td><td>advisory posture already tolerates error; verdict shape exists</td></tr>
+<tr><td>2</td><td>Question mapping onto the competency suite / NO COVERAGE (<code>competency.py</code>, camayoc-b6h)</td><td>lexical; embedding path blocked by network policy (HF CDN denied)</td><td><code>choice</code> over parsed competency questions + "none of these"; confidence floor → NO COVERAGE</td><td>strong</td><td>the semantic matcher b6h asked for, without weights on disk</td></tr>
+<tr><td>3</td><td>Promotion-queue triage</td><td>nothing ranks the quarantine plane</td><td><code>score</code> "how well evidenced is this fact" over a fixed rubric</td><td>good</td><td>orders human review; authority untouched</td></tr>
+<tr><td>4</td><td>Entity-mention disambiguation (<code>extract_entities.py</code>)</td><td>abstains on a label naming two entities</td><td><code>choice</code> among the candidates + "neither"</td><td>cautious</td><td>doc's stance: a wrong mention is worse than a missing one; keep the abstain path, high floor</td></tr>
+<tr><td>5</td><td>Plane routing (<code>planes.plane_for</code>)</td><td>deterministic</td><td>—</td><td><strong>no</strong></td><td>must stay deterministic</td></tr>
+</tbody></table>
+</div>
+<h2 id="4-candidate-uses-in-neuralamplifier"><a class="header" href="#4-candidate-uses-in-neuralamplifier">4. Candidate uses in NeuralAmplifier</a></h2>
+<p>NeuralAmplifier's value is a brain that explains its moves; Jev gives no reasons,
+so the LLM-tier action choice is the wrong first target. Three other slots:</p>
+<ul>
+<li><strong>Grounding-fact ranking</strong> — the open na-htm question is whether ranking facts
+by <code>information_value</code> predicts citation. A <code>score</code> per fact ("how
+decision-relevant to this action space") is a third arm the existing eval can
+score against the same MRR / top-k baselines.</li>
+<li><strong>Surface-tier routing</strong> — deterministic tier vs LLM tier vs bigger model per
+decision (the LangChain harness pattern); cheap enough per turn.</li>
+<li><strong>A semantic guard</strong> behind the <code>Guard</code> protocol — a <code>noul</code> "does this order
+contradict the active directive", advisory only, never a denial (StateGuard
+checks arithmetic; this would check intent).</li>
+</ul>
+<h2 id="5-first-experiment"><a class="header" href="#5-first-experiment">5. First experiment</a></h2>
+<p>Slots 1 and 2 in camayoc: both already record method and threshold, so a Jev arm
+is a scorer selection plus a benchmark against the lexical arm on the same
+inputs. Report agreement, confidence distribution, and the NO COVERAGE rate.</p>
+<p><strong>Built 2026-09-21 (slot 2, question mapping):</strong> <code>scripts/jev.py</code> is the only Jev client (bearer
+key from <code>TYPESAFE_API_KEY</code>; no key -&gt; <code>JevUnavailable</code>, never a silent
+fallback). <code>competency.py --method jev</code> poses ONE <code>choice</code> per asked question
+with the 91 suite questions plus a reserved <code>none-of-these</code> option; the verdict
+carries <code>method: jev-latest-choice-v1</code>, <code>semantic: true</code>, the instructions, the
+model, the confidence, the none probability, and <code>abstained</code>, which forces
+<code>Empty</code>. Tests: <code>tests/test_jev.py</code> (fake transport, no network). Slot 1
+(settled-decision collision, <code>noul</code>) is next.</p>
+<p>Run it:</p>
+<pre><code class="language-bash">export TYPESAFE_API_KEY=...   # from your secret store
+python3 scripts/competency.py --method jev "what did we decide about the build-host reboot?"
+python3 scripts/competency.py --method lexical "what did we decide about the build-host reboot?"
+</code></pre>
+<h2 id="6-blockers-before-any-of-it"><a class="header" href="#6-blockers-before-any-of-it">6. Blockers before any of it</a></h2>
+<ul>
+<li><del>Jev API access (waitlist)</del> Account exists (2026-09-20). The key lives in
+Infisical as <code>TYPESAFE_API_KEY</code> (aegis-6016ma rule); scripts read it from the
+environment only.</li>
+<li><del>Egress</del> Measured 2026-09-21: <code>POST api.typesafe.ai/v1/systemone</code> answers
+403 (reachable, unauthenticated) in 0.24 s from both crew hosts. The database host
+is still unmeasured.</li>
+<li>Quipu "deliberately contains no LLM" — Jev calls live in camayoc scripts (the
+ingress layer), never in the store.</li>
+</ul>
+<h2 id="7-open-questions"><a class="header" href="#7-open-questions">7. Open questions</a></h2>
+<ul>
+<li>Should a Jev verdict be its own episode kind (<code>camayoc:TypedVerdict</code>) or a
+property set on the existing collision/coverage verdict records?</li>
+<li>Confidence floors: measured per slot, not one global number.</li>
+<li>Does a <code>score</code> over the promotion queue need a rubric per plane?</li>
+</ul>
+<p>Tracked: aegis-sfg5vb.</p>
+<h2 id="8-across-the-stack-added-2026-09-21-stiwi-make-progress-on-all-of-these"><a class="header" href="#8-across-the-stack-added-2026-09-21-stiwi-make-progress-on-all-of-these">8. Across the stack (added 2026-09-21, Stiwi: "make progress on all of these")</a></h2>
+<p>Jev fits one job: a bounded decision with a state to judge, made often, where a
+calibrated probability beats a rationale. The stack has that shape in more
+places than camayoc. Each row is a bead under the epic named at the bottom.</p>
+<div class="table-wrapper"><table><thead><tr><th>Where</th><th>Decision</th><th>Shape</th><th>Fit</th><th>Existing bead</th></tr></thead><tbody>
+<tr><td>camayoc</td><td>settled-decision collision</td><td><code>noul</code> per standing decision</td><td>strong</td><td>camayoc-7lt (lexical today)</td></tr>
+<tr><td>camayoc</td><td>promotion-queue triage</td><td><code>score</code> on evidence quality</td><td>good</td><td>aegis-f8efkn (quipu side)</td></tr>
+<tr><td>camayoc</td><td>entity-mention disambiguation</td><td><code>choice</code> + neither</td><td>cautious</td><td>camayoc-0c8 (abstains today)</td></tr>
+<tr><td>bobbin</td><td>retrieval floor: does this chunk answer the query</td><td><code>noul</code> per chunk</td><td>strong</td><td>aegis-xd2nko (insufficient context)</td></tr>
+<tr><td>yupana</td><td>grounded-predicate evaluator for edit policies</td><td><code>noul</code> per predicate</td><td>strong</td><td>aegis-vwvjwl</td></tr>
+<tr><td>shantytown</td><td>board hygiene: route by domain, duplicate?, escalation severity</td><td><code>choice</code> / <code>noul</code> / <code>score</code></td><td>strong (volume)</td><td>aegis-cvd2xu context</td></tr>
+<tr><td>homelab ops</td><td>alert triage: severity + owner; governor stop deliberate-or-fault</td><td><code>score</code> + <code>choice</code></td><td>good</td><td>—</td></tr>
+<tr><td>NeuralAmplifier</td><td>grounding-fact rank, tier routing, semantic guard</td><td><code>score</code> / <code>choice</code> / <code>noul</code></td><td>good</td><td>na-htm</td></tr>
+<tr><td>evals</td><td>rubric judge for NA evals and quipu conformance</td><td><code>score</code></td><td>good</td><td>—</td></tr>
+<tr><td>resume (hammond)</td><td>recruiter inbound disposition</td><td><code>choice</code> + <code>noul</code>s</td><td>immediate</td><td>job-patrol skill</td></tr>
+</tbody></table>
+</div>
+<p><strong>Never:</strong> inside quipu (no model in the store), plane routing by <code>sourceKind</code>,
+promotion itself. Jev ranks and flags; humans and deterministic code decide.</p>
+<h3 id="81-fleet-tooling-one-way-for-any-st-agent-to-ask-jev"><a class="header" href="#81-fleet-tooling-one-way-for-any-st-agent-to-ask-jev">8.1 Fleet tooling: one way for any st agent to ask Jev</a></h3>
+<p>Every row above needs the same three calls. They must not each grow a client.</p>
+<ul>
+<li><strong><code>scripts/jev.py</code> stays the single client</strong> (camayoc owns ingress and the
+ingress discipline that every Jev answer is <code>inferred</code>).</li>
+<li><strong><code>jev-mcp</code></strong>: a stdio MCP server in camayoc exposing <code>jev_noul</code>, <code>jev_choice</code>,
+<code>jev_score</code>, <code>jev_dry_run</code> (the request without sending) and <code>map_question</code>
+(an asked question -&gt; competency id, probability, confidence, abstention,
+stored-query name; floor 0.75, never a guess below it). <strong>Delivered through
+the camayoc plugin</strong> (Stiwi 2026-09-21): declared in
+<code>.claude-plugin/plugin.json</code> <code>mcpServers</code>, so <code>/plugin install camayoc@camayoc</code>
+is the whole registration; shantytown only projects the manifest at launch
+(aegis-b08zsc). The skill's <em>query first</em> move becomes map, then run the
+stored query, then file an abstained question as a candidate competency
+question. <code>/camayoc:bootstrap</code> offers the Jev step like it offers bobbin and
+yupana: asks where <code>TYPESAFE_API_KEY</code> lives, proves a dry run and one live
+<code>noul</code>, reports unreachable/unauthorized honestly. Never a key in a card or
+a template.</li>
+<li><strong>CLI parity</strong>: <code>python3 scripts/jev.py {noul,choice,score}</code> for shells and
+cron. Both surfaces log <code>usage.input_tokens</code> and the model string.</li>
+<li><strong>Guardrails baked in, not documented</strong>: <code>choice</code> always accepts a
+<code>none_text</code> and the MCP tool defaults it on; every result carries the
+request; a missing key is an error the agent can read, not a fallback.</li>
+<li><strong>Cost line</strong>: at ~$0.0004 per decision, 10k decisions/day is ~$4. The MCP
+server counts calls per agent so the governor can see it.</li>
+</ul>
+<h3 id="82-the-benchmark-that-must-exist-before-any-arm-is-trusted"><a class="header" href="#82-the-benchmark-that-must-exist-before-any-arm-is-trusted">8.2 The benchmark that must exist before any arm is trusted</a></h3>
+<p>A labelled set per slot (≈30 items with the human-correct answer), then per arm:
+agreement with the label, confidence distribution on agreements vs
+disagreements, abstain rate. Thresholds come from that, never from a default.
+The competency slot's first three live calls (2026-09-21) already produced one
+"confident but arguable" pick; that is the item type the set needs most.</p>
+<h3 id="83-question-mapping-results-2026-09-21-35-labelled-items-hammond-as-ontology-owner"><a class="header" href="#83-question-mapping-results-2026-09-21-35-labelled-items-hammond-as-ontology-owner">8.3 Question-mapping results, 2026-09-21 (35 labelled items, hammond as ontology owner)</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>arm</th><th>agreement</th><th>conf when right</th><th>conf when wrong</th><th>abstain</th><th>input tokens</th></tr></thead><tbody>
+<tr><td>lexical</td><td>54%</td><td>—</td><td>—</td><td>0%</td><td>0</td></tr>
+<tr><td>jev (flat, 91 options)</td><td><strong>94%</strong></td><td>0.96</td><td>0.64</td><td>17%</td><td>163,920</td></tr>
+<tr><td>jev-hier (file then question, +examples)</td><td>74%</td><td>0.84</td><td>0.45</td><td>31%</td><td>76,426</td></tr>
+</tbody></table>
+</div>
+<p>Rulings from this: <strong>flat stays the default</strong>; a <strong>confidence floor of 0.75</strong>
+turns below-floor verdicts into "a human reads it" rather than a filed gap
+(the 0.96/0.64 split is what makes the floor meaningful); the two-stage
+variant halves the tokens but loses 20 points, almost all at the file stage,
+so it is kept as a measured option and not used. Cost of the default:
+~4.7k input tokens (&lt; $0.01) per asked question at list price.</p>
+<h3 id="84-vocabulary-stiwi-2026-09-21"><a class="header" href="#84-vocabulary-stiwi-2026-09-21">8.4 Vocabulary (Stiwi 2026-09-21)</a></h3>
+<p><strong>Mapping, not coverage.</strong> Jev maps an asked question onto the competency
+suite (or abstains). <em>Coverage</em> is the deterministic question — does a
+competency question have a stored query that answers it — and stays with
+<code>query_coverage.py</code>. The verdict's <code>coverage: Empty|Partial|Full</code> field keeps
+its pre-Jev name (camayoc-b6h) because other tools read it; read it as "how
+well the asked question maps".</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../design/work-cost.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../design/thesis-boundary.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../design/work-cost.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../design/thesis-boundary.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

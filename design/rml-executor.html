@@ -1,0 +1,472 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Governed RML-subset execution - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="design-governed-rml-subset-execution"><a class="header" href="#design-governed-rml-subset-execution">Design: governed RML-subset execution</a></h1>
+<blockquote>
+<p><strong>Implementation status (2026-08-31):</strong> ✅ <strong>The bounded version-one executor
+is implemented and verified end to end,</strong> and <strong>version two adds referencing
+object maps</strong> (camayoc-5bf, from the Spanner Graph investigation in quipu's
+<code>docs/design/spanner-capabilities.md</code> §4.1): <code>rr:parentTriplesMap</code> +
+<code>rr:joinCondition</code> are admitted — same-source joins read the child's own
+records, cross-source joins load the parent's logical source via
+<code>--parent-source-file &lt;logical-source-iri&gt;=&lt;path&gt;</code>, joins hash on the string
+form of values, unmatched joins emit no triple but are counted in the
+invocation report (<code>unmatched_joins</code>), and a join condition is required even
+same-source. Functions, dynamic predicates/graphs, and logical targets remain
+excluded. The v1 baseline: it fetches a mapping closure from
+Quipu, preflights it before source access, reads file-backed JSON/CSV/SQLite,
+emits deterministic N-Quads, and submits the result to a registered named
+graph through Quipu's SHACL-governed <code>/knot</code> lane. The live fixture committed
+14 conformant triples and a repeat execution read back the same 14-row graph.</p>
+</blockquote>
+<p>Camayoc owns transformation from structured external truth into candidate RDF.
+Quipu owns mapping storage, governance, and graph writes. The executor is a
+bounded, deterministic implementation of RML 1.1.2 concepts and the W3C R2RML
+term-map model; it is not a new mapping language and does not claim full RML
+conformance.</p>
+<h2 id="1-two-contracts-deliberately-separate"><a class="header" href="#1-two-contracts-deliberately-separate">1. Two contracts, deliberately separate</a></h2>
+<p>The four properties delivered by <code>aegis-jsyl2</code> describe how to locate and
+verify external truth:</p>
+<ul>
+<li><code>aegis:source_uri</code></li>
+<li><code>aegis:access_via</code></li>
+<li><code>aegis:freshness</code></li>
+<li><code>aegis:verified_by</code></li>
+</ul>
+<p>They do not say how source records become RDF terms. An executable mapping is
+an <code>rr:TriplesMap</code> with an <code>rml:logicalSource</code>, one subject map, and zero or
+more predicate-object maps. The triples map or its logical source links to the
+governed external-truth subject; it never copies credentials into mapping RDF.</p>
+<p>The executor MUST reject either half in isolation:</p>
+<ul>
+<li>an RML triples map without one complete external-truth pointer cannot fetch;</li>
+<li>an external-truth pointer without a triples map is discoverable but not
+executable.</li>
+</ul>
+<p>The four live jsyl2 records are compatibility fixtures for pointer resolution,
+not evidence that four executable mappings already exist.</p>
+<h2 id="2-governance-prerequisite"><a class="header" href="#2-governance-prerequisite">2. Governance prerequisite</a></h2>
+<p>Before executable mappings are written to Quipu, its loaded vocabulary MUST
+admit and constrain the standard classes used by this subset:</p>
+<ul>
+<li><code>rr:TriplesMap</code>, <code>rr:SubjectMap</code>, <code>rr:PredicateObjectMap</code>, <code>rr:ObjectMap</code>;</li>
+<li><code>rml:LogicalSource</code>;</li>
+<li>the term-map and logical-source properties listed below.</li>
+</ul>
+<p>The persistent source belongs in a loaded Camayoc shape set. A pending
+<code>/propose</code> record alone is not sufficient. Until the loaded <code>/shapes</code>
+<code>vocabulary</code> response exposes those classes, Camayoc may parse mapping fixtures
+from files for tests but MUST refuse a production <code>execute</code> request.</p>
+<p>The shapes enforce the subset structurally: exactly one logical source and
+subject map per triples map, exactly one source and reference formulation per
+logical source, and exactly one of constant/reference/template on every term
+map. Unsupported standard terms are rejected by Camayoc's semantic validator
+before any source access.</p>
+<h2 id="3-version-one-vocabulary"><a class="header" href="#3-version-one-vocabulary">3. Version-one vocabulary</a></h2>
+<p>Camayoc reads the established namespaces directly:</p>
+<pre><code class="language-text">rml:  http://semweb.mmlab.be/ns/rml#
+rr:   http://www.w3.org/ns/r2rml#
+ql:   http://semweb.mmlab.be/ns/ql#
+</code></pre>
+<p>Supported logical-source terms:</p>
+<div class="table-wrapper"><table><thead><tr><th>Term</th><th>Version-one meaning</th></tr></thead><tbody>
+<tr><td><code>rml:logicalSource</code></td><td>Exactly one logical source per triples map.</td></tr>
+<tr><td><code>rml:source</code></td><td>IRI of the governed external-truth subject, not a secret-bearing connection string.</td></tr>
+<tr><td><code>rml:referenceFormulation</code></td><td>Exactly one of <code>ql:CSV</code>, <code>ql:JSONPath</code>, or <code>rr:SQL2008</code>.</td></tr>
+<tr><td><code>rml:iterator</code></td><td>CSV row (omitted or <code>row</code>), bounded JSONPath, or absent for SQL.</td></tr>
+<tr><td><code>rml:query</code></td><td>One read-only, parameterized SQLite <code>SELECT</code>; no stacked statements or mutation.</td></tr>
+</tbody></table>
+</div>
+<p>Supported term-map terms:</p>
+<div class="table-wrapper"><table><thead><tr><th>Term</th><th>Constraint</th></tr></thead><tbody>
+<tr><td><code>rr:constant</code></td><td>IRI or literal copied exactly.</td></tr>
+<tr><td><code>rml:reference</code></td><td>CSV column, JSONPath relative to the current record, or SQL result-column name.</td></tr>
+<tr><td><code>rr:template</code></td><td>Text with <code>{reference}</code> substitutions; every reference must resolve.</td></tr>
+<tr><td><code>rr:termType</code></td><td><code>rr:IRI</code> or <code>rr:Literal</code>; blank nodes are excluded.</td></tr>
+<tr><td><code>rr:datatype</code></td><td>Constant datatype IRI on literal object maps.</td></tr>
+<tr><td><code>rr:language</code></td><td>Constant BCP 47 language tag on literal object maps.</td></tr>
+<tr><td><code>rr:class</code></td><td>Emits <code>rdf:type</code> for the generated subject.</td></tr>
+<tr><td><code>rr:predicateObjectMap</code></td><td>Constant predicate plus one supported object map.</td></tr>
+<tr><td><code>rr:graph</code></td><td>One explicit target named graph for the triples map.</td></tr>
+</tbody></table>
+</div>
+<p>Version one excluded referencing object maps and joins; <strong>version two admits
+them</strong> (camayoc-5bf). A <code>rr:RefObjectMap</code> carries exactly one
+<code>rr:parentTriplesMap</code> (a triples map in the same closure, with its own subject
+map and logical source) and at least one <code>rr:joinCondition</code>, each with exactly
+one <code>rr:child</code> and one <code>rr:parent</code> reference — the join is required even when
+both maps share a logical source, because an implicit identity join would make
+edge semantics depend on which source two maps happen to share. Join
+evaluation is a hash join on the <strong>string form</strong> of values (a CSV <code>"1"</code> meets
+a SQLite <code>1</code>), the object emitted is the parent map's generated subject (must
+be an IRI), and an unmatched join emits no triple — standard R2RML — but is
+counted and reported as <code>unmatched_joins</code> so the silence is visible. Same-source
+joins read the child's records; a cross-source join requires the parent's
+logical source to be an IRI and its file supplied with
+<code>--parent-source-file &lt;logical-source-iri&gt;=&lt;path&gt;</code>, loaded under the same
+byte/row bounds as any source.</p>
+<p>Still excluded: multiple logical sources per triples map,
+custom functions, inverse expressions, dynamic predicates or graphs, XML,
+remote SQL servers, SPARQL federation, streaming inputs, and RML logical
+targets. Encountering any excluded term is a validation error, never a warning.</p>
+<h2 id="4-execution-state-machine"><a class="header" href="#4-execution-state-machine">4. Execution state machine</a></h2>
+<p>One invocation progresses through five observable phases:</p>
+<pre><code class="language-text">resolve mapping -&gt; validate plan -&gt; open bounded source -&gt; materialize -&gt; commit
+</code></pre>
+<ol>
+<li><strong>Resolve mapping.</strong> Fetch the triples map and its bounded RDF closure from
+Quipu. Resolve the referenced external-truth subject and require all four
+jsyl2 properties. Ambiguous or missing values refuse.</li>
+<li><strong>Validate plan.</strong> Parse the whole mapping, reject unknown/unsupported terms,
+validate the base IRI and target graph, and compile every iterator,
+reference, template, and SQL statement. This phase performs no source I/O.</li>
+<li><strong>Open bounded source.</strong> Dispatch by both <code>access_via</code> and reference
+formulation. Version one accepts only allowlisted file paths and applies
+byte and row limits before parsing. Mapping RDF never carries credentials.</li>
+<li><strong>Materialize.</strong> Iterate records in source order, generate RDF terms, sort
+the resulting quads lexically by N-Quads representation, and deduplicate
+exact duplicates. Missing required references fail the invocation; they do
+not silently omit a triple.</li>
+<li><strong>Commit.</strong> Convert the deterministic quads to Turtle and submit them once
+through <code>/knot</code> to the mapping's registered target graph. The request source
+names the mapping IRI, mapping-closure hash, external-truth subject, and
+verified source hash. HTTP refusal and indeterminate transport failure are
+distinct machine-readable outcomes.</li>
+</ol>
+<p><code>validate</code> runs phases 1-2. <code>plan</code> runs phases 1-3 and reports bounded source
+metadata without emitting values. <code>execute --dry-run</code> runs phases 1-4 and
+writes canonical N-Quads plus the episode body to stdout. Only <code>execute</code>
+enters phase 5.</p>
+<h2 id="5-source-adapters-and-safety"><a class="header" href="#5-source-adapters-and-safety">5. Source adapters and safety</a></h2>
+<p>The executor selects an adapter from the pair <code>(access_via, referenceFormulation)</code>, not from a filename suffix.</p>
+<div class="table-wrapper"><table><thead><tr><th>Source</th><th>Required pair</th><th>Boundary</th></tr></thead><tbody>
+<tr><td>CSV</td><td><code>file</code> + <code>ql:CSV</code></td><td>Header required; duplicate headers refuse; RFC 4180 parsing; bounded rows/bytes.</td></tr>
+<tr><td>JSON</td><td><code>file</code> + <code>ql:JSONPath</code></td><td>UTF-8 JSON array; <code>$[*]</code> only; bounded rows/bytes.</td></tr>
+<tr><td>SQLite</td><td><code>file</code> + <code>rr:SQL2008</code></td><td>Read-only URI, one <code>SELECT</code>, bound parameters only, progress-handler deadline.</td></tr>
+</tbody></table>
+</div>
+<p>Version one does not execute the live <code>promql</code> pointer. It remains a pointer
+resolution fixture until a result-table adapter is specified. Likewise, an
+HTTP response such as Garage's expected 403 auth boundary verifies a pointer
+but is not mapping input.</p>
+<p>Remote fetches refuse private or loopback destinations unless the mapping
+policy explicitly names an approved resolver. Redirects are re-checked at
+every hop. File sources must resolve beneath configured allowlisted roots.
+SQLite opens immutable/read-only and cannot attach another database. Logs may
+contain mapping IRIs, counts, hashes, and error classes; they never contain
+authorization headers, source rows, or generated literal values.</p>
+<h2 id="6-determinism-and-identity"><a class="header" href="#6-determinism-and-identity">6. Determinism and identity</a></h2>
+<p>For identical mapping closure, source bytes, base IRI, and executor version:</p>
+<ul>
+<li>generated RDF terms and canonical N-Quads are byte-identical;</li>
+<li>the episode name, source, node order, edge order, and description strings are
+byte-identical;</li>
+<li>rerunning produces Quipu's idempotent <code>unchanged</code> outcome or an equivalent
+no-op after read-back;</li>
+<li>provenance names the triples-map IRI, mapping-closure hash, external-truth
+subject IRI, verified source identity, and executor version.</li>
+</ul>
+<p>Templates percent-encode substituted values when producing IRIs. Relative
+IRIs require one explicit base IRI. Locale, wall-clock time, filesystem order,
+hash-map order, and network response ordering cannot affect output. A mapping
+that needs "now" must receive it as declared source data; the executor never
+invents it.</p>
+<h2 id="7-public-interface"><a class="header" href="#7-public-interface">7. Public interface</a></h2>
+<p>The first CLI surface is intentionally narrow:</p>
+<pre><code class="language-text">scripts/rml_executor.py validate &lt;triples-map-iri&gt; [--mapping-file FILE]
+scripts/rml_executor.py execute &lt;triples-map-iri&gt; --source-file FILE [--mapping-file FILE] [--dry-run]
+    [--parent-source-file &lt;logical-source-iri&gt;=&lt;path&gt;]...
+scripts/rml_executor.py freshness &lt;triples-map-iri&gt; --source-file FILE --server URL
+scripts/rml_executor.py remap     &lt;triples-map-iri&gt; --source-file FILE --server URL [--actor A] [--dry-run]
+</code></pre>
+<p><code>freshness</code> (quipu-212) reads the target graph's last-materialization stamp
+from quipu's <code>GET /graphs</code> (served from transaction provenance, so it cannot
+drift from what committed) and judges: <code>never_materialized</code>, <code>stale</code>
+(<code>source_hash_changed</code>, or <code>window_elapsed</code> when the declared
+<code>aegis:freshness</code> is a machine-readable <code>max_age(N[smhd])</code> — any other
+declaration contributes nothing and the hash comparison stands alone), or
+<code>fresh</code>. <code>remap</code> acts on the verdict: fresh is a deliberate no-op (the same
+bytes would only reach quipu's idempotent <code>unchanged</code>), stale or
+never-materialized falls through to the ordinary execute path — which is
+what makes over-triggering remap harmless. The verdict is a read-time
+judgment; the executor still never invents "now" for materialized output.</p>
+<p>Production mode resolves mapping RDF from Quipu. <code>--mapping-file</code> exists for
+conformance tests and bootstrap before the RML shapes are loaded; non-dry-run
+execution with it is refused. JSON output includes phase, mapping IRI, source
+identity, mapping/source hashes, input/output counts, target graph, and a
+machine-stable error code.</p>
+<p>Error families are <code>mapping_not_found</code>, <code>mapping_ambiguous</code>,
+<code>mapping_ungoverned</code>, <code>unsupported_term</code>, <code>invalid_term_map</code>,
+<code>source_policy_refused</code>, <code>source_unreachable</code>, <code>source_changed</code>,
+<code>materialization_error</code>, <code>write_indeterminate</code>, and <code>write_refused</code>.</p>
+<h2 id="8-conformance-fixtures"><a class="header" href="#8-conformance-fixtures">8. Conformance fixtures</a></h2>
+<p>The first end-to-end fixture is a bounded JSONL export of bead records. It is
+checked into <code>tests/fixtures/rml/</code> with:</p>
+<ul>
+<li>one RML Turtle mapping;</li>
+<li>source bytes and SHA-256;</li>
+<li>expected sorted N-Quads;</li>
+<li>expected deterministic episode JSON;</li>
+<li>one malformed mapping per refusal arm.</li>
+</ul>
+<p>The acceptance test executes the valid mapping twice and requires byte-equal
+N-Quads and episode JSON, one logical set of output facts, and provenance that
+names the triples-map IRI. Negative tests cover incomplete jsyl2 pointers,
+multiple term-map constructors, missing references, traversal outside an
+allowlisted root, non-SELECT SQL, unsupported joins, unknown formulations, and
+a failure before the mocked write endpoint receives any request.</p>
+<p>Companion fixtures exercise CSV and SQLite and require byte-equivalent quads.
+The live integration fixture is
+<code>https://camayoc.dev/mapping/aegis-07hmc.3-fixture</code>; its target is a dedicated
+registered fixture graph rather than a production plane.</p>
+<h2 id="9-implementation-sequence"><a class="header" href="#9-implementation-sequence">9. Implementation sequence</a></h2>
+<ol>
+<li>Land and load the Camayoc RML subset shapes; verify the server vocabulary
+and one accepted plus one refused mapping write.</li>
+<li>Add pure mapping-RDF parser and semantic validator.</li>
+<li>Add term generation and canonical quad emission with fixture tests.</li>
+<li>Add bounded JSON, CSV, and SQLite adapters.</li>
+<li>Add Quipu mapping retrieval and existing Camayoc plane/write integration.</li>
+<li>Run the bead-store fixture twice against a disposable Quipu store, then one
+governed mapping end to end against the live interface.</li>
+</ol>
+<p>Pack production is downstream of successful materialization: mappings and
+their shapes may be carried in the same certified <code>.qpack.db</code>, but packaging
+does not weaken or bypass this executor's validation and source-policy gates.</p>
+<h2 id="references"><a class="header" href="#references">References</a></h2>
+<ul>
+<li><a href="https://rml.io/specs/rml/v/1.1.2/">RML 1.1.2 draft</a></li>
+<li><a href="https://www.w3.org/TR/r2rml/">W3C R2RML Recommendation</a></li>
+<li><a href="https://www.w3.org/ns/r2rml">R2RML vocabulary</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../design/entity-mentions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../design/work-cost.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../design/entity-mentions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../design/work-cost.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

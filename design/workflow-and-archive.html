@@ -1,0 +1,318 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Workflow runs and the archive - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="design-workflow-runs-and-the-archive--the-second-routing-dimension"><a class="header" href="#design-workflow-runs-and-the-archive--the-second-routing-dimension">Design: Workflow runs and the archive — the second routing dimension</a></h1>
+<blockquote>
+<p><strong>Implementation status (2026-08-25):</strong> ✅ <strong>Built, question-first, and
+now answering.</strong>
+<a href="../../competency/workflow-and-archive.html">competency/workflow-and-archive.md</a>
+landed before any term; the workflow slice
+(<code>aegis:WorkflowDefinition/WorkflowStep/WorkflowRun/TransitionEvent</code> and
+their properties) is minted in <code>ontology/core.ttl</code> with each term owed to a
+question. Routing is 2-D: <code>plane_for(source_kind, data_kind="knowledge")</code>
+in <code>scripts/planes.py</code> (the default preserves every pre-2-D caller because
+every static plane IS a knowledge plane — a pinned fact, not a fallback),
+and <code>operational</code> data is window-addressed via <code>scripts/windows.py</code>
+(<code>{WINDOW_NS}{family}/{YYYY-MM}</code>, create-and-label-or-neither, the scheme
+pinned by <code>tests/test_planes_2d.py</code> against shuttle's reimplementation).
+The camayoc-913 move rule is decided and implemented in
+<code>scripts/promote_plane.py</code>: assert in the target, CLOSE the source episode
+(<code>POST /episode/retract</code>, a bitemporal close, <code>on_orphan: preserve</code>),
+record the move; without <code>--source-episode</code> the record carries
+<code>camayoc:sourceLeftOpen true</code> out loud. Existing plane IRIs are untouched
+(bobbin compiles them in). Deliberately not built here: the freeze
+mechanics (quipu's, see its <code>graph-kinds-and-deep-freeze.md</code>) and shuttle
+itself (<code>scbrown/shuttle</code>).</p>
+<p><strong>The questions run (2026-08-25, camayoc-rkb).</strong> Eight of the fourteen are
+named stored queries — <code>queries/camayoc_wf_*.json</code>, Q1–Q5, Q7, Q8 and Q13 —
+executing against <code>tests/fixtures/workflow-archive.trig</code>, a TriG dataset
+holding a hot window, a frozen window, the definitions plane and the
+identity graph. 36 tests in <code>tests/test_workflow_queries.py</code>; Q13 replays
+against the episode <code>scripts/promote_plane.py</code> actually emits rather than
+against fixture triples written to match it. Coverage: <strong>8/14</strong>, six gaps,
+nothing unwritten. Q9–Q12 and Q14 are the store-surface boundary — graph
+kinds, freeze state and thaw records are meta-graph and store-table
+properties served by <code>GET /graphs</code>, not triples a query can reach — and Q6
+is the crypto boundary: SPARQL fetches a public key and cannot evaluate a
+signature against it. No term was minted to close a gap.</p>
+</blockquote>
+<p><strong>Status:</strong> shuttle exports workflow runs — high-volume, high-churn
+operational records — into quipu. This is the ingress discipline for that
+class of data: what it means, where it lands, and how it ages out.</p>
+<h2 id="1-the-second-dimension"><a class="header" href="#1-the-second-dimension">1. The second dimension</a></h2>
+<p>Ingress routing was 1-D: <code>sourceKind</code> → plane. The planes answer <em>how much
+to trust a fact</em>; they say nothing about <em>what sort of data it is</em>. Workflow
+runs are <code>observed</code> facts, but routing them into <code>crew:records</code> would grow
+the knowledge plane without bound and make nothing freezable — the graph is
+quipu's unit of pack/attach/label/authority, and freezing <code>crew:records</code>
+would archive the crew's task lifecycle along with the runs.</p>
+<p>So the router takes <code>(source_kind, data_kind)</code>:</p>
+<ul>
+<li><code>knowledge</code> (default): the static planes, exactly as before;</li>
+<li><code>operational</code>: <strong>refused</strong> by <code>plane_for</code>, pointing at the window scheme —
+one graph per producer-family per month, labelled
+<code>operational</code>/<code>fresh</code>/<code>soleRecord</code> at creation, frozen whole when its runs
+are terminal (the freeze relabels to <code>archive</code>/<code>backed</code>);</li>
+<li>anything else: refused, never ROOT.</li>
+</ul>
+<h2 id="2-the-move-rule-camayoc-913-closed"><a class="header" href="#2-the-move-rule-camayoc-913-closed">2. The move rule (camayoc-913, closed)</a></h2>
+<p>Promotion and freeze are both graph moves, and both now follow one rule:
+<strong>assert in the target, close in the source, record the move.</strong> The close is
+bitemporal — quipu closes the valid interval, never deletes — so the
+original stays visible as-of its write time (competency 13). The worry that
+kept 913 open was that closing erases the fact's low-trust past;
+bitemporality answers it.</p>
+<p>The promotion close operates on the <strong>source episode</strong>, because the episode
+is the unit ingress writes and <code>POST /episode/retract</code> is the graph-honest
+retraction surface (triple-level <code>/retract</code> is ROOT-scoped). Commit order is
+assert-then-close: a failed close leaves the fact readable in two planes at
+different trust — visible, recoverable, and reported loudly — while
+close-then-failed-assert would lose the promoted fact.</p>
+<h2 id="3-what-shuttle-writes-the-export-contract"><a class="header" href="#3-what-shuttle-writes-the-export-contract">3. What shuttle writes (the export contract)</a></h2>
+<p>Append-only <code>aegis:TransitionEvent</code>s (step, from-state, to-state, time,
+<code>aegis:performedBy</code> + <code>aegis:signature</code> — the hex ed25519 signature over the
+canonical <code>shuttle-transition-v1</code> message), with <code>aegis:currentState</code>
+re-asserted per transition as derived convenience. Keys live as
+<code>aegis:VerifierRegistration</code> facts in a <code>dataKind=identity</code> graph that is
+never frozen, so signatures in a frozen window stay verifiable. The
+signature terms are quipu-owned aegis vocabulary, reused not re-minted.</p>
+<h2 id="4-related"><a class="header" href="#4-related">4. Related</a></h2>
+<ul>
+<li>quipu <code>docs/design/graph-kinds-and-deep-freeze.md</code> — the store mechanics.</li>
+<li><a href="ingress.html">ingress.md</a> §2 — the planes this extends.</li>
+<li><a href="what-belongs-in-the-graph.html">what-belongs-in-the-graph.md</a> §4b — the
+durability lattice freeze declares against; §5 — why freeze is post-hoc
+relocation, never write-time filtering.</li>
+<li><code>scbrown/shuttle</code> — the producer.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../design/task-lifecycle-slice.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../design/golden-paths.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../design/task-lifecycle-slice.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../design/golden-paths.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

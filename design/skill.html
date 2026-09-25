@@ -1,0 +1,315 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>The skill is the interface - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="design-the-skill-is-the-interface"><a class="header" href="#design-the-skill-is-the-interface">Design: The Skill Is the Interface</a></h1>
+<blockquote>
+<p><strong>Implementation status (2026-08-22):</strong> 🟡 <strong>The skill ships in this repo
+(<code>skills/camayoc/SKILL.md</code>); the quipu substrate it leans on is partly
+landed.</strong> Labels (#65) are no longer the gap they were: quipu's
+<code>/graph/create</code> + <code>/graph/label</code> routes exist and <code>scripts/planes.py</code> uses
+them to label the quarantine planes (camayoc-s0h). Server-side stored
+queries (#79) remain pending as far as this repo can verify — camayoc's
+half is done ahead of them: every named definition in <code>queries/</code> ships,
+executed against fixture graphs in tests, ready to load when #79 lands.
+(The count lives in <code>just query-coverage</code>'s <code>stored_query_count</code>, not here —
+stating it in prose is how this line went stale twice.)
+Where machinery is unbuilt the skill still says so and gives the raw-SPARQL
+fallback — it never pretends.</p>
+</blockquote>
+<h2 id="1-the-usage-model"><a class="header" href="#1-the-usage-model">1. The usage model</a></h2>
+<p>Camayoc's primary consumer is <strong>an agent in a session</strong>, not a pipeline. The
+unit of distribution is therefore a <strong>skill</strong>: a package of instructions an
+agent loads that teaches it how to use governed memory — when to query, when
+to record, how to tag, and how to stand a store up from nothing. Harness
+adapters and record parsers are <em>optional enrichment</em>; the skill is the
+first-class surface.</p>
+<p>This kills two design risks at once:</p>
+<ul>
+<li><strong>No hard dependency on any harness.</strong> Shantytown, Claude Code, a bare
+script — any agent that can speak HTTP to a quipu can follow the skill.
+Shantytown's reserved <code>knowledge</code> adapter remains a welcome <em>integration</em>
+(and its none-adapter proves the independence in the other direction), but
+nothing in camayoc requires it.</li>
+<li><strong>Guidance and enforcement stay separate.</strong> The skill <em>guides</em> the agent
+(record decisions at the moment they happen, tag honestly, query before
+deciding). The SHACL shapes <em>enforce</em> (an untagged write is refused by the
+store, whatever the agent believed). A well-behaved agent rarely sees a
+refusal; a misbehaving one cannot do damage the shapes prohibit. The skill
+is UX; the shapes are the contract.</li>
+</ul>
+<h2 id="2-the-four-pillars-as-the-skill-enables-them"><a class="header" href="#2-the-four-pillars-as-the-skill-enables-them">2. The four pillars, as the skill enables them</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Pillar</th><th>What the skill has the agent do</th></tr></thead><tbody>
+<tr><td><strong>Bootstrap</strong></td><td>Stand up governed memory from nothing: check the quipu is reachable, load <code>ontology/</code> + <code>shapes/</code> (idempotent), verify with a probe write that SHACL refusal is live — <em>prove the gate is on, not assume it</em>.</td></tr>
+<tr><td><strong>Query first</strong></td><td>Before deciding or re-deriving: run the competency questions (stored queries once quipu #79 lands; the skill carries raw-SPARQL equivalents until then). "What did we decide about X and why" is asked <em>before</em> X is re-decided.</td></tr>
+<tr><td><strong>Record at the moment</strong></td><td>When a decision happens, write it then — an episode carrying a <code>Decision</code> (what was chosen, over what, why, under which work item), tagged with its honest <code>sourceKind</code>. Work items and outcomes likewise. Session end = outcomes recorded, not summarized into oblivion.</td></tr>
+<tr><td><strong>Tag honestly</strong></td><td><code>observed</code> = a record exists and was parsed; <code>declared</code> = a human said so (quote them); <code>inferred</code> = the agent concluded it — and inferred lands in the inferred plane, low-trust, promotable later. Never up-tag. The store refuses untagged writes; the skill makes the honest tag the path of least resistance.</td></tr>
+</tbody></table>
+</div>
+<h2 id="3-what-the-skill-is-not"><a class="header" href="#3-what-the-skill-is-not">3. What the skill is not</a></h2>
+<ul>
+<li><strong>Not a wrapper library.</strong> It contains instructions and canonical request
+shapes (quipu's <code>/episode</code>, <code>/query</code>, <code>/shapes</code> — branch on <code>outcome</code>,
+never on <code>count</code>), not code to vendor. An agent with Bash and HTTP has
+everything it needs.</li>
+<li><strong>Not a harness hook.</strong> It does not assume stop-hooks, inboxes, or any
+lifecycle. A harness that <em>has</em> those (shantytown) can invoke the same
+moves automatically; that is that harness's integration, not the skill's
+concern.</li>
+<li><strong>Not a substitute for the shapes.</strong> Nothing in the skill is
+load-bearing for integrity. Delete the skill and the store is exactly as
+safe — just harder to use well.</li>
+</ul>
+<h2 id="4-consequences-for-the-rest-of-the-repo"><a class="header" href="#4-consequences-for-the-rest-of-the-repo">4. Consequences for the rest of the repo</a></h2>
+<ul>
+<li><strong>Record parsers demote to enrichment.</strong> The task-lifecycle slice's spine
+is the skill-guided agent recording its own work; deterministic parsers
+(git history, a harness's task records) <em>backfill and corroborate</em> — they
+are <code>observed</code>-tier enrichment, valuable and optional.</li>
+<li><strong>The competency suite doubles as the skill's query cheat-sheet.</strong> One
+file, two consumers: the eval gate runs the questions; the skill quotes
+them.</li>
+<li><strong>Packs carry the skill.</strong> When quipu #81 lands, a domain pack's manifest
+references the skill version it was authored against — attach a pack, get
+told how to use it.</li>
+</ul>
+<h2 id="5-related"><a class="header" href="#5-related">5. Related</a></h2>
+<ul>
+<li><a href="../../skills/camayoc/SKILL.html"><code>skills/camayoc/SKILL.md</code></a> — the artifact.</li>
+<li><a href="ingress.html">ingress.md</a> — the discipline the skill teaches; the shapes
+that enforce it.</li>
+<li><a href="task-lifecycle-slice.html">task-lifecycle-slice.md</a> — the first slice,
+re-centered on the skill.</li>
+<li><a href="../../competency/crew-task-lifecycle.html">competency/crew-task-lifecycle.md</a>
+— the questions the skill tells an agent to ask.</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../design/what-belongs-in-the-graph.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../design/task-lifecycle-slice.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../design/what-belongs-in-the-graph.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../design/task-lifecycle-slice.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

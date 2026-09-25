@@ -1,0 +1,305 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Using it with agents - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="using-it-with-agents"><a class="header" href="#using-it-with-agents">Using it with agents</a></h1>
+<h2 id="the-claude-code-plugin"><a class="header" href="#the-claude-code-plugin">The Claude Code plugin</a></h2>
+<p>Camayoc ships as a <strong>Claude Code plugin</strong>. In Claude Code:</p>
+<pre><code class="language-text">/plugin marketplace add scbrown/camayoc
+/plugin install camayoc@camayoc
+</code></pre>
+<p>That gets you, immediately:</p>
+<ul>
+<li><strong>The skill</strong> — auto-triggers when memory matters; teaches the four moves.</li>
+<li><strong>A SessionStart hook</strong> — every session opens knowing the truth about its
+memory: <code>ACTIVE (N facts, gate loaded)</code>, <code>reachable but gate not proven</code>,
+or <code>unreachable</code> — and unreachable is reported as <em>"could not look"</em>,
+never as <em>"nothing exists"</em>.</li>
+<li><strong><code>/camayoc:bootstrap</code></strong> — from nothing to governed memory, idempotently:
+if no quipu is reachable it <strong>installs one</strong> (writes <code>.bobbin/config.toml</code>
+with <code>validate_on_write = true</code>, downloads the latest
+<a href="https://github.com/scbrown/quipu/releases">quipu release</a> binary —
+sha256-checked — or cargo-installs it, starts it against
+<code>.quipu/store.db</code>, gitignores <code>.quipu/</code>), loads the core ontology +
+SHACL shapes, registers and labels the quarantine planes (both or
+neither — see "What runs today" above), and then <strong>proves the gate</strong>: it sends a
+deliberately untagged probe and requires the store to refuse it — one
+probe per refusal arm, each omitting exactly one required property, so a
+passing probe proves its own shape and nothing else. A store that accepts
+a probe is reported, loudly, not ingested into.</li>
+<li><strong>The ontology and shapes themselves</strong> (<code>ontology/core.ttl</code>,
+<code>shapes/core.shapes.ttl</code>) — work items, decisions, outcomes, and the
+mandatory <code>sourceKind</code> provenance tag.</li>
+</ul>
+<p>There is no prerequisite beyond Claude Code itself: the bootstrap brings its
+own server, config, and gate — and tells you honestly when it can't. (For
+setups that skip the plugin, <code>scripts/bootstrap.sh --with-claude-hooks</code> also
+merges the session status hook into <code>.claude/settings.json</code>.)</p>
+<p>After the core succeeds, <strong>bootstrap offers the rest of the stack</strong> — your
+choice, per component, never assumed:</p>
+<ul>
+<li><strong><a href="https://github.com/scbrown/bobbin">bobbin</a></strong> — semantic code search +
+context bundles; installed from crates.io, project indexed, <code>bobbin serve</code>
+added to <code>.mcp.json</code>.</li>
+<li><strong><a href="https://github.com/scbrown/yupana">Yupana</a></strong> — defs/refs, call graph,
+blast radius, and change-time policy checks; installed from git
+(pre-release), <code>yupana serve</code> added to <code>.mcp.json</code> (<code>hank</code> remains a
+compatibility alias).</li>
+<li><strong><a href="https://github.com/steveyegge/beads">beads</a></strong> — the agent-first
+work-item tracker (<code>bd</code>). Dual role: shantytown's first-class tracker
+backend, and a deterministic observed-tier <strong>ingress path</strong> — a bead is a
+<code>WorkItem</code> record camayoc can govern into the graph.</li>
+<li><strong><a href="https://github.com/scbrown/shantytown">shantytown</a></strong> — the crew
+harness; pip-installed, then <code>st init</code> is <em>left to you</em> — it asks its five
+questions itself and shows every path before writing.</li>
+</ul>
+<p>…and offers to <strong>seed the graph's anchors</strong> from a codebase + docs (this
+project, a path, or a git URL): a deterministic, SHACL-gated walk mints the
+modules, symbols, documents and sections that decisions anchor to — because
+"what did we decide about X" needs X to exist before it can be answered.</p>
+<h2 id="how-you-use-it-the-skill-is-the-interface"><a class="header" href="#how-you-use-it-the-skill-is-the-interface">How you use it: the skill is the interface</a></h2>
+<p>Camayoc's primary consumer is an agent in a session, so camayoc <strong>ships a
+skill</strong> (<a href="https://github.com/scbrown/camayoc/blob/main/skills/camayoc/SKILL.md">skills/camayoc/SKILL.md</a>) that teaches any
+agent the four moves: <strong>bootstrap</strong> a bare store (load ontology + shapes,
+<em>prove</em> the SHACL gate is live), <strong>query first</strong> (ask the competency
+questions before re-deciding anything), <strong>record at the moment</strong> (decisions
+as episodes when they happen, not in a wrap-up), and <strong>tag honestly</strong>
+(<code>observed</code> / <code>declared</code> / <code>inferred</code> — never up-tagged). The skill guides;
+the shapes enforce — delete the skill and the store is exactly as safe, just
+harder to use well. No harness is required: any agent that can speak HTTP to
+a quipu can follow it. <a href="design/skill.html">docs/design/skill.md</a></p>
+<p><strong>First domain: agentic coding.</strong> The crew ontology + the task-lifecycle
+vertical slice, recorded by skill-guided agents; harness record parsers
+(shantytown, git) are optional <code>observed</code>-tier enrichment, never a
+dependency.
+<a href="design/task-lifecycle-slice.html">docs/design/task-lifecycle-slice.md</a></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="getting-started.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="reference.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="getting-started.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="reference.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

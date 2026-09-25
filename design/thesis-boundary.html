@@ -1,0 +1,333 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>The camayoc / yupana thesis boundary - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="the-camayoc--yupana-thesis-boundary"><a class="header" href="#the-camayoc--yupana-thesis-boundary">The camayoc / yupana thesis boundary</a></h1>
+<blockquote>
+<p><strong>Implementation status (2026-08-17):</strong> ✅ <strong>Proposed and written down on both
+sides.</strong> Agreed by: pending keeper sign-off. The mirror of this section is in
+<code>yupana/docs/design/paper.md</code> §2.1; if the two ever disagree, neither paper
+should draft until they are reconciled.</p>
+</blockquote>
+<h2 id="why-this-exists-before-either-paper-drafts"><a class="header" href="#why-this-exists-before-either-paper-drafts">Why this exists before either paper drafts</a></h2>
+<p><code>camayoc-105</code> names the risk precisely: both papers instantiate one principle —
+<strong>a check that cannot fail is not a check, and absence of a finding is not a
+finding of absence</strong> — and if both claim it, reviewers see one idea published
+twice and both papers weaken.</p>
+<p>Retrofitting a boundary after two drafts exist is much harder than agreeing one
+now, so this is written before drafting rather than after.</p>
+<h2 id="the-split"><a class="header" href="#the-split">The split</a></h2>
+<p><strong>The shared principle is cited by both and claimed as a contribution by
+neither.</strong> It is older than either system. What each paper contributes is a
+<em>layer</em> at which the principle is enforced, and the mechanisms that enforcement
+required.</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th><strong>camayoc</strong></th><th><strong>yupana</strong></th></tr></thead><tbody>
+<tr><td><strong>Layer</strong></td><td>Admission — what may enter the graph at all</td><td>Action — what a guard may report at the edit boundary</td></tr>
+<tr><td><strong>Question</strong></td><td>Should this fact be stored?</td><td>Should this action proceed, and what may silence mean?</td></tr>
+<tr><td><strong>Time</strong></td><td>Write time</td><td>Action time</td></tr>
+<tr><td><strong>Mechanism</strong></td><td>Refusal at ingress (SHACL)</td><td>Typed verdicts from a hot projection</td></tr>
+<tr><td><strong>Owns</strong></td><td>Provenance-refusing ingress; falsifier-gated verification; the closed source-tier vocabulary; the incident-night corpus</td><td>The non-answer taxonomy: <code>vacuous</code> ≠ pass, <code>unevaluated</code> ≠ skipped, <code>served_from_cache</code> ≠ <code>fail_open</code>, <code>unknown</code> ≠ <code>unsatisfied</code>, empty-board refusal, STALE-with-AGE</td></tr>
+<tr><td><strong>Evidence</strong></td><td>47 competency questions, the 2026-08-06/07 incident corpus, refusal tests</td><td>Guard latency, degradation under load, NeuralAmplifier as a second domain</td></tr>
+</tbody></table>
+</div>
+<p>Put in one line each:</p>
+<ul>
+<li><strong>camayoc</strong>: <em>knowledge must earn its way in, and a verification that cannot
+fail has not earned anything.</em></li>
+<li><strong>yupana</strong>: <em>a guard that returns nothing must say which kind of nothing.</em></li>
+</ul>
+<p>Each paper cites the other for the layer it does not own.</p>
+<h2 id="two-collisions-the-bead-did-not-anticipate"><a class="header" href="#two-collisions-the-bead-did-not-anticipate">Two collisions the bead did not anticipate</a></h2>
+<p>Reading both plan docs against each other turned up two places where the split
+above is not self-executing. Both must be settled before drafting.</p>
+<h3 id="collision-1-the-installation-time-gate-proof"><a class="header" href="#collision-1-the-installation-time-gate-proof">Collision 1: the installation-time gate proof</a></h3>
+<p><code>yupana/docs/design/paper.md</code> §4 closes with:</p>
+<blockquote>
+<p>the installer proving each refusal gate with deliberately invalid probes that
+each omit exactly one required property, so the arms discriminate</p>
+</blockquote>
+<p>That is <strong>camayoc's mechanism</strong>, described in yupana's paper. It lives here:
+<code>scripts/gate_probe.sh</code> (248 lines) and <code>tests/test_gate_probe.py</code> (302 lines),
+and establishing that the arms genuinely discriminate is an open camayoc bead
+(<code>camayoc-104</code>).</p>
+<p><strong>Proposed resolution: camayoc owns it, yupana cites it.</strong> The reasoning is that
+the probes prove <em>admission</em> gates — they establish that a refusal shape is
+enforced rather than merely declared, which is the admission thesis applied to
+camayoc's own installer. Yupana's use of the same idea is a one-line citation,
+not a contribution, and the sentence above should become a citation in yupana's
+draft.</p>
+<p>This is a nice piece of self-application and worth a sentence in camayoc's
+write-up: the paper's own thesis, turned on the paper's own installer. Yupana
+calls the same discipline <em>non-vacuity</em>; the papers should use one name for it,
+and since the mechanism sits here, camayoc's term should follow yupana's
+existing published usage rather than mint a second one.</p>
+<h3 id="collision-2-empty--partial--full-coverage-reporting"><a class="header" href="#collision-2-empty--partial--full-coverage-reporting">Collision 2: <code>Empty | Partial | Full</code> coverage reporting</a></h3>
+<p>Both systems report coverage as a graded verdict rather than a bare count:</p>
+<ul>
+<li>camayoc: <code>scripts/competency.py</code> returns <code>Empty | Partial | Full</code> for ontology
+coverage, with a <code>NO COVERAGE</code> outcome.</li>
+<li>yupana: dataset coverage reported as <code>empty | none | partial | full</code>.</li>
+</ul>
+<p><strong>Proposed resolution: no exclusivity is needed, because neither paper claims
+the shape as a contribution.</strong> They apply it to different objects — an
+ontology's reach versus a dataset's population — and each should cite the other
+as an independent instance. Two systems converging on the same reporting shape
+from different directions is <em>evidence for</em> the principle, and is worth one
+sentence in each paper saying so. What must not happen is either paper
+presenting the shape as novel.</p>
+<h2 id="what-this-costs-camayoc-stated-plainly"><a class="header" href="#what-this-costs-camayoc-stated-plainly">What this costs camayoc, stated plainly</a></h2>
+<p>The boundary is not free, and the paper should not pretend otherwise.</p>
+<p>Handing the non-answer taxonomy to yupana means camayoc gives up its most
+immediately legible contribution — ten crisp distinctions, each forced by an
+incident, is very good paper material. What camayoc keeps is narrower and
+harder to make vivid: a write-time refusal, a mandatory falsifier, and a
+corpus.</p>
+<p>Two things make that a good trade. First, camayoc's typed non-answers are
+<strong>one</strong> instance (<code>NO COVERAGE</code>, on the ontology's own coverage — see
+<code>implemented-set.md</code> aspect 8), while yupana's are a systematic taxonomy with
+per-distinction incident provenance. The stronger claim belongs where the
+stronger evidence is. Second, camayoc's retained territory contains the thing
+neither other paper can claim: <strong>the incident-night corpus</strong>, eleven measured
+instances of unfalsifiable verification on a live crew. Most papers about
+verification integrity have no field data at all.</p>
+<h2 id="relationship-to-the-third-leg"><a class="header" href="#relationship-to-the-third-leg">Relationship to the third leg</a></h2>
+<p>Both papers sit in a three-paper program and should say so identically:</p>
+<ul>
+<li><strong>quipu</strong> compiles SARC into the <em>store</em> — submitted, arXiv:submit/7961151.</li>
+<li><strong>yupana</strong> compiles it into the <em>action</em>.</li>
+<li><strong>camayoc</strong> governs <em>admission</em> — what may enter at all.</li>
+</ul>
+<p>The nearest external anchor for camayoc is SARC-DQ, which quipu's related-work
+section describes as gating evidence quality; evidence quality is camayoc's
+territory rather than yupana's, and that is the cleanest one-sentence statement
+of why the admission leg is a separate paper.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../design/jev-typed-decisions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../design/paper.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../design/jev-typed-decisions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../design/paper.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

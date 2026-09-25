@@ -1,0 +1,492 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Why camayoc - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="why-camayoc"><a class="header" href="#why-camayoc">Why camayoc</a></h1>
+<p>The long form that used to open the README: its place in the stack, what this
+repository owns, what runs today, what it deliberately is not, and the name.
+The README now leads with a three-command first success
+(<a href="https://github.com/scbrown/caboodle/blob/main/docs/stack/README-STANDARD.md">the caboodle-stack README standard</a>).</p>
+<h2 id="role-in-the-stack"><a class="header" href="#role-in-the-stack">Role in the stack</a></h2>
+<pre><code class="language-text">shantytown / git / yupana / sessions        (activity: raw fiber)
+        │
+        ▼
+    camayoc                                  (ontology + ingress + packs)
+        │  episodes, SHACL-tagged, tiered
+        ▼
+     quipu                                   (governed bitemporal store)
+        │
+        ▼
+    bobbin / agents                          (retrieval, context, RAG)
+</code></pre>
+<ul>
+<li><strong><a href="https://github.com/scbrown/quipu">quipu</a></strong> stores and governs; it
+deliberately contains no extraction and no LLM.</li>
+<li><strong><a href="https://github.com/scbrown/yupana">Yupana</a></strong> observes code structure. The
+<code>hank</code> executable name remains only as a compatibility alias.</li>
+<li><strong><a href="https://github.com/scbrown/bobbin">bobbin</a></strong> serves knowledge back into
+agent context.</li>
+<li><strong><a href="https://github.com/scbrown/shantytown">shantytown</a></strong> runs the crew whose
+activity is the first knowledge domain.</li>
+<li><strong>camayoc</strong> is the layer TrustGraph-style platforms put <em>inside</em> the store
+and this stack deliberately keeps outside it: ontology, ingress discipline,
+and distribution.</li>
+</ul>
+<h2 id="what-this-repo-owns"><a class="header" href="#what-this-repo-owns">What this repo owns</a></h2>
+<ol>
+<li><strong>The bootstrap ontology</strong> — the small, brutally curated upper vocabulary
+every domain imports: work, agents, decisions, outcomes, source tiers.
+Competency questions before classes, always.
+<a href="design/bootstrap-ontology.html">docs/design/bootstrap-ontology.md</a></li>
+<li><strong>The ingress discipline</strong> — how facts enter quipu: episode-shaped,
+SHACL-refused without provenance tags, deterministic-first, LLM-inferred
+knowledge quarantined into low-trust planes.
+<a href="design/ingress.html">docs/design/ingress.md</a>
+The declarative structured-source lane is specified as a governed RML/R2RML
+subset in <a href="design/rml-executor.html">docs/design/rml-executor.md</a>.</li>
+<li><strong>Domain ontologies as certified knowledge packs</strong> — each domain ships as
+Quipu's <code>.qpack.db</code> (quipu #81): graph + shapes + competency queries +
+labels + manifest, one attachable file. A Camayoc pack is the
+<code>CertifiedShareBundle</code>, not a second format; publisher and certifier claims
+bind independently to the manifest content hash.
+<a href="design/certified-knowledge-packs.html">docs/design/certified-knowledge-packs.md</a></li>
+<li><strong>The competency-question suites</strong> — the questions agents actually ask,
+maintained as the test harness for every ontology change. Six slices now:
+task lifecycle, metrics, verification-and-liveness (with its §D cost
+accounting), golden paths, document structure and chunks, and
+workflow-and-archive. <a href="https://github.com/scbrown/camayoc/blob/main/competency/">competency/</a></li>
+</ol>
+<h3 id="metrics-and-nonfunctional-requirements"><a class="header" href="#metrics-and-nonfunctional-requirements">Metrics and nonfunctional requirements</a></h3>
+<p>Camayoc catalogues metric definitions and executable retrieval methods; it does
+not copy time-series samples into Quipu. Prometheus rule ingress is a reconciled
+producer snapshot, so changing or removing a rule converges the catalogue
+without appending duplicate episode comments:</p>
+<pre><code class="language-bash">scripts/reconcile_metrics.sh /path/to/prometheus/rules https://prometheus.example
+</code></pre>
+<p>The first argument may be one rule file or a directory containing YAML/Jinja
+rule templates. The optional endpoint is stored as a retrieval parameter; when
+it is absent, retrieval reports <code>unreachable</code> instead of inventing a default.
+The parser requires Python and PyYAML. <code>scripts/retrieve_metric.py</code> executes a
+method returned by the <code>camayoc_metric_retrieval_method</code> named query and prints
+<code>retrieved</code>, <code>unreachable</code>, <code>query_error</code>, or <code>unsupported</code>; it never persists
+the returned sample. Authenticated Prometheus deployments are read from
+<code>PROMETHEUS_BASIC_AUTH_USER</code> and <code>PROMETHEUS_BASIC_AUTH_PASSWORD</code>; credentials
+are never stored in the graph method.</p>
+<h3 id="typed-decisions-with-jev"><a class="header" href="#typed-decisions-with-jev">Typed decisions with Jev</a></h3>
+<p>Some ingress questions are semantic judgments, not parser facts: <em>which
+competency question is this asked question an instance of, if any?</em> <em>Does this new decision
+collide with a settled one?</em> Camayoc's first answer to those was deliberately
+lexical, and every verdict said so (<code>method: lexical-jaccard-v1</code>,
+<code>semantic: false</code>). Since 2026-09-21 there is a second arm:
+<a href="https://typesafe.ai">Jev</a>, TypeSafe's "System One" model, which returns typed,
+calibrated decisions (<code>noul</code> yes/no probabilities, <code>choice</code> over up to 255
+options, <code>score</code> over ordered levels) instead of text, in one parallel pass.</p>
+<p><code>scripts/jev.py</code> is the only place camayoc calls it. What that unlocked:</p>
+<ul>
+<li><strong>Question mapping as one typed decision.</strong> <code>competency.py --method jev</code>
+poses a single <code>choice</code> per asked question over the whole competency suite
+plus a reserved <code>none-of-these</code> option, and reads Jev's probability per
+question. Paraphrases the word-overlap scorer could not resolve now map,
+with a confidence attached. (Whether a competency question is <em>covered</em> by
+a stored query is the separate, deterministic check in <code>query_coverage.py</code>;
+Jev never answers that.)</li>
+<li><strong>An abstention Jev does not have.</strong> Jev cannot say "nothing fits"; the
+reserved option is how a forced choice becomes an honest <strong>NO COVERAGE</strong>.
+When it wins, coverage is <code>Empty</code> whatever the runner-up scored.</li>
+<li><strong>The same honesty rules as before.</strong> The verdict carries
+<code>method: jev-latest-choice-v1</code>, <code>semantic: true</code>, the instructions posed, the
+model that answered, the confidence and the none probability. No key means a
+loud <code>JevUnavailable</code>, never a quiet fall back to word overlap under a Jev
+label.</li>
+<li><strong>Ingress discipline unchanged.</strong> Every Jev answer is a model judgment. If it
+is written back it is <code>inferred</code> and lands in the quarantine plane; Jev never
+promotes, and plane routing stays deterministic.</li>
+</ul>
+<pre><code class="language-bash">export TYPESAFE_API_KEY=...   # from your secret store
+python3 scripts/competency.py --method jev "which metrics can we retrieve for the database host right now?"
+python3 scripts/competency.py --method lexical "which metrics can we retrieve for the database host right now?"
+python3 scripts/jev.py noul --state "..." --ask "Does this message request a refund?" --dry-run
+</code></pre>
+<p>Design, candidate slots and the caveats (no rationale, forced choice, context
+rot): <a href="design/jev-typed-decisions.html">docs/design/jev-typed-decisions.md</a>.
+The settled-decision collision check (<code>noul</code>) is the next arm.</p>
+<h2 id="what-runs-today"><a class="header" href="#what-runs-today">What runs today</a></h2>
+<p>The ingress discipline stopped being a table in a design doc. The pieces below
+are implemented, and — the part this repo cares most about — their <em>refusals</em>
+are tested, not just their acceptances.
+<a href="design/implemented-set.html">docs/design/implemented-set.md</a> keeps the
+measured, claim-by-claim ledger.</p>
+<ul>
+<li><strong>Quarantine planes</strong> (<code>scripts/planes.py</code>) — writes route by <code>sourceKind</code>
+into named graphs labelled in quipu's trust lattice: <code>inferred</code> never shares
+a plane with <code>observed</code> and always ranks strictly below it. Registration and
+labelling happen together or not at all; an unknown <code>sourceKind</code> refuses
+instead of defaulting to ROOT; and against a quipu without the
+<code>/graph/create</code> + <code>/graph/label</code> routes, bootstrap <strong>fails</strong> rather than
+quietly writing everything into ROOT.</li>
+<li><strong>Two-dimensional routing</strong> — <code>plane_for(source_kind, data_kind)</code>.
+<code>knowledge</code> goes to the static planes; <code>operational</code> data (workflow runs,
+shuttle's export) goes to time-windowed graphs (<code>scripts/windows.py</code>,
+<code>{WINDOW_NS}{family}/{YYYY-MM}</code>) so a completed window can be deep-frozen
+whole. Unknown pairs refuse; nothing defaults to ROOT.</li>
+<li><strong>Plane promotion</strong> (<code>scripts/promote_plane.py</code>) — how a fact earns its way
+out of quarantine. Authority-gated and failing closed (a missing or
+unreadable grant file means <em>nobody</em> may promote, not everybody),
+self-promotion refused independently of authority, upward moves only, and
+the move rule in full: assert in the target, <strong>close</strong> the source episode (a
+bitemporal close, never a delete), record the move — with
+<code>camayoc:sourceLeftOpen true</code> said out loud when the source stays open.</li>
+<li><strong>The workflow slice</strong> — <code>WorkflowDefinition</code>, <code>WorkflowStep</code>,
+<code>WorkflowRun</code>, and append-only <code>TransitionEvent</code>s; <code>currentState</code> is
+re-asserted per transition, never mutated. Every term is owed to a question
+in <a href="https://github.com/scbrown/camayoc/blob/main/competency/workflow-and-archive.md">competency/workflow-and-archive.md</a>.
+<a href="design/workflow-and-archive.html">docs/design/workflow-and-archive.md</a></li>
+<li><strong>Golden paths</strong> — verified trajectories, blessed and enforced:
+<code>Trajectory</code>, <code>GoldenPath</code>, <code>PathOmission</code>, <code>PathPromotion</code>, with SHACL
+refusals where absence would make the node a lie (a <code>GoldenPath</code> without
+its exemplar trajectory is refused) and a gate-probe arm proving each
+refusal. <a href="design/golden-paths.html">docs/design/golden-paths.md</a></li>
+<li><strong>Stored queries, honest coverage</strong> — every named query in
+<a href="https://github.com/scbrown/camayoc/blob/main/queries/">queries/</a> is tested against a seeded fixture with a positive
+<em>and</em> a control-negative arm. <code>just query-coverage</code> is the living figure:
+<strong>40 of 91 stored across six slices</strong>, plus 22 questions that are
+expressible with today's vocabulary and simply unwritten, and 29 that are
+competency gaps. Those last two are reported apart on purpose — an unwritten
+query is work with a known shape, an ontology gap is a finding — and a
+question with no stored query is never answered from the nearest term.</li>
+<li><strong>Cost accounting</strong> — <code>Session</code> and <code>UsageRecord</code>, with six §D queries:
+token cost per work item, per-provider burn windows, sessions with no usage
+records, what a decision cost. No quota term exists on purpose — the
+consumption is ours to record; the ceiling is the provider's.</li>
+<li><strong>Refused-write denominator</strong> (<code>just refusal-rate</code>) — joins quipu's durable
+<code>write.refused</code> event stream to the accepted <code>Verification</code> population and
+reports the refusal share the incident corpus never had. It reports and
+never writes: a refusal <em>rate</em> is a ratio between two moving populations, so
+it is a judgment computed at read time, not a fact true at write time. The
+share is a FLOOR three times over and the report says so on every run —
+<code>speculate</code> refusals are excluded from the stream, refused fact bodies are
+not stored (so no per-form breakdown is recoverable, ever, and <code>reason</code>
+names the gate rather than the failing shape), and a prospective stream
+divided by a retrospective population has a denominator that is too large.
+An unreachable store, or one predating the stream, exits 3: could not look
+is not zero.</li>
+<li><strong>git → work-item provenance</strong> (<code>just ingest-git</code>) — walks commit history
+and emits the <code>WorkItem ←implements— GitCommit —modifies→ CodeModule</code> chain
+as Turtle. Deterministic, byte-identical on re-run, and pure <code>observed</code>. It
+abstains unless you declare the tracker prefix (<code>--project</code>), because no
+pattern separates a work-item id from ordinary hyphenated English, and a
+false match silently widens an item's scope.</li>
+<li><strong>Competency assessment</strong> (<code>just competency "&lt;question&gt;"</code>) — scores a
+question against the suite and returns <code>Empty | Partial | Full</code>, with
+<strong>NO COVERAGE</strong> as a first-class verdict. Every verdict carries its method,
+thresholds, and suite watermark; the embedding scorer is wired and selects
+itself only when weights are actually present, so a verdict can never claim
+<code>semantic: true</code> over a word-overlap number.</li>
+<li><strong>Quarantined entity extraction</strong> (<code>scripts/extract_entities.py</code>) — finds
+entity mentions in markdown prose deterministically: a gazetteer built from
+the graph's own labels plus explicit user-declared regex patterns, no model
+in the loop. Deterministic does not mean <code>observed</code> — a mention is a reading
+of the text, so every fact lands in the inferred plane, tagged, never ROOT.
+Ambiguous labels match for nobody, re-runs are byte-identical, and an
+unreachable store or unprovisioned plane refuses loudly before anything is
+written.</li>
+<li><strong>Settled-decision collision check</strong> (<code>scripts/settled_decisions.py</code>) —
+scores a proposed decision against the standing human decisions and
+surfaces likely re-litigation <em>before</em> the write. Advisory, lexical and
+says so; its own recorded verdict routes to the inferred plane, because a
+machine's opinion about a human's decision must not sit beside it looking
+like one.</li>
+<li><strong>Advisory chunk shapes</strong> — vocabulary for bobbin's chunk graph
+(<code>bobbin:Chunk</code>, <code>nextChunk</code>, <code>chunkOrder</code>) in <code>shapes/code-entities.ttl</code>,
+value constraints only until the emitter ships and is measured.</li>
+<li><strong>Certified-pack producer boundary</strong> (<code>scripts/certify_pack.py</code>) — invokes
+Quipu's <code>.qpack.db</code> pack and verify path, reads the manifest content hash, and
+renders distinct publisher/certifier claims plus the governed source mapping.
+It verifies two distinct Ed25519 keys, derives the hash from a conforming
+machine-readable SHACL report, and scans the complete pack artifact before
+asserting scrub success. It atomically publishes a content-addressed durable
+copy and binds that file URI into the source mapping. Static and frozen-window
+packs are exercised through relocation with disposable independent keys.
+Quipu's v1 share directory is the git/import projection of this same governed
+bundle: its <code>share_id</code> tracks lineage and never replaces the pack's canonical
+graph hash.</li>
+<li><strong>Governed RML executor</strong> (<code>scripts/rml_executor.py</code>) — compiles standard
+RML/R2RML triples-map data, refuses unsupported constructs before source
+access, reads bounded JSON/CSV/SQLite sources, emits sorted duplicate-free
+N-Quads, and commits through Quipu's SHACL-governed named-graph write lane.</li>
+</ul>
+<h2 id="what-this-repo-is-deliberately-not"><a class="header" href="#what-this-repo-is-deliberately-not">What this repo is deliberately NOT</a></h2>
+<ul>
+<li><strong>Not a store.</strong> Quipu is the store. Camayoc never holds truth; it prepares
+and certifies it.</li>
+<li><strong>Not a harness.</strong> Shantytown runs agents. Camayoc only defines what their
+activity <em>means</em>.</li>
+<li><strong>Not retrieval.</strong> Bobbin serves context. Camayoc ships the queries, not the
+serving.</li>
+<li><strong>Not an extraction platform.</strong> Deterministic parsers first; where an LLM
+infers, the output is labelled as inference and can never masquerade as
+observation. The tag is the reader's only signal of trust — that posture is
+inherited from NeuralAmplifier's datalinks pipeline, the proven instance of
+this pattern.</li>
+</ul>
+<h2 id="on-the-name"><a class="header" href="#on-the-name">On the name</a></h2>
+<p>The name honors the <em>khipukamayuq</em> (hispanicized <em>quipucamayoc</em>): the Quechua
+title for the specialists of the Inca state charged with making, maintaining,
+archiving, and interpreting the khipus — and answerable, personally, for what
+the knots were read to claim. <em>Kamayuq</em> on its own means "specialist, keeper,
+one who is charged with": Quechua formed many such titles (<em>punku kamayuq</em>,
+doorkeeper; <em>chaka kamayuq</em>, bridge keeper). Beside a sibling project named
+<a href="https://github.com/scbrown/quipu">quipu</a>, this repo's name completes the
+compound.</p>
+<p>This project borrows the role as a metaphor for a software layer that decides
+what a fact may claim before it enters a knowledge graph. It does not claim to
+represent Andean culture. Khipu is a living tradition — Quechua is spoken by
+millions, community cord-keeping survived into the modern era in Andean
+villages, and khipu scholarship is active — and the modern Quechua spellings
+are <em>khipu</em> and <em>khipukamayuq</em>; this stack uses the older hispanicized forms
+for continuity with its sibling repos.</p>
+<p>The logo's centerpiece is the <strong>yupana</strong>, the Andean counting board drawn at
+the khipukamayuq's side in Guaman Poma de Ayala's 1615 illustration of the
+<em>contador mayor</em> — the only primary-source depiction of one: five rows of
+cells holding five, three, two and one counters. It was the surface where a
+value was worked out before being committed to the knots — which is exactly
+this repo's job, so the keeper's own instrument sits at the center, between
+the loose thread coming in and the knotted record going out.</p>
+<h2 id="status"><a class="header" href="#status">Status</a></h2>
+<p>Working ingress, honestly bounded. Of the eight aspects in the provisional
+disclosure, four are built, four are partial, and none are design-only —
+<a href="design/implemented-set.html">docs/design/implemented-set.md</a> is the
+measured ledger, re-run per row rather than carried forward on trust. The
+competency suite spans six slices; 40 stored queries answer it where the
+vocabulary exists, and <code>just query-coverage</code> reports the remaining gaps as
+gaps. The quipu substrate this builds on is itself still in flight.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="reference.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="the-stack.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="reference.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="the-stack.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

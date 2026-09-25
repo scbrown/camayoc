@@ -1,0 +1,593 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Ingress: how knowledge earns its way in - camayoc</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Governed memory for agents: what the knots mean, and how knowledge earns its way into the graph">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="../custom/css/custom.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">camayoc</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/scbrown/camayoc" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="design-ingress--how-knowledge-earns-its-way-into-the-graph"><a class="header" href="#design-ingress--how-knowledge-earns-its-way-into-the-graph">Design: Ingress — how knowledge earns its way into the graph</a></h1>
+<blockquote>
+<p><strong>Implementation status (2026-08-07):</strong> 🟨 <strong>Core ingress gate built:</strong> WorkItem,
+Decision, Verification, ExecutionPath, and Blocker provenance/validation shapes are
+present. Bootstrap proves both an untagged-write refusal and a falsifier-less
+Verification refusal. Execution-path inventory is now produced by the scheduled,
+ownership-neutral aegis source and the Quipu coverage query reports <code>Empty</code>,
+<code>Partial</code>, or <code>Full</code> rather than a bare count. Hank now emits a falsifier-gated
+<code>Verification</code> and a <code>built</code> <code>Blocker</code> for each signed unsatisfied verdict. Its
+source change is merged, but it is not yet an installed/runtime producer: the
+sanctioned installer consumes release artifacts and no verdict-drain schedule is
+present. Until both are true, the blocker query's zero is an explicit gap, not
+evidence that no blocker exists. <strong>Rule 1 corrected (2026-08-16):</strong> it claimed
+episode-shaped ingress; every real ingest is and always was a <code>/knot</code> write, so
+the rule now states the boundary it actually governs and <code>tests/test_knot_provenance.py</code>
+enforces the <code>actor</code> + <code>source</code> floor it narrowed to (camayoc-99t).
+<strong>Planes update (2026-08-18, noted here 2026-08-22):</strong> the §2 quarantine
+planes are no longer a table — <code>scripts/planes.py</code> registers and labels
+them (camayoc-s0h, see §2.1) and <code>scripts/promote_plane.py</code> implements the
+authority-gated plane promotion of §3.4/§4 (camayoc-mip) — assertion into
+the target only; the retraction half awaits a keeper ruling, <code>camayoc-913</code>.
+<strong>Routing update (2026-08-24):</strong> routing is now <strong>2-D</strong> — <code>plane_for(source_kind, data_kind="knowledge")</code>; <code>operational</code> data is window-addressed via <code>scripts/windows.py</code> so completed windows can be deep-frozen whole, and §4's promotion now CLOSES the source episode (the camayoc-913 move rule). Existing plane IRIs untouched. See <a href="workflow-and-archive.html">workflow-and-archive.md</a>.</p>
+</blockquote>
+<h2 id="1-the-discipline-in-five-rules"><a class="header" href="#1-the-discipline-in-five-rules">1. The discipline, in five rules</a></h2>
+<ol>
+<li>
+<p><strong>Episode-shaped writes for agent-recorded facts.</strong> Everything the skill
+records in the moment — decisions, work items, outcomes — goes through
+quipu's <code>/episode</code> path, which supplies <code>prov:wasGeneratedBy</code> automatically
+and is idempotent (branch on <code>outcome</code>, never on <code>count</code>). That is where the
+provenance chain must be unskippable: those facts have an author, a moment
+and a motive, and a later reader has to be able to weigh them.</p>
+<p><strong>Bulk deterministic loads go through <code>POST /knot</code>, and this rule does not
+pretend otherwise.</strong> The ontology and shapes (<code>scripts/bootstrap.sh</code>), the
+repository walk (<code>scripts/seed_knowledge.sh</code>) and the metric catalogue
+(<code>scripts/reconcile_metrics.sh</code>) are free-Turtle knot writes. They carry
+<code>actor</code> and <code>source</code> in the payload instead of a PROV activity;
+<code>prov:wasGeneratedBy</code> appears nowhere in the codebase outside these design
+docs.</p>
+<p>This rule previously read "every camayoc ingress goes through <code>/episode</code> …
+no free-Turtle writes to governed planes", which was false in every
+particular: the <em>only</em> <code>/episode</code> calls in the repository are the four
+deliberately-invalid gate probes in <code>scripts/gate_probe.sh</code>, and every
+successful ingest has always been a knot write (camayoc-99t).</p>
+<p><strong>What the narrowing costs.</strong> <code>actor</code> + <code>source</code> is a weaker record than a
+PROV activity: it names who wrote and what they read, but not the run, and
+it is not chained, so a knot-written fact cannot be traced to the invocation
+that produced it. That is an acceptable trade for the ontology and shapes —
+schema, not claims — and a real gap for the seed walk and the metric
+catalogue, which <em>are</em> claims about a codebase. <code>tests/test_knot_provenance.py</code>
+holds the narrowed rule to its own terms: a knot write that names neither
+its actor nor its source fails the suite, so the weaker record cannot
+quietly become no record.</p>
+</li>
+<li>
+<p><strong>SHACL refuses the untagged.</strong> Every fact carries <code>camayoc:sourceKind</code>
+(<code>observed</code> | <code>declared</code> | <code>inferred</code>) and a source reference. Closed
+vocabulary, <code>minCount 1</code>, from the first load. This is NeuralAmplifier's
+proven posture (its ingest literally refuses a mod file claiming to be
+canonical), generalized.</p>
+</li>
+<li>
+<p><strong>Deterministic-first.</strong> If a parser can produce the fact from a record,
+the parser does — no model in the loop on <code>observed</code> facts, because a
+hallucinated fact is indistinguishable downstream from a real one on
+exactly the facts tagged trustworthy.</p>
+</li>
+<li>
+<p><strong>Inference is quarantined, not banned.</strong> LLM-derived knowledge (session
+summaries, "lessons learned," failure diagnoses) is valuable — it lands in
+its own plane (named graph) labelled low-trust in the lattice, so the
+label meets through every query that touches it. It can <em>earn</em> promotion
+(a graph move, bitemporal and auditable) — it can never masquerade.</p>
+</li>
+<li>
+<p><strong>Facts true at write time.</strong> No stored judgment that decays (liveness,
+currency, "still in progress"). Judgments are queries at read time.</p>
+</li>
+<li>
+<p><strong>Verification names its falsifier.</strong> A <code>Verification</code> carries the observable
+result that would have disproved it. The shape refuses a claim without one;
+bootstrap proves that refusal separately from the provenance-tag gate.</p>
+</li>
+<li>
+<p><strong>Liveness is calculated, never written.</strong> Producers store timestamped
+observations (a stop record, a refresh, an installed-artifact hash). A reader
+combines them with the current process or artifact state. <code>ExecutionPath</code>
+deliberately has no <code>isLive</code> property: a stored verdict would age into the
+stale fact it claims to detect.</p>
+</li>
+<li>
+<p><strong>Blockers name their evidence strength.</strong> A <code>Blocker</code> is exactly one of
+<code>stated</code> (a claim in a ticket/report) or <code>built</code> (a demonstrated failing
+case). When a built blocker links <code>demonstratedBy</code>, it must link a
+falsifier-gated <code>Verification</code>; Hank emits that link for signed unsatisfied
+verdicts. A reader can therefore keep a stated blocker visible without
+presenting it as a measurement. Absence of such a record remains a producer
+coverage question, not a claim that no blocker exists.</p>
+</li>
+</ol>
+<h2 id="2-planes-by-velocity"><a class="header" href="#2-planes-by-velocity">2. Planes by velocity</a></h2>
+<p>Mirroring the pattern NeuralAmplifier proved (datalinks / doctrine / memory),
+mapped onto quipu named graphs with lattice labels:</p>
+<div class="table-wrapper"><table><thead><tr><th>Plane (named graph)</th><th>Contents</th><th>Velocity</th><th><code>sourceKind</code></th><th>Trust label</th></tr></thead><tbody>
+<tr><td><code>crew:records</code></td><td>task lifecycle, decisions, outcomes (skill-recorded or parser-backfilled)</td><td>per-event</td><td><code>observed</code> / <code>declared</code></td><td>high</td></tr>
+<tr><td><code>crew:declared</code></td><td>conventions, directives, standing decisions a human stated</td><td>occasional</td><td><code>declared</code></td><td>high (human root)</td></tr>
+<tr><td><code>crew:inferred</code></td><td>model-written summaries, diagnoses, lessons</td><td>per-session</td><td><code>inferred</code></td><td>low, promotable</td></tr>
+<tr><td><code>code:*</code></td><td>hank-promoted structure (already governed upstream)</td><td>per-commit</td><td><code>observed</code></td><td>per hank tier</td></tr>
+</tbody></table>
+</div>
+<h3 id="21-implementation-status-routed-and-labelled-camayoc-s0h"><a class="header" href="#21-implementation-status-routed-and-labelled-camayoc-s0h">2.1 Implementation status: routed and labelled (camayoc-s0h)</a></h3>
+<blockquote>
+<p><strong>Update 2026-08-18.</strong> This section described a design. It now describes a
+deployment: <code>scripts/planes.py</code> registers each plane and labels it in the
+trust lattice, <code>scripts/bootstrap.sh</code> runs it, and writes are routed to the
+plane their <code>sourceKind</code> earns. The two quipu gaps below were closed upstream
+on the same branch — <code>POST /graph/create</code> and <code>POST /graph/label</code> expose
+<code>Store::graph_create</code> and <code>Store::set_graph_label</code>, both of which already
+existed with no way in from outside.</p>
+<p><strong>The ordering held.</strong> Registration and labelling happen together or not at
+all, and <code>plane_for</code> refuses an unknown <code>sourceKind</code> rather than defaulting to
+ROOT. Against a quipu without the routes, bootstrap <strong>fails</strong> — it does not
+quietly carry on writing everything into ROOT, which is the "looks
+implemented, does nothing" state this section was written to warn about.
+<code>tests/test_planes.py</code> pins that refusal, and pins that <code>inferred</code> never
+shares a plane with <code>observed</code> and always ranks strictly below it.</p>
+<p>Writes go through <code>/episode</code>, not <code>/knot</code>, for the reason recorded below:
+<code>/knot</code> is hardcoded to ROOT and silently drops a <code>graph</code> key.</p>
+<p>The historical analysis is kept below because its reasoning is why the
+ordering is what it is.</p>
+</blockquote>
+<p><strong>Nothing routed at the time of writing.</strong> No script names a graph, no shape targets one, no query
+carries a <code>GRAPH</code> clause. An <code>inferred</code>-tagged node lands in exactly the same
+place an <code>observed</code> one does, so quarantine is skill discipline and a <code>sourceKind</code>
+string — not an enforced boundary (camayoc-s0h).</p>
+<p>Read against quipu's source rather than assumed, because the shape of the gap
+decides who fixes it:</p>
+<div class="table-wrapper"><table><thead><tr><th>Capability</th><th>State in quipu</th><th>Citation</th></tr></thead><tbody>
+<tr><td>Quad store, <code>GRAPH</code> / <code>FROM NAMED</code> in SPARQL</td><td><strong>exists</strong></td><td><code>src/store/migrate.rs:33</code>, <code>src/sparql/pattern.rs:352-372</code></td></tr>
+<tr><td>Write into a named graph via <code>/episode</code></td><td><strong>exists</strong> (<code>graph</code> field)</td><td><code>src/episode/mod.rs:177-181</code>, test at <code>src/episode/tests.rs:912</code></td></tr>
+<tr><td>Write into a named graph via <code>/knot</code></td><td><strong>does not exist</strong></td><td>hardcoded to ROOT, <code>src/rdf.rs:180-182</code></td></tr>
+<tr><td>Trust lattice, labels, query-time floors</td><td><strong>exists</strong></td><td><code>src/lattice.rs</code>, <code>src/store/labels.rs:730</code></td></tr>
+<tr><td>HTTP or CLI route to <em>set</em> a graph label</td><td><strong>does not exist</strong></td><td>only caller of <code>set_graph_label</code> is <code>src/pack.rs:450</code></td></tr>
+<tr><td>Labelling a graph <code>/episode</code> created</td><td><strong>refused</strong> — the write interns the IRI without registering it</td><td><code>src/store/labels.rs:344-350</code> vs <code>src/episode/mod.rs:371</code></td></tr>
+<tr><td>Store-level primitive that <em>registers</em> a graph</td><td><strong>exists, with no caller</strong></td><td><code>Store::graph_create</code>, <code>src/store/overlays.rs:42</code></td></tr>
+</tbody></table>
+</div>
+<p>So routing is blocked in a specific and fixable way rather than generally:</p>
+<ol>
+<li><strong>Every real camayoc ingest is a <code>/knot</code> write</strong> (rule 1), and <code>/knot</code> cannot
+target a graph. Worse, it takes a free-form JSON body with no unknown-field
+rejection, so a <code>"graph"</code> key added to a knot payload is <strong>silently dropped</strong> —
+routing would appear to be implemented and do nothing. <code>tests/test_knot_provenance.py</code>
+pins that no knot payload carries one.</li>
+<li><strong>Labels have no write route at all.</strong> The whole lattice — composition,
+per-row annotation, query-time floors — is built and reachable only from
+Rust. A plane camayoc created could not be labelled <code>low-trust</code> even by hand.</li>
+</ol>
+<p><strong>What unblocks this, in order.</strong> Re-verified 2026-08-17, and the estimate is
+smaller than it looks, because the missing pieces are <em>exposure</em> rather than
+mechanism:</p>
+<ul>
+<li><code>Store::graph_create</code> (<code>src/store/overlays.rs:42</code>) is <strong>exactly</strong> the
+registration <code>set_graph_label</code> presumes — written, tested, idempotent, and
+refusing a class change. It has <strong>no caller outside its own tests</strong>.</li>
+<li><code>Store::set_graph_label</code> (<code>src/store/labels.rs:208</code>) is likewise built and
+reachable only from Rust, its single production caller being <code>src/pack.rs:450</code>.</li>
+</ul>
+<p>So quipu does not need two mechanisms built; it needs <code>graph_create</code> invoked
+when <code>/episode</code> is handed a <code>graph</code> it has not seen (or a route that does it),
+and an HTTP route over <code>set_graph_label</code>. Camayoc then moves agent-recorded
+facts to <code>/episode</code> with <code>graph</code> derived from <code>sourceKind</code> — and note that
+<code>/episode</code>'s <code>graph</code> field <strong>already works</strong>, so camayoc's half is not blocked
+on routing at all, only on the labels.</p>
+<p>Until the label route exists, routing alone would produce separate graphs that
+every query still reads at equal trust — the appearance of quarantine without
+the substance, and worse than none. <strong>That ordering, not the missing routing,
+is why this is not partially shipped</strong>, and it is worth being precise about:
+camayoc could route today and must not.</p>
+<p>This is a <code>built</code> blocker in the sense of §1.8, not a <code>stated</code> one: the
+citations above are the demonstration.</p>
+<h2 id="3-sources"><a class="header" href="#3-sources">3. Sources</a></h2>
+<h3 id="31-the-skill-guided-agent--the-first-class-source"><a class="header" href="#31-the-skill-guided-agent--the-first-class-source">3.1 The skill-guided agent — the first-class source</a></h3>
+<p>The primary ingress surface is <strong>the agent itself</strong>, guided by the shipped
+skill (<a href="skill.html">skill.md</a>, <code>skills/camayoc/SKILL.md</code>): it records
+decisions, work items and outcomes as tagged episodes at the moment they
+happen. Guidance and enforcement are deliberately separate — the skill makes
+the honest tag the path of least resistance; the shapes refuse what the
+skill failed to prevent. <strong>No harness is a dependency</strong>: any agent with HTTP
+reaches the whole surface.</p>
+<h3 id="32-tracker-and-harness-record-parsers--optional-enrichment"><a class="header" href="#32-tracker-and-harness-record-parsers--optional-enrichment">3.2 Tracker and harness record parsers — optional enrichment</a></h3>
+<p>A tracker or harness with its own records can be backfilled and corroborated
+by a deterministic parser translating records → episodes tagged <code>observed</code>:</p>
+<p><strong>Implemented for beads/st: <code>scripts/ingest_work_items.py</code>.</strong> It consumes the
+public <code>br show &lt;id&gt; --json</code> record, reuses the existing <code>WorkItem</code> class, and
+routes an ordinary governed episode to <code>crew:records</code>. The stable tracker id is
+both the node name and <code>aegis:identifier</code>, so lookup works from record to graph
+and from graph back to record. <code>--about &lt;IRI&gt;</code> records explicit WorkItem →
+Directive/entity mappings without minting a tracker-specific class. Quipu owns
+none of this translation: it only stores the episode Camayoc produces. Mutable
+record versions are immutable <code>Observation</code> nodes keyed by a content digest;
+the WorkItem projection is byte-identical on every run. A failed record is
+printed as <code>outcome=parked</code> with exit 2 so batch callers can continue instead
+of head-of-line blocking the lane.</p>
+<p>Each tracker Observation also points <code>about</code> its WorkItem. The incoming
+<code>WorkItem observes Observation</code> edge does not satisfy the Observation shape's
+required outgoing <code>about</code> property. Fresh-bootstrap integration tests exercise
+the complete installer, accept a real tracker episode, read the edge back from
+its named graph, and reject an otherwise identical unanchored Observation.
+Testing only the serializer or a store without write-time validation misses
+this contract.</p>
+<ul>
+<li><strong>Beads (<code>br</code>)</strong> is the cleanest such source: agent-first, JSON out, and a
+bead <em>is</em> a <code>WorkItem</code> record — id, status, dependencies, lifecycle — so
+the parse is nearly a projection. Where beads is st's tracker backend, one
+parser covers both.</li>
+<li><strong>Shantytown's own records</strong> (task/crew, with the <code>ts</code>/<code>item</code>/<code>item_status</code>
+payload its event store already learned an event must carry) parse the
+same way. Shantytown's adapter table reserves a <code>knowledge</code> layer for a
+native emit half; that is a welcome <em>integration</em> on that repo's schedule
+— camayoc works identically without it, and its none-adapter proves the
+independence in the other direction.</li>
+</ul>
+<h3 id="33-git"><a class="header" href="#33-git">3.3 Git</a></h3>
+<p><strong>Implemented: <code>scripts/ingest_git_provenance.py</code>.</strong> Commit history →
+work-item linkage (<code>aegis:implements</code>, <code>aegis:modifies</code> — the provenance chain
+quipu's co-occurrence shapes already define). Pure <code>observed</code>; yupana promotes
+the structural half.</p>
+<pre><code class="language-bash">scripts/ingest_git_provenance.py ../quipu ../yupana --project aegis &gt; /tmp/prov.ttl
+# then POST it to /knot like any other ingest — see scripts/bootstrap.sh
+</code></pre>
+<p>This chain is read by more consumers than any other thing this repo emits, and
+none of them owns it: yupana's <code>WORK_ITEM_SCOPE_QUERY</code> builds the <strong>observed
+rung of its capability ladder</strong> from it, its work-item briefing reads it for an
+item's ground, and quipu's <code>entity_work</code> / <code>cochanged_with</code> / <code>cooccurrence</code>
+traverse it. A repository this has never run against produces UNKNOWN scope for
+every agent working in it — correctly, and uselessly.</p>
+<p><strong>The project prefix must be declared</strong> (<code>--project</code>, defaulting to the repo
+names). There is no pattern that separates <code>bobbin-052</code> from ordinary
+hyphenated English, and this was measured rather than reasoned: the first
+version used a loose regex and read <code>work-item</code>, <code>advise-mode</code>, <code>authored-by</code>,
+<code>pre-push</code> and <code>force-push</code> as work-item ids, writing paths into the ground of
+five items that do not exist. A digit test does not rescue it either —
+<code>bobbin-bbe</code> is a real id. So the ingest abstains unless somebody named the
+project, and <code>tests/test_ingest_git_provenance.py</code> holds it to that.</p>
+<p><strong>Coverage is reported, not assumed.</strong> The runner prints how many commits
+carried a recognised id and how many did not. A ground built from a history
+where 80% of commits are unlinked is a <em>floor</em>, and whoever reads that scope
+needs to know it — a linked-only count would let an ingest matching 5% of
+commits look like one matching 95%.</p>
+<h3 id="34-sessions-the-inferred-plane"><a class="header" href="#34-sessions-the-inferred-plane">3.4 Sessions (the inferred plane)</a></h3>
+<p>Transcript-derived summaries and diagnoses, written by a model, landing in
+<code>crew:inferred</code> only. The interesting future here is the SARC trust-predicate
+gap: a producer that records sub-agent responses is exactly what a session
+adapter is — but v1 claims only quarantine, not evaluation.</p>
+<h3 id="35-prose-entity-mentions-deterministic-still-quarantined"><a class="header" href="#35-prose-entity-mentions-deterministic-still-quarantined">3.5 Prose entity mentions (deterministic, still quarantined)</a></h3>
+<p><strong>Implemented: <code>scripts/extract_entities.py</code></strong> (camayoc-0c8). Markdown prose →
+entity mentions, matched against a gazetteer of the graph's own labels plus
+explicit user-declared regex patterns — no model in the loop. Deterministic
+extraction does not make the claim <code>observed</code>: "this prose is about that
+entity" is a reading, so every mention routes to <code>crew:inferred</code> and never
+ROOT. Ambiguous labels match for nobody, abstentions are counted on stderr,
+and an unreachable store or unprovisioned plane refuses before a triple
+moves. See <a href="entity-mentions.html">entity-mentions.md</a>.</p>
+<h2 id="4-what-ingress-never-does"><a class="header" href="#4-what-ingress-never-does">4. What ingress never does</a></h2>
+<ul>
+<li>Never writes to a governed plane without the tags (SHACL enforces).</li>
+<li>Never upgrades its own output: promotion out of <code>crew:inferred</code> is a
+governed graph move requiring authority over the target plane, not an
+ingress feature. <strong>Implemented as <code>scripts/promote_plane.py</code></strong>
+(camayoc-mip). Called <em>plane promotion</em> throughout, because
+<code>shapes/code-entities.ttl</code> already uses "promotion" for an unrelated
+bobbin-to-quipu ingest path and two governed operations sharing one word in
+one repo confuses every reader after the one who wrote it.
+Four gates, all refusing before anything is written: no authority over the
+target plane; <strong>self-promotion</strong>, checked independently of authority so a
+principal holding a grant still cannot launder its own output through it; a
+sideways or downward move, which is a category error that would read in the
+record as earned trust; and an unstated reason. Grants live in
+<code>config/plane-authority.json</code>, are human-maintained, and <strong>fail closed</strong> — a
+missing or malformed file grants nobody, because treating an unreadable
+grant file as unrestricted is what makes an authority check worthless.
+The promotion event is itself tagged <code>observed</code> and carries its own
+falsifier: the move is an observed event even though the fact it moves was
+inferred, and tagging it <code>inferred</code> would file the audit record in the plane
+it is moving things out of.</li>
+<li>Never stores a judgment that decays (§1.5).</li>
+<li>Never models the tracker's message format — the record is evidence about
+the work, not the shape of the work.</li>
+</ul>
+<h2 id="5-related"><a class="header" href="#5-related">5. Related</a></h2>
+<ul>
+<li><a href="bootstrap-ontology.html">bootstrap-ontology.md</a> — the vocabulary these
+writes carry.</li>
+<li><a href="skill.html">skill.md</a> — the skill-as-interface usage model this section
+implements.</li>
+<li><a href="task-lifecycle-slice.html">task-lifecycle-slice.md</a> — the first slice; its
+record mapping is the enrichment parser's translation table.</li>
+<li>shantytown <code>docs/adapters.md</code> — the reserved knowledge seam and the
+two-implementations rule; <code>shantytown/events.py</code> — the event-payload
+lessons §1.5 inherits.</li>
+<li>quipu <code>docs/design/graph-labels.md</code> — the lattice that makes quarantine
+enforceable rather than aspirational.</li>
+</ul>
+<h2 id="observed-workitem-consumer-authority"><a class="header" href="#observed-workitem-consumer-authority">Observed WorkItem consumer authority</a></h2>
+<p>The cost publisher reads deterministic tracker WorkItems from <code>crew:records</code>.
+This is an explicitly granted read of observed evidence, not a move into ROOT
+and not promotion of inferred facts. <code>publish_work_cost.py</code> requires the
+<code>read:crew:records</code> capability under its own consumer name in
+<code>config/plane-authority.json</code> before any graph access, including unchanged
+snapshot runs. A missing, malformed, or unrelated grant refuses publication
+and leaves the successful cursor intact. The actor argument cannot confer it.</p>
+<p>The administrator authorized this grant on 2026-09-16 (aegis-trgavj). The
+human-maintained file remains the authority; <code>CAMAYOC_AUTHORITY</code> selects an
+operator-provisioned alternative, as for plane promotion. This is an
+application policy gate, not an operating-system sandbox against a principal
+that can modify the executable or its environment. Read capabilities never
+satisfy the separate plane-promotion checks. Source facts remain in their
+observed graph; the publisher still checks direct WorkItem typing before it
+writes usage and verifies attribution in the same graph afterward.</p>
+<h3 id="standing-tracker-delivery"><a class="header" href="#standing-tracker-delivery">Standing tracker delivery</a></h3>
+<p><code>scripts/sync_work_items.py</code> polls the public <code>br list --json</code> interface with
+an explicit <code>--db</code>. Its scope is claimed work plus assigned open/blocked work,
+including deferred assignments. It accepts the legacy array or a complete list
+envelope; a truncated response is UNKNOWN. This is independent of cost records:
+only the authoritative tracker can supply canonical WorkItem identity.</p>
+<p>Each tick handles one record, at most one episode write and two verification
+reads, with a persisted 60-second minimum interval and a 256-KiB episode cap.
+Current claims win initial ties, then priority and newer creation time. The least
+recently attempted record wins subsequent turns, so a bad record cannot monopolize
+the lane. Initial backlog drains gradually; consumers continue refusing absent
+identities until delivery. This does not enlarge any consumer's request budget.</p>
+<p>The existing mapper owns all semantics: stable WorkItem identity and an immutable
+content-addressed Observation in <code>crew:records</code>, never ROOT. <code>--source</code> names the
+tracker authority and the item ID is appended to it. Exact payloads are persisted
+before writes. Delivery requires a positive same-plane WorkItem control and a
+read-back of the exact direct WorkItem/Observation assertions. Neither <code>unchanged</code>
+nor a nonzero transaction count proves delivery. Lost responses keep the payload;
+two separately scheduled controlled absent reads permit a byte-identical retry,
+with at most three write attempts. Further failures stay parked for inspection.
+Changed tracker fields cannot replace an unresolved payload.</p>
+<p>Confirmed versions receive a periodic six-hour read-back. Retraction is detected
+and enters the same pending reconciliation path. Receipt and status metrics report
+errors and backlog age; a backlog older than twice its bounded drain interval
+(minimum fifteen minutes) is unhealthy. <code>--publish-status</code> emits independent
+<code>camayoc_workitem_ingress_*</code> metrics, including timestamp and exit status, on every
+run. Operators must arm status, stale and absent detection with the scheduler.
+The scheduler should run this prerequisite before consumers; consumers retain
+their own canonical-presence checks.</p>
+<h3 id="standing-workitem-recovery-receipts"><a class="header" href="#standing-workitem-recovery-receipts">Standing WorkItem recovery receipts</a></h3>
+<p>The standing tracker sync distinguishes <code>DEGRADED</code> from <code>UNKNOWN</code>:
+verified delivery with retryable indeterminate entries is degraded (exit 0),
+while a tick unable to verify pending work, invalid records, exhausted attempts,
+or an over-age backlog remains unknown (exit 2). Healthy no-op ticks remain OK.
+Receipts and metrics expose the indeterminate count independently of backlog.
+Recovery receives priority on alternating ticks; the other ticks retain
+least-recently-attempted fairness. This prevents both a fresh backlog delaying
+all recovery reads and a broken control starving fresh work. Retry writes still
+require two separately scheduled controlled absent reads and the original body.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../metrics.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../design/bootstrap-ontology.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../metrics.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../design/bootstrap-ontology.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
