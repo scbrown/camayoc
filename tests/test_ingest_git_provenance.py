@@ -99,11 +99,25 @@ class IriLaneTests(unittest.TestCase):
         mod.emit("example", "abc123", ["example-123"], ["src/main.py"], lines)
         turtle = "\n".join(lines)
         item = next(line for line in lines if line.startswith(
-            f'<{mod.iri("bead", "example-123")}> a '))
+            f'<{mod.work_item_iri("example-123")}> a '))
         self.assertIn(f'a <{mod.ONTOLOGY}WorkItem>', item)
         self.assertIn('rdfs:label "example-123"', item)
         self.assertIn(f'<{mod.ONTOLOGY}sourceKind> "observed"', item)
         self.assertNotIn(f'<{mod.ONTOLOGY}Bead>', turtle)
+
+    def test_git_links_join_the_tracker_work_item_identity(self):
+        # The tracker ingress emits the bare ID as an ontology-local name.
+        # A code/bead target creates a second WorkItem and breaks this join.
+        lines = []
+        mod.emit("example", "abc123", ["example-123"], ["src/main.py"], lines)
+        canonical = f"{mod.ONTOLOGY}example-123"
+        turtle = "\n".join(lines)
+        self.assertIn(f'<{mod.ONTOLOGY}implements> <{canonical}>', turtle)
+        self.assertIn(f'<{canonical}> a <{mod.ONTOLOGY}WorkItem>', turtle)
+        self.assertNotIn(mod.iri("bead", "example-123"), turtle)
+        # Code modules and commits retain their existing identities.
+        self.assertIn(f'<{mod.iri("example", "commit", "abc123")}>', turtle)
+        self.assertIn(f'<{mod.iri("example", "src/main.py")}>', turtle)
 
     def test_module_range_nodes_have_required_metadata_and_escaped_literals(self):
         lines = []
@@ -127,7 +141,6 @@ class IriLaneTests(unittest.TestCase):
         for built in (
             mod.iri("bobbin", "src/lib.rs"),
             mod.iri("bobbin", "commit", "abc123"),
-            mod.iri("bead", "camayoc-7lt"),
         ):
             self.assertTrue(built.startswith(f"{self.ONTO}code/"), built)
             self.assertNotIn("gastown.local/code/", built)

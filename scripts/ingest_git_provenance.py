@@ -118,6 +118,11 @@ def iri(*parts: str) -> str:
     return BASE + "/".join(quote(p, safe="") for p in parts)
 
 
+def work_item_iri(item: str) -> str:
+    """Match tracker ingress: work items use ontology-local IDs, not code IRIs."""
+    return ONTOLOGY + quote(item, safe="")
+
+
 def run(repo: Path, *args: str) -> str:
     """git, or an empty string. A repo we cannot read contributes nothing and
     says so on stderr — it must not abort an ingest across several repos."""
@@ -167,7 +172,7 @@ def emit(repo_name: str, sha: str, items: list[str], paths: list[str], out: list
     out.append(f'    rdfs:label {json.dumps(f"{repo_name}@{sha[:12]}")} ;')
     out.append(f'    <{ONTOLOGY}sourceKind> "observed" ;')
     for item in items:
-        out.append(f'    <{ONTOLOGY}implements> <{iri("bead", item)}> ;')
+        out.append(f'    <{ONTOLOGY}implements> <{work_item_iri(item)}> ;')
     for i, path in enumerate(paths):
         term = " ;" if i < len(paths) - 1 else " ."
         out.append(f'    <{ONTOLOGY}modifies> <{iri(repo_name, path)}>{term}')
@@ -182,7 +187,7 @@ def emit(repo_name: str, sha: str, items: list[str], paths: list[str], out: list
     for item in items:
         # Preserve the identity lane; Bead is retired as a governed class.
         # Core WorkItem requires both a label and an explicit trust tag.
-        out.append(f'<{iri("bead", item)}> a <{ONTOLOGY}WorkItem> ; '
+        out.append(f'<{work_item_iri(item)}> a <{ONTOLOGY}WorkItem> ; '
                    f'rdfs:label "{item}" ; '
                    f'<{ONTOLOGY}sourceKind> "observed" ; '
                    f'<{ONTOLOGY}identifier> "{item}" .')
