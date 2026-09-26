@@ -9,11 +9,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install just
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y just \
-            || curl -sfL https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
-          just --version
+        uses: ./.github/actions/install-just
       - run: just check
 
   # camayoc-045: the gate proofs used to run only inside the installer, on a
@@ -41,11 +37,7 @@ jobs:
       - name: Reject tracked private signing material
         run: python3 scripts/check_private_keys.py
       - name: Install just
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y just \
-            || curl -sfL https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
-          just --version
+        uses: ./.github/actions/install-just
       - run: just test
 
   # The gate proofs are only as good as the shapes they probe, and the stub
@@ -63,15 +55,23 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install boto3 cryptography rdflib pyyaml
+      # PINNED, not releases/latest. The tag used to be resolved at run time, so
+      # the binary this job executed was whatever was published last, unreviewed
+      # here. It is now a named release checked against a pinned sha256 (equal to
+      # the digest GitHub records for the asset) before anything is extracted.
+      # To test against a newer quipu, bump QUIPU_TAG and QUIPU_SHA256 together.
       - name: Fetch quipu-server
         id: fetch
+        env:
+          QUIPU_TAG: quipu-ai-v0.9.0
+          QUIPU_SHA256: eb24d632632ced0013f9e80f5fe1718053596ceac0267266c8258636575bbe4a
         run: |
           set -euo pipefail
-          tag=$(curl -sfL https://api.github.com/repos/scbrown/quipu/releases/latest \
-                | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')
+          tag="$QUIPU_TAG"
           asset="quipu-${tag}-x86_64-unknown-linux-gnu.tar.gz"
-          curl -sfL -o "$asset" \
+          curl -fsSL --retry 3 -o "$asset" \
             "https://github.com/scbrown/quipu/releases/download/${tag}/${asset}"
+          echo "${QUIPU_SHA256}  $asset" | sha256sum -c -
           tar -xzf "$asset"
           echo "QUIPU_SERVER_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu-server" >> "$GITHUB_ENV"
           # The tarball ships the CLI next to the server. Exporting it is what
@@ -81,11 +81,7 @@ jobs:
           # raised on every run of every job instead of validating anything.
           echo "QUIPU_BIN=$PWD/quipu-${tag}-x86_64-unknown-linux-gnu/quipu" >> "$GITHUB_ENV"
       - name: Install just
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y just \
-            || curl -sfL https://just.systems/install.sh | sudo bash -s -- --to /usr/local/bin
-          just --version
+        uses: ./.github/actions/install-just
       # Captured rather than merely printed. `unittest` exits 0 when every test
       # skips, so this job's own output was the only thing that could tell
       # ran-and-passed from skipped-everything, and nothing read it.
