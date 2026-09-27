@@ -38,9 +38,104 @@ class Delivery(unittest.TestCase):
             return {'rows': [{'s': 'control'}] if self.control else []}
         return {'rows': [{'t': 'WorkItem', 'o': 'Observation'}] if self.present else []}
 
-    def tick(self, records=None, now=1000):
+    def tick(self, records=None, now=1000, max_items=1):
         return sync.tick([RECORD] if records is None else records, self.state, self.path,
-                         actor='tracker', source='br:authoritative', now=now, post=self.post)
+                         actor='tracker', source='br:authoritative', now=now, post=self.post,
+                         max_items=max_items)
+
+    def test_explicit_batch_caps_distinct_items_requests_and_backoff(self):
+        records = [{**RECORD, 'id': f'proj-{i}'} for i in range(7)]
+        result = self.tick(records, max_items=4)
+        self.assertEqual((4, 4, 12, 3),
+                         tuple(result[k] for k in ('verified', 'writes', 'requests', 'backlog')))
+        self.assertEqual(4, len(set(result['items'])))
+        before = len(self.calls)
+        result = self.tick(records, now=1059.99, max_items=4)
+        self.assertEqual(('BACKOFF', 0, []),
+                         (result['mode'], result['requests'], result['items']))
+        self.assertEqual(before, len(self.calls))
+
+    def test_batch_keeps_failed_record_visible_while_delivering_others(self):
+        records = [{**RECORD, 'id': f'proj-{i}'} for i in range(4)]
+        real_post = self.post
+        def post(endpoint, body):
+            if endpoint == '/episode' and body['nodes'][0]['name'] == 'proj-0':
+                self.calls.append((endpoint, copy.deepcopy(body)))
+                raise TimeoutError('lost response')
+            return real_post(endpoint, body)
+        self.post = post
+        result = self.tick(records, max_items=4)
+        self.assertEqual(('DEGRADED', 3, 1, 4, 10),
+                         tuple(result[k] for k in ('status', 'verified', 'indeterminate', 'writes', 'requests')))
+        self.assertIn('pending', self.state['items']['proj-0'])
+
+    def test_batch_cannot_turn_two_scheduled_absent_reads_into_same_tick_retry(self):
+        self.lost = True
+        self.tick()
+        original = self.calls[0][1]
+        self.lost = False
+        self.present = False
+        records = [{**RECORD, 'title': 'new version'}, *[
+            {**RECORD, 'id': f'proj-{i}'} for i in range(3)]]
+        for now in (1060, 1120):
+            self.tick(records, now=now, max_items=4)
+            writes = [b for p, b in self.calls if p == '/episode' and b['name'] == original['name']]
+            self.assertEqual([original], writes)
+        self.present = True
+        self.tick(records, now=1180, max_items=4)
+        writes = [b for p, b in self.calls if p == '/episode' and b['name'] == original['name']]
+        self.assertEqual([original, original], writes)
+
+    def test_expiring_policy_reverts_to_one_without_restarting(self):
+        policy_path = self.path.with_suffix('.batch.json')
+        self.assertEqual((1, None), sync.batch_policy(policy_path, 1000))
+        policy = {'max_items': 4, 'starts_at': 1000, 'expires_at': 4600, 'review': 'review-receipt'}
+        policy_path.write_text(json.dumps(policy))
+        for now, expected in ((999, 1), (1000, 4), (4599.99, 4), (4600, 1)):
+            self.assertEqual((expected, policy), sync.batch_policy(policy_path, now))
+        records = [{**RECORD, 'id': f'proj-{i}'} for i in range(7)]
+        self.assertEqual(4, self.tick(records, now=4540,
+                                    max_items=sync.batch_policy(policy_path, 4540)[0])['verified'])
+        self.assertEqual(1, self.tick(records, now=4600,
+                                    max_items=sync.batch_policy(policy_path, 4600)[0])['verified'])
+
+    def test_invalid_or_unbounded_policy_refuses(self):
+        policy_path = self.path.with_suffix('.batch.json')
+        good = {'max_items': 4, 'starts_at': 1000, 'expires_at': 4600, 'review': 'review-receipt'}
+        for field, value in [('max_items', 5), ('max_items', True), ('max_items', 0),
+                             ('expires_at', 4601), ('expires_at', float('nan')),
+                             ('starts_at', True), ('starts_at', -1), ('review', '')]:
+            with self.subTest(field=field, value=value):
+                policy_path.write_text(json.dumps({**good, field: value}))
+                with self.assertRaises(ValueError):
+                    sync.batch_policy(policy_path, 1000)
+        for limit in (0, 5, True):
+            with self.assertRaises(ValueError):
+                self.tick(max_items=limit)
+        self.assertEqual([], self.calls)
+
+    def test_one_hour_jitter_and_arrivals_drain_only_with_opt_in_batch(self):
+        results = {}
+        for limit in (1, 4):
+            self.state = {}
+            self.calls = []
+            records = [{**RECORD, 'id': f'proj-{i:04}'} for i in range(194)]
+            backoffs = verified = 0
+            for minute in range(60):
+                # Four new outstanding entries every five minutes, with the
+                # measured two-thirds eligibility pattern from scheduler jitter.
+                if minute % 5 != 4:
+                    records.append({**RECORD, 'id': f'arrival-{minute:04}'})
+                result = self.tick(records, now=1000 + minute * 60 + (minute % 3) / 10,
+                                   max_items=limit)
+                backoffs += result.get('mode') == 'BACKOFF'
+                verified += result['verified']
+                self.assertLessEqual(result['requests'], 3 * limit)
+            results[limit] = result['backlog'], backoffs, verified
+        self.assertGreater(results[1][0], 194)
+        self.assertLess(results[4][0], 100)
+        self.assertEqual(results[1][1], results[4][1])
+        self.assertEqual(4 * results[1][2], results[4][2])
 
     def test_one_record_write_plus_two_reads_and_named_plane(self):
         result = self.tick([RECORD, {**RECORD, 'id': 'proj-b'}])

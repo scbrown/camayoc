@@ -345,6 +345,32 @@ only the authoritative tracker can supply canonical WorkItem identity.
 
 Each tick handles one record, at most one episode write and two verification
 reads, with a persisted 60-second minimum interval and a 256-KiB episode cap.
+
+A reviewed capacity trial can opt into at most four distinct records per eligible
+tick without changing that default. The scheduler reads an optional policy beside
+its state file: `state.json` uses `state.batch.json`. A policy carries integer
+`max_items` (1–4), numeric epoch `starts_at` and `expires_at`, and a nonempty
+`review` reference. Its window must be positive and no longer than one hour.
+Missing, future or expired policies use one record; malformed policies report
+UNKNOWN without making graph requests. The review field is an audit pointer,
+not an authorization check: obtain operational review before installing a policy.
+Installation of this code alone enables no trial.
+
+The request ceiling is three per record and twelve per batch. A record occurs
+only once in a batch, so controlled absent reads cannot become a same-tick retry.
+The strict sixty-second gate, serialization, immutable pending bodies and fair
+queue remain in force. Receipts carry aggregate counts, processed `items`, the
+effective `max_items`, and the policy's expiry/review when present. BACKOFF is the
+persisted time gate before graph requests; it does not itself measure writer
+contention. Expiry or policy removal restores one record at the next admission,
+without restart. An already-admitted bounded batch may finish.
+
+Before activation, record a matched baseline and agree on latency, error and
+scheduler-backoff stop thresholds. Use an isolated, explicitly coordinated
+window; the earlier batch trial improved delivery but crossed its fleet latency
+guardrail under mixed workloads. Do not retain a larger budget on throughput
+alone. Expiry is a final bound, not a substitute for stopping a degraded trial.
+
 Current claims win initial ties, then priority and newer creation time. Queue
 ordering uses the later of first-seen time and last-attempt time. A new arrival
 therefore cannot indefinitely jump ahead of an existing unverified transition,
