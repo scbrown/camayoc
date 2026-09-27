@@ -21,6 +21,10 @@ Items whose own current status is closed are left out.
 Reads only, with SINGLE-PATTERN queries (any join, even a bound-subject one,
 exceeded quipu's 10 s budget live), across
 the default graph and the observed-records plane.
+Each evaluation resolves a WorkItem's latest observation once, including an
+absent history. The cache belongs to that evaluation; the next scheduled run
+reads the graph again. Verdict reads use the chaski-adapter client label,
+separate from tracker ingestion.
 
     python3 scripts/blocked_by.py            # JSON: one verdict per blocked item
     python3 scripts/blocked_by.py --item aegis-bgk9ho
@@ -45,11 +49,22 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import planes  # noqa: E402
 from ingest_work_items import BASE_NS  # noqa: E402
 
-CLIENT = "camayoc-ingress"
+CLIENT = "chaski-adapter"
 A = BASE_NS
 TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
 RESOLVED, UNRESOLVED, UNKNOWN = "resolved", "unresolved", "unknown"
 BLOCKED, UNBLOCKED = "BLOCKED", "UNBLOCKED"
+
+
+class _EvaluationReads:
+    """One run's transport and history resolutions, never shared across runs."""
+
+    def __init__(self, post):
+        self.post = post
+        self.latest: dict[str, str | None] = {}
+
+    def __call__(self, endpoint, body):
+        return self.post(endpoint, body)
 
 
 def graphs() -> list[str | None]:
@@ -155,6 +170,14 @@ def event_id(post, item: str, names: list[str], judged: list[tuple[str, str]]) -
 
 def latest_observation(post, item: str) -> str | None:
     """The WorkItem's Observation with the latest observedAt, or None."""
+    if isinstance(post, _EvaluationReads):
+        if item not in post.latest:
+            post.latest[item] = _read_latest_observation(post, item)
+        return post.latest[item]
+    return _read_latest_observation(post, item)
+
+
+def _read_latest_observation(post, item: str) -> str | None:
     # Two BOUND single-pattern queries, never a join: quipu plans even a
     # bound-subject two-pattern query from its unbound side and 408s it live.
     stamped = []
@@ -297,6 +320,10 @@ def verdict(states: list[str]) -> str:
 
 def evaluate(post, *, item: str | None = None, today: dt.date | None = None,
              probes=None) -> list[dict]:
+    # Historical dependency rows can repeat the same WorkItem many times.
+    # All consumers (status, assignee and event identity too) share this run's
+    # resolution, so each history is walked once, not once per historical row.
+    post = _EvaluationReads(post)
     today = today or dt.date.today()
     scope = f"<{A}{item}>" if item else "?w"
     # Declared by an agent on the WorkItem ...
