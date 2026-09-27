@@ -197,14 +197,17 @@ def tick(records, state, path, *, actor, source, now, post):
         if receipt['requests'] > 3:
             raise ValueError('ingress request budget exhausted')
         return post(endpoint, body)
-    # Fairness: never-attempted work first, then least recently attempted. A
-    # poisoned item cannot occupy the front forever. Current claims win ties.
+    # Fairness starts a new arrival's clock at first_seen, not at the sentinel
+    # last_attempt=0. Otherwise every new arrival outranks an existing item's
+    # unverified transition forever. Attempts advance the clock, so failed
+    # records rotate behind work already waiting. Current claims win ties.
     candidates.sort(key=lambda i: entries[i].get('created_at', ''), reverse=True)
     # A version change (a real transition) goes ahead of the periodic recheck
     # rotation; otherwise it waited behind every current item at one per tick.
     candidates.sort(key=lambda i: (not (entries[i].get('pending')
                                         or entries[i].get('version') != current[i]['name']),
-                                   entries[i]['last_attempt'],
+                                   max(entries[i]['last_attempt'], entries[i]['first_seen']),
+                                   entries[i]['last_attempt'] != 0,
                                    not entries[i].get('active'),
                                    entries[i].get('priority', 4)))
     # Reconcile indeterminate writes ahead of the fresh backlog. Alternate

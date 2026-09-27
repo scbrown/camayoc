@@ -157,6 +157,22 @@ class Delivery(unittest.TestCase):
         self.assertEqual('BACKOFF', self.tick(now=1059)['mode'])
         self.assertEqual(before, len(self.calls))
 
+    def test_existing_transition_is_not_starved_by_continuous_new_arrivals(self):
+        self.tick()
+        changed = {**RECORD, 'status': 'closed', 'trailing': True,
+                   'updated_at': '2026-09-21T00:00:00Z'}
+        records = [changed]
+        served = []
+        for offset in range(1, 5):
+            records.append({**RECORD, 'id': f'proj-new-{offset}'})
+            receipt = self.tick(records, now=1000 + offset * sync.INTERVAL)
+            served.append(receipt['item'])
+            self.assertLessEqual(receipt['writes'], 1)
+            self.assertLessEqual(receipt['requests'], 3)
+        self.assertEqual('proj-a', served[0])
+        self.assertTrue(self.state['items']['proj-a']['final'])
+        self.assertIn('proj-new-1', served)
+
     def test_indeterminate_receipt_degrades_during_other_success(self):
         self.lost = True
         records = [RECORD, {**RECORD, 'id': 'proj-b'}]

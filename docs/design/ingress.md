@@ -345,9 +345,11 @@ only the authoritative tracker can supply canonical WorkItem identity.
 
 Each tick handles one record, at most one episode write and two verification
 reads, with a persisted 60-second minimum interval and a 256-KiB episode cap.
-Current claims win initial ties, then priority and newer creation time. The least
-recently attempted record wins subsequent turns, so a bad record cannot monopolize
-the lane. Initial backlog drains gradually; consumers continue refusing absent
+Current claims win initial ties, then priority and newer creation time. Queue
+ordering uses the later of first-seen time and last-attempt time. A new arrival
+therefore cannot indefinitely jump ahead of an existing unverified transition,
+and an attempted record rotates behind work already waiting. Initial backlog
+drains gradually; consumers continue refusing absent
 identities until delivery. This does not enlarge any consumer's request budget.
 
 The existing mapper owns all semantics: stable WorkItem identity and an immutable
