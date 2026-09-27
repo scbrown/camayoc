@@ -157,6 +157,31 @@ class TrackerProjection(unittest.TestCase):
         self.assertEqual(run(s)["w"]["verdict"], "UNBLOCKED")
 
 
+class HistoryReadBudget(unittest.TestCase):
+    def test_history_growth_has_a_linear_request_budget(self):
+        for size in (5, 10, 20, 40):
+            with self.subTest(history=size):
+                triples = item("dependency", "open")
+                for i in range(size):
+                    stamp = (dt.datetime(2026, 1, 1) + dt.timedelta(hours=i)).isoformat() + "Z"
+                    triples += item("work", "open", at=stamp, obs=f"o{i}")
+                    triples.append((f"o{i}", "observedBlockedOn", "dependency"))
+                store, requests = Store(triples), []
+                def post(endpoint, body):
+                    requests.append(body)
+                    return store.post(endpoint, body)
+                result = bb.evaluate(post, probes={})
+                self.assertEqual(result[0]["verdict"], "BLOCKED")
+                self.assertLessEqual(len(requests), 12 * size + 60)
+
+    def test_the_next_evaluation_reads_new_history(self):
+        store = Store(item("work", "open") + item("dependency", "open")
+                      + [("work", "blockedOn", "dependency")])
+        self.assertEqual(run(store)["work"]["verdict"], "BLOCKED")
+        store.t.update(item("dependency", "closed", at="2026-09-25T00:00:00Z"))
+        self.assertEqual(run(store)["work"]["verdict"], "UNBLOCKED")
+
+
 class TypedProbes(unittest.TestCase):
     """pr-merged / release-installed / ci-green: the parameters come from the
     graph, the probe code is fixed in camayoc (aegis-c0awwp)."""
