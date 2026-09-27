@@ -181,16 +181,10 @@ def emit(repo_name: str, sha: str, items: list[str], paths: list[str], out: list
         # items but no interesting paths still records the linkage.
         out[-1] = out[-1].rstrip(" ;") + " ."
     out.append("")
-    # The work item and the module must exist as typed nodes or the range shapes
-    # have nothing to check. Repeated across commits, which is fine — Turtle
-    # is a set, and quipu's fact log is idempotent on identical assertions.
-    for item in items:
-        # Preserve the identity lane; Bead is retired as a governed class.
-        # Core WorkItem requires both a label and an explicit trust tag.
-        out.append(f'<{work_item_iri(item)}> a <{ONTOLOGY}WorkItem> ; '
-                   f'rdfs:label "{item}" ; '
-                   f'<{ONTOLOGY}sourceKind> "observed" ; '
-                   f'<{ONTOLOGY}identifier> "{item}" .')
+    # WorkItem facts belong to tracker records. Provenance only links to them:
+    # copying their type/label here would create a second graph's ownership and
+    # expose a bare-ID label alongside the authoritative tracker title.
+    # Modules remain code-owned range nodes; readers join records and provenance.
     for path in paths:
         # Match the code seed's labels/languages; history-only paths of other
         # kinds have unknown language rather than an invented classification.

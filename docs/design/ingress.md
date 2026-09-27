@@ -232,7 +232,10 @@ quipu's co-occurrence shapes already define). Pure `observed`; yupana promotes
 the structural half.
 
 Work-item targets use the bare tracker ID in the ontology namespace, matching
-`ingest_work_items.py`. Code modules and commits retain their code namespace.
+`ingest_work_items.py`. Provenance emits only the `implements` edge to that
+WorkItem: its type, label, identifier and trust facts belong to tracker records
+and are not copied here. Readers join the records and provenance graphs.
+Code modules and commits retain their code namespace.
 Older output used `code/bead/<id>` for work items; those historical aliases need
 explicit reconciliation, not a second mint or deletion of their provenance.
 

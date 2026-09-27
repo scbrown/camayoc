@@ -12,6 +12,7 @@ from __future__ import annotations
 import importlib.util
 import unittest
 from pathlib import Path
+from rdflib_guard import requires_rdflib
 
 _spec = importlib.util.spec_from_file_location(
     "ingest_git_provenance",
@@ -94,16 +95,13 @@ class IriLaneTests(unittest.TestCase):
 
     ONTO = "http://aegis.gastown.local/ontology/"
 
-    def test_linked_work_items_satisfy_the_core_type_and_trust_contract(self):
+    def test_linked_work_items_are_references_not_copied_records(self):
         lines = []
         mod.emit("example", "abc123", ["example-123"], ["src/main.py"], lines)
         turtle = "\n".join(lines)
-        item = next(line for line in lines if line.startswith(
-            f'<{mod.work_item_iri("example-123")}> a '))
-        self.assertIn(f'a <{mod.ONTOLOGY}WorkItem>', item)
-        self.assertIn('rdfs:label "example-123"', item)
-        self.assertIn(f'<{mod.ONTOLOGY}sourceKind> "observed"', item)
-        self.assertNotIn(f'<{mod.ONTOLOGY}Bead>', turtle)
+        self.assertIn(f'<{mod.ONTOLOGY}implements> <{mod.work_item_iri("example-123")}>', turtle)
+        self.assertFalse(any(line.startswith(f'<{mod.work_item_iri("example-123")}> ')
+                             for line in lines))
 
     def test_git_links_join_the_tracker_work_item_identity(self):
         # The tracker ingress emits the bare ID as an ontology-local name.
@@ -113,7 +111,7 @@ class IriLaneTests(unittest.TestCase):
         canonical = f"{mod.ONTOLOGY}example-123"
         turtle = "\n".join(lines)
         self.assertIn(f'<{mod.ONTOLOGY}implements> <{canonical}>', turtle)
-        self.assertIn(f'<{canonical}> a <{mod.ONTOLOGY}WorkItem>', turtle)
+        self.assertNotIn(f'<{canonical}> a <{mod.ONTOLOGY}WorkItem>', turtle)
         self.assertNotIn(mod.iri("bead", "example-123"), turtle)
         # Code modules and commits retain their existing identities.
         self.assertIn(f'<{mod.iri("example", "commit", "abc123")}>', turtle)
@@ -178,6 +176,39 @@ class IriLaneTests(unittest.TestCase):
         built = mod.iri("r", "src/foo bar.rs")
         self.assertEqual(built, f"{self.ONTO}code/r/src%2Ffoo%20bar.rs")
         self.assertNotIn(" ", built)
+
+
+@requires_rdflib
+class RecordsOwnershipTests(unittest.TestCase):
+    def test_reader_joins_graphs_without_copying_or_changing_records(self):
+        from rdflib import Dataset, URIRef, Literal
+        from rdflib.namespace import RDF, RDFS
+
+        for paths in ([], ["src/main.py"]):
+            with self.subTest(paths=paths):
+                dataset = Dataset()
+                records = dataset.graph(URIRef("urn:test:records"))
+                provenance = dataset.graph(URIRef("urn:test:provenance"))
+                item = URIRef(mod.work_item_iri("example-123"))
+                records.add((item, RDF.type, URIRef(mod.ONTOLOGY + "WorkItem")))
+                records.add((item, RDFS.label, Literal("Authoritative tracker title")))
+                records.add((item, URIRef(mod.ONTOLOGY + "sourceKind"), Literal("observed")))
+                records.add((item, URIRef(mod.ONTOLOGY + "identifier"), Literal("example-123")))
+                before = set(records)
+                lines = []
+                mod.emit("example", "abc123", ["example-123"], paths, lines)
+                provenance.parse(data="@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n"
+                                 + "\n".join(lines), format="turtle")
+                self.assertEqual(set(records), before)
+                self.assertEqual(list(provenance.triples((item, None, None))), [])
+                rows = list(dataset.query(
+                    "SELECT ?commit ?title WHERE { GRAPH <urn:test:provenance> { "
+                    f"?commit <{mod.ONTOLOGY}implements> ?item }} "
+                    "GRAPH <urn:test:records> { "
+                    f"?item a <{mod.ONTOLOGY}WorkItem> ; "
+                    "<http://www.w3.org/2000/01/rdf-schema#label> ?title } }"))
+                self.assertEqual(rows, [(URIRef(mod.iri("example", "commit", "abc123")),
+                                         Literal("Authoritative tracker title"))])
 
 
 if __name__ == "__main__":
