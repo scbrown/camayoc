@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Bounded standing delivery of current authoritative br WorkItems.
 
-One record, at most one write and two reads per tick. The scheduler supplies
-an explicit tracker database; this adapter never reads cost attribution.
+One record by default, with reviewed expiring opt-in batches up to four. Each
+record has at most one write and two reads per tick. The scheduler supplies an
+explicit tracker database; this adapter never reads cost attribution.
 """
 from __future__ import annotations
 
 import argparse
 import fcntl
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -22,6 +24,31 @@ INTERVAL = 60
 RECHECK = 6 * 3600
 MAX_BODY = 256 * 1024
 MAX_ATTEMPTS = 3
+MAX_BATCH = 4
+MAX_TRIAL_SECONDS = 3600
+
+
+def batch_policy(path, now):
+    """An absent/expired opt-in policy keeps the one-record production budget.
+
+    The review reference is an audit pointer, not an authorization mechanism.
+    Operators must obtain review before installing this local, expiring policy.
+    """
+    try:
+        policy = json.loads(path.read_text())
+    except FileNotFoundError:
+        return 1, None
+    if not isinstance(policy, dict):
+        raise ValueError('invalid batch policy')
+    limit = policy.get('max_items')
+    start, end = policy.get('starts_at'), policy.get('expires_at')
+    review = policy.get('review')
+    if (type(limit) is not int or not 1 <= limit <= MAX_BATCH
+            or any(type(v) not in (int, float) or not math.isfinite(v) for v in (start, end))
+            or not 0 <= start < end <= start + MAX_TRIAL_SECONDS
+            or not isinstance(review, str) or not review.strip() or len(review) > 128):
+        raise ValueError('invalid batch policy')
+    return (limit if start <= now < end else 1), policy
 
 
 def save(path, value):
@@ -143,10 +170,12 @@ def readback(body, post):
     return bool(found['rows'])
 
 
-def tick(records, state, path, *, actor, source, now, post):
+def tick(records, state, path, *, actor, source, now, post, max_items=1):
+    if type(max_items) is not int or not 1 <= max_items <= MAX_BATCH:
+        raise ValueError('invalid ingress item budget')
     if now < state.get('next_tick', 0):
         return {**state.get('receipt', {'status': 'UNKNOWN'}), 'mode': 'BACKOFF',
-                'requests': 0, 'writes': 0, 'verified': 0}
+                'requests': 0, 'writes': 0, 'verified': 0, 'items': [], 'max_items': max_items}
     state['next_tick'] = now + INTERVAL
     entries = state.setdefault('items', {})
     # Preserve pending bodies even when a task closes or its tracker fields change.
@@ -191,11 +220,15 @@ def tick(records, state, path, *, actor, source, now, post):
             if now >= entry.get('not_before', 0):
                 candidates.append(item)
     receipt = {'status': 'OK', 'requests': 0, 'writes': 0, 'verified': 0,
-               'current': len(current), 'invalid': len(invalid), 'parked': invalid[:20]}
+               'current': len(current), 'invalid': len(invalid), 'parked': invalid[:20],
+               'items': [], 'max_items': max_items}
+    item_requests = 0
     def request(endpoint, body):
-        receipt['requests'] += 1
-        if receipt['requests'] > 3:
+        nonlocal item_requests
+        if item_requests >= 3 or receipt['requests'] >= 3 * max_items:
             raise ValueError('ingress request budget exhausted')
+        item_requests += 1
+        receipt['requests'] += 1
         return post(endpoint, body)
     # Fairness starts a new arrival's clock at first_seen, not at the sentinel
     # last_attempt=0. Otherwise every new arrival outranks an existing item's
@@ -220,8 +253,9 @@ def tick(records, state, path, *, actor, source, now, post):
         candidates.remove(recovery[0])
         candidates.insert(0, recovery[0])
     state['last_was_recovery'] = prefer_recovery
-    if candidates:
-        item = candidates[0]
+    for item in candidates[:max_items]:
+        item_requests = 0
+        receipt['items'].append(item)
         entry = entries[item]
         receipt['item'] = item
         entry['last_attempt'] = now
@@ -234,7 +268,7 @@ def tick(records, state, path, *, actor, source, now, post):
                     pending['attempts'] += 1
                     pending['absent_reads'] = 0
                     save(path, state)
-                    receipt['writes'] = 1
+                    receipt['writes'] += 1
                     response = request('/episode', pending['body'])
                     entry['write_receipt'] = {k: response.get(k) for k in ('outcome', 'tx_id', 'count')}
                     if response.get('outcome') not in ('created', 'updated', 'unchanged'):
@@ -249,16 +283,16 @@ def tick(records, state, path, *, actor, source, now, post):
                 if entry.get('version') == body['name'] and readback(body, request):
                     entry['verified_at'] = now
                     entry.pop('due_since', None)
-                    receipt['verified'] = 1
+                    receipt['verified'] += 1
                 else:
                     pending = {'body': body, 'attempts': 0, 'absent_reads': 0}
                     entry['pending'] = pending
                     # A failed periodic recheck used two requests: leave the
                     # exact pending body for later, without a same-tick write.
-                    if receipt['requests'] == 0:
+                    if item_requests == 0:
                         pending['attempts'] = 1
                         save(path, state)
-                        receipt['writes'] = 1
+                        receipt['writes'] += 1
                         response = request('/episode', body)
                         entry['write_receipt'] = {k: response.get(k) for k in ('outcome', 'tx_id', 'count')}
                         if response.get('outcome') not in ('created', 'updated', 'unchanged'):
@@ -272,7 +306,7 @@ def tick(records, state, path, *, actor, source, now, post):
                 entry['verified_at'] = now
                 entry.pop('pending', None)
                 entry.pop('due_since', None)
-                receipt['verified'] = 1
+                receipt['verified'] += 1
             if entry.get('trailing') and entry.get('closed'):
                 entry['final'] = True  # its last transition is in the graph
             entry.pop('error', None)
@@ -328,9 +362,14 @@ def main():
             records = collect(args.db, tracked, deps_cache=cache)
             live = {r['id'] for r in records}
             state['deps_cache'] = {i: v for i, v in cache.items() if i in live}
+            max_items, policy = batch_policy(args.state.with_suffix('.batch.json'), time.time())
             receipt = tick(records, state, args.state, actor=args.actor,
                            source=args.source, now=started,
-                           post=lambda endpoint, body: planes._post(endpoint, body, client='camayoc-ingress'))
+                           post=lambda endpoint, body: planes._post(endpoint, body, client='camayoc-ingress'),
+                           max_items=max_items)
+            if policy:
+                receipt['batch_expires_at'] = policy['expires_at']
+                receipt['batch_review'] = policy['review']
         except Exception as exc:
             receipt['error'] = type(exc).__name__
         save(args.state.with_suffix('.receipt.json'), {'attempted_at': started, **receipt})
