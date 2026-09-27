@@ -407,6 +407,13 @@ independence in the other direction.</li>
 work-item linkage (<code>aegis:implements</code>, <code>aegis:modifies</code> — the provenance chain
 quipu's co-occurrence shapes already define). Pure <code>observed</code>; yupana promotes
 the structural half.</p>
+<p>Work-item targets use the bare tracker ID in the ontology namespace, matching
+<code>ingest_work_items.py</code>. Provenance emits only the <code>implements</code> edge to that
+WorkItem: its type, label, identifier and trust facts belong to tracker records
+and are not copied here. Readers join the records and provenance graphs.
+Code modules and commits retain their code namespace.
+Older output used <code>code/bead/&lt;id&gt;</code> for work items; those historical aliases need
+explicit reconciliation, not a second mint or deletion of their provenance.</p>
 <pre><code class="language-bash">scripts/ingest_git_provenance.py ../quipu ../yupana --project aegis &gt; /tmp/prov.ttl
 # then POST it to /knot like any other ingest — see scripts/bootstrap.sh
 </code></pre>
