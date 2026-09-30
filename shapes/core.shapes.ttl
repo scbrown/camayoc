@@ -41,6 +41,12 @@ aegis:CamayocWorkItemShape a sh:NodeShape ;
         sh:path aegis:blockedOn ;
         sh:or ( [ sh:class aegis:WorkItem ] [ sh:class aegis:Blocker ] ) ;
         sh:message "camayoc: blockedOn must point at a WorkItem or a Blocker the graph actually holds — an unresolvable target is a blocker nobody can clear" ;
+    ] ;
+    sh:property [
+        sh:path aegis:inWorkflowRun ;
+        sh:maxCount 1 ;
+        sh:class aegis:WorkflowRun ;
+        sh:message "camayoc: inWorkflowRun, when set, names exactly one WorkflowRun the graph holds — a work item that cannot find its run cannot advance it" ;
     ] .
 
 # A declared review age must be machine-readable, or the reactor can never
