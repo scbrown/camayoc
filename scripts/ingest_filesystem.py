@@ -48,8 +48,9 @@ path is hardcoded here::
 * ``mount: null`` models the export without crawling it: a raw branch whose
   contents a union already covers, so they are not counted twice.
 * ``reference_only: true`` means the export entity already exists in the
-  graph, minted by another producer. It is linked to, never re-emitted, so
-  this producer does not append a second label to it.
+  graph, minted by another producer. It is linked to, never re-emitted: a
+  keyed ``replace_snapshot`` owns what it emits, and this producer must not
+  take ownership of (or later retract) another producer's entity.
 """
 
 from __future__ import annotations
@@ -308,7 +309,10 @@ def prior_collection_count(export_ent: str) -> int:
     q = ("SELECT (COUNT(?c) AS ?n) WHERE { ?c <%sinExport> <%s%s> }"
          % (BASE_NS, BASE_NS, export_ent))
     try:
-        rows = planes._post("/query", {"query": q}, client="camayoc-ingress").get("rows", [])
+        # The collections live in the plane this producer writes; ROOT would
+        # always answer 0 and the shrink guard would never fire.
+        rows = planes._post("/query", {"query": q, "graph": planes.plane_for(SOURCE_KIND)},
+                            client="camayoc-ingress").get("rows", [])
     except planes.PlaneError as e:
         raise GateUnknown(f"prior count unavailable: {e}") from e
     if len(rows) != 1:
