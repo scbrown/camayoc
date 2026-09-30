@@ -273,6 +273,52 @@ class GateTests(unittest.TestCase):
         self.assertIn("INDETERMINATE", store.logs[-1]["note"])
 
 
+class Completed:
+    def __init__(self, stdout, returncode=0):
+        self.stdout, self.returncode = stdout, returncode
+
+
+class UnitMemoryTests(unittest.TestCase):
+    def test_reads_memory_current(self):
+        calls = []
+
+        def run(argv, **kw):
+            calls.append(argv)
+            return Completed("4674990080\n")
+
+        self.assertEqual(4674990080.0, fs.unit_memory("quipu.service", run=run))
+        self.assertEqual(["systemctl", "show", "-p", "MemoryCurrent", "--value",
+                          "quipu.service"], calls[0])
+
+    def test_not_set_is_unknown_not_zero(self):
+        # systemd answers an unknown unit with "[not set]" and exit 0.
+        with self.assertRaises(fs.GateUnknown):
+            fs.unit_memory("nope.service", run=lambda *a, **k: Completed("[not set]\n"))
+        with self.assertRaises(fs.GateUnknown):
+            fs.unit_memory("quipu.service", run=lambda *a, **k: Completed("", 1))
+
+    def test_only_a_service_name_is_accepted(self):
+        with self.assertRaises(fs.GateUnknown):
+            fs.unit_memory("--all", run=lambda *a, **k: Completed("1"))
+
+    def test_both_probes_configured_is_ambiguous(self):
+        cfg = Path(tempfile.mkdtemp()) / "c.json"
+        cfg.write_text(json.dumps({"host": "nas", "exports": [{"path": "/p", "mount": None}]}))
+        env = {fs.MEMORY_UNIT_ENV: "quipu.service", fs.PROM_URL_ENV: "http://p",
+               fs.MEMORY_QUERY_ENV: "q"}
+        saved = {k: os.environ.get(k) for k in env}
+        os.environ.update(env)
+        try:
+            self.assertEqual(fs.EXIT_UNKNOWN,
+                             fs.main(["--config", str(cfg), "--actor", "ian", "--post"]))
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
+
 class CliTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -300,7 +346,8 @@ class CliTests(unittest.TestCase):
         self.assertEqual(fs.EXIT_ERROR, self.main("--post", "--pace", "5"))
 
     def test_post_without_a_memory_probe_is_unknown(self):
-        env = {k: os.environ.pop(k, None) for k in (fs.PROM_URL_ENV, fs.MEMORY_QUERY_ENV)}
+        env = {k: os.environ.pop(k, None)
+               for k in (fs.PROM_URL_ENV, fs.MEMORY_QUERY_ENV, fs.MEMORY_UNIT_ENV)}
         try:
             self.assertEqual(fs.EXIT_UNKNOWN, self.main("--post"))
         finally:
