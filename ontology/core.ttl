@@ -555,6 +555,11 @@ aegis:inRun a rdf:Property ;
     rdfs:comment "The WorkflowRun a TransitionEvent belongs to. (Q3)" ;
     rdfs:range aegis:WorkflowRun .
 
+aegis:inWorkflowRun a rdf:Property ;
+    rdfs:label "in workflow run" ;
+    rdfs:comment "The WorkflowRun a WorkItem was created to carry out: shuttle creates a work item for a step of its run and advances the run when the item closes. The sibling of aegis:inRun (TransitionEvent -> run); reconcile reads the item's aegis:outcome, never its prose (aegis-1i5h1j C2, aegis-w3k75d.4)." ;
+    rdfs:range aegis:WorkflowRun .
+
 aegis:fromState a rdf:Property ;
     rdfs:label "from state" ;
     rdfs:comment "The state a transition left. Carried on the event so history needs no reconstruction. (Q3)" ;

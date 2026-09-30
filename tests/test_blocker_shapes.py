@@ -63,7 +63,12 @@ class BlockerShapes(unittest.TestCase):
                                     'aegis:resolutionQuery "ASK {{}}" .'))
 
     def test_blockedOn_to_anything_else_is_refused(self):
-        self.assertFalse(self.valid(f'{WORK} ; aegis:blockedOn aegis:d1 . aegis:d1 a aegis:Decision .'))
+        # The target must be valid on its own. The earlier fixture (a bare
+        # Decision) failed the Decision shape by itself, so this arm passed
+        # with the blockedOn constraint deleted (aegis-1i5h1j mutation check).
+        other = 'aegis:r1 a aegis:WorkflowRun .'
+        self.assertTrue(self.valid(other), "control: the target alone must be valid")
+        self.assertFalse(self.valid(f'{WORK} ; aegis:blockedOn aegis:r1 . {other}'))
 
 
 if __name__ == "__main__":
