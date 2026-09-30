@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_ex_active_directives",
+  "description": "Directives in force: every aegis:Directive nothing has superseded. A superseded directive is never deleted; this is the read-time join that says which one won.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?directive ?label WHERE { ?directive a aegis:Directive ; rdfs:label ?label . FILTER NOT EXISTS { ?directive aegis:supersededBy ?newer } } ORDER BY ?label",
+  "params": []
+}

@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_ex_who_said_this",
+  "description": "Provenance for a subject: every claim aegis:about it, with its sourceKind (the reader's trust signal), who decided it when that is recorded, and when it was observed when it was an observation.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?claim ?label ?sourceKind ?decidedBy ?observedAt WHERE { ?claim aegis:about <{subject}> ; rdfs:label ?label ; aegis:sourceKind ?sourceKind . OPTIONAL { ?claim aegis:decidedBy ?decidedBy } OPTIONAL { ?claim aegis:observedAt ?observedAt } } ORDER BY ?label",
+  "params": [
+    {
+      "name": "subject",
+      "type": "iri",
+      "required": true,
+      "description": "The entity or topic"
+    }
+  ]
+}
