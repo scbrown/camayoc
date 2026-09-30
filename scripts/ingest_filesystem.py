@@ -50,6 +50,10 @@ path is hardcoded here::
 
 * ``mount: null`` models the export without crawling it: a raw branch whose
   contents a union already covers, so they are not counted twice.
+* ``allow_empty: true`` accepts an empty crawl root for a share that is
+  genuinely empty (a new share). It never excuses an unmounted one: the
+  mountpoint check still runs, and a share that was populated and reads empty
+  is still refused by the shrink guard.
 * ``reference_only: true`` means the export entity already exists in the
   graph, minted by another producer. It is linked to, never re-emitted: a
   keyed ``replace_snapshot`` owns what it emits, and this producer must not
@@ -271,8 +275,10 @@ def check_root(export: dict, *, require_mountpoint: bool) -> None:
             f"{export['path']}: {mount} is not a mountpoint. Crawling the empty "
             "directory under a failed mount would retract every collection.")
     with os.scandir(mount) as it:
-        if next(it, None) is None:
-            raise FsExportError(f"{export['path']}: {mount} is empty; refusing an empty snapshot")
+        if next(it, None) is None and not export.get("allow_empty"):
+            raise FsExportError(
+                f"{export['path']}: {mount} is empty; refusing an empty snapshot "
+                "(set allow_empty for a share that is legitimately empty)")
 
 
 # --- store gates ----------------------------------------------------------------
