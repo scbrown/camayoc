@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pull a Quipu share bundle or `.qpack.db` into a Camayoc store — one verb.
+"""Pull a Quipu share bundle or `.pendant.db` into a Camayoc store — one verb.
 
 Camayoc does not reimplement canonical RDF serialization, share-manifest
 hashing, resolution, or quarantine (docs/design/certified-knowledge-packs.md).
@@ -71,6 +71,20 @@ def require_quipu(binary: str) -> tuple[int, int, int]:
             f"Pass --quipu-bin </path/to/newer/quipu>."
         )
     return found
+
+
+def deprecated_name_notice(source: str) -> str | None:
+    """The one-release notice for a source still named with `.qpack`.
+
+    Quipu renamed the artifact to "pendant" (aegis-fxpbys.3). Nothing here
+    dispatches on the extension, so an old name still pulls; this only says
+    what to call it now.
+    """
+    name = source.split("?", 1)[0].rstrip("/").rsplit("/", 1)[-1]
+    if ".qpack" not in name:
+        return None
+    return (f"warning: {name}: the .qpack name is deprecated; the artifact is now a "
+            f"pendant ({name.replace('.qpack', '.pendant')})")
 
 
 def classify(source: str) -> str:
@@ -287,9 +301,9 @@ def reshare(graph: str, out: str, db: str, binary: str, parent: str | None,
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(
         prog="pull_share.py",
-        description="Pull a Quipu share bundle, .qpack.db, or release URL into a Camayoc store. "
+        description="Pull a Quipu share bundle, .pendant.db, or release URL into a Camayoc store. "
                     "Always stages; never promotes.")
-    ap.add_argument("source", help="share directory, .qpack.db file, or URL")
+    ap.add_argument("source", help="share directory, .pendant.db file, or URL")
     ap.add_argument("--db", required=True, help="target Camayoc/Quipu store")
     ap.add_argument("--quipu-bin", default="quipu")
     ap.add_argument("--adopt-shapes", action="store_true",
@@ -313,6 +327,9 @@ def main(argv: list[str] | None = None) -> int:
         print("pull refused: --parent and --root cannot both be given; a lineage claim "
               "cannot be both absent and specified", file=sys.stderr)
         return 2
+
+    if not a.reshare and (notice := deprecated_name_notice(a.source)):
+        print(notice, file=sys.stderr)
 
     try:
         if a.reshare:

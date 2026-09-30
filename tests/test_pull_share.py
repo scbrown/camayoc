@@ -45,6 +45,22 @@ def share_dir(root: Path, *, shapes: str = "", share_id: str = "sha256:" + "b" *
     return d
 
 
+class DeprecatedQpackName(unittest.TestCase):
+    """aegis-fxpbys.3: a `.qpack` name still pulls, and says what it is now."""
+
+    def test_old_names_get_a_notice_naming_the_pendant(self):
+        for source, renamed in (("crew.qpack.db", "crew.pendant.db"),
+                                ("https://example.invalid/r/x.qpack.tar.gz?dl=1", "x.pendant.tar.gz")):
+            notice = pull_share.deprecated_name_notice(source)
+            self.assertIsNotNone(notice, source)
+            self.assertIn("deprecated", notice)
+            self.assertIn(renamed, notice)
+
+    def test_pendants_and_share_dirs_get_no_notice(self):
+        for source in ("crew.pendant.db", "x.pendant.tar.gz", "share-dir/", "urn:crew"):
+            self.assertIsNone(pull_share.deprecated_name_notice(source), source)
+
+
 class VersionGuard(unittest.TestCase):
     """Condition A: refuse naming the version needed, never surface
     `unrecognized subcommand` — which reads as 'the feature is broken'."""
@@ -246,7 +262,7 @@ class VerificationFailsLoudly(unittest.TestCase):
     def test_a_pack_that_fails_verification_refuses_before_loading(self):
         with tempfile.TemporaryDirectory() as td:
             t = Path(td)
-            pack = t / "bad.qpack.db"; pack.write_bytes(b"not a pack")
+            pack = t / "bad.pendant.db"; pack.write_bytes(b"not a pack")
             q = stub(t / "quipu", '''
 case "$1" in
   --version) echo "quipu 0.3.36" ;;

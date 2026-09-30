@@ -1,7 +1,7 @@
 # Design: certified knowledge packs
 
 > **Implementation status (2026-08-29):** 🟩 **Producer certification and
-> digest-addressed distribution built.** Quipu implements `.qpack.db`
+> digest-addressed distribution built.** Quipu implements `.pendant.db`
 > creation, deterministic content hashing, verification, attach/import, and the
 > `CertifiedShareBundle` SHACL envelope. Camayoc's `certify_pack.py` invokes
 > pack+verify, reads the authoritative manifest hash, and emits the separate
@@ -12,13 +12,21 @@
 
 Camayoc has one distribution artifact, not a Camayoc pack beside a Quipu share
 bundle. A Camayoc knowledge pack **is** a Quipu `CertifiedShareBundle`; its
-physical archive encoding is `.qpack.db`.
+physical archive encoding is `.pendant.db`.
+
+**Naming.** Quipu calls its share artifact a **pendant** (formerly "qpack").
+On a khipu, pendant cords hang from the primary cord and each carries a
+self-contained record: the primary cord is a store, a pendant is a shareable
+graph with its shapes and stored queries, subsidiary cords are delta shares,
+and relationships are knots between cords. For one release, a durable root's
+existing `sha256/<digest>.qpack.db` objects are still read; new publications
+are written only as `.pendant.db`.
 
 ## 1. Normative artifact contract
 
 Quipu owns the bytes and their identity:
 
-- `quipu pack` writes the `.qpack.db` SQLite artifact.
+- `quipu pack` writes the `.pendant.db` SQLite artifact.
 - `pack_manifest.content_hash` is the canonical graph hash: SHA-256 over the
   lexically sorted, deduplicated N-Triples of graph, shapes, stored queries,
   and labels.
@@ -75,7 +83,7 @@ the first production upload.
 The implemented producer boundary is:
 
 ```bash
-scripts/certify_pack.py <graph-iri> --db <source.db> --out <name.qpack.db> \
+scripts/certify_pack.py <graph-iri> --db <source.db> --out <name.pendant.db> \
   --name <name> --version <version> --shape <shape-set> --query <query-name> \
   --shacl-report <conforming-report.json> --publish-dir <durable-root> \
   # plus two distinct public-key/key-IRI/signature inputs and mapping fields
@@ -88,15 +96,15 @@ convention and cover domain-separated canonical claim messages. The producer
 refuses a bad signature, reused key identity, non-conforming report, mismatched
 report hash, or artifact scrub finding; callers do not supply the scrub boolean
 or SHACL hash. Publication is atomic at
-`<durable-root>/sha256/<manifest-digest>.qpack.db`; `source_uri` must identify
+`<durable-root>/sha256/<manifest-digest>.pendant.db`; `source_uri` must identify
 that exact content-addressed copy.
 
 ## 3. Relationship to the Quipu v1 share interface
 
-The `aegis-33cgl` v1 share directory and a Camayoc `.qpack.db` are two physical
+The `aegis-33cgl` v1 share directory and a Camayoc `.pendant.db` are two physical
 projections of one governed semantic object, not competing knowledge formats:
 
-- `.qpack.db` is the single-file, directly attachable Camayoc distribution
+- `.pendant.db` is the single-file, directly attachable Camayoc distribution
   artifact. Its `pack_manifest.content_hash` is the bundle's
   `canonicalGraphHash`.
 - `{manifest.json, export.nt, shapes.ttl}` is Quipu's git-native projection for
@@ -121,7 +129,7 @@ Garage/S3, git, and OCI are storage or transport adapters over the digest key.
 They are not trust roots, do not mint new bundle identities, and do not change
 the signed claims. The producer implements both an atomic filesystem adapter
 and an S3-compatible adapter. Both preserve the exact
-`sha256/<digest>.qpack.db` key contract; the S3 path verifies retained size and
+`sha256/<digest>.pendant.db` key contract; the S3 path verifies retained size and
 canonical-hash metadata with a separate HEAD before recording its URI.
 
 ## 4. Declarative ingress: the Camayoc RML subset
@@ -166,7 +174,7 @@ fixtures cover `services.json` and Prometheus scrape targets.
 
 | Concern | Owner | Interface |
 |---|---|---|
-| Pack bytes, manifest hash, attach/import | Quipu | `.qpack.db`, `pack_manifest`, pack CLI |
+| Pack bytes, manifest hash, attach/import | Quipu | `.pendant.db`, `pack_manifest`, pack CLI |
 | Meaning, mapping vocabulary, ingress policy | Camayoc | RDF mappings + governed shapes |
 | Publisher signature | Producing principal | `PublisherAttestation` |
 | Knowledge certification | Independent certifier | `KnowledgeCertificationSeal` |
@@ -183,7 +191,7 @@ not the finished bounded artifact.
 - A static pack and a Shuttle-window pack both conform to the loaded Quipu
   certification shapes; removing either signature or setting scrub pass false
   is refused.
-- One source graph produces one `.qpack.db`; its manifest hash is unchanged by
+- One source graph produces one `.pendant.db`; its manifest hash is unchanged by
   relocation through git, OCI, and Garage.
 - An independent consumer fetches from only the graph mapping, verifies hash
   and both claims, then imports into quarantine.
