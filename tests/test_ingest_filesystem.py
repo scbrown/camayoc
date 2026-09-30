@@ -186,6 +186,16 @@ class RootChecks(unittest.TestCase):
                 fs.check_root({"path": "/p", "mount": tmp}, require_mountpoint=True)
             fs.check_root({"path": "/p", "mount": tmp}, require_mountpoint=False)
 
+    def test_allow_empty_accepts_an_empty_share_but_never_an_unmounted_one(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fs.check_root({"path": "/p", "mount": tmp, "allow_empty": True},
+                          require_mountpoint=False)
+            # The mountpoint check still runs: an empty dir that is not a
+            # mountpoint (a failed mount) is refused even with allow_empty.
+            with self.assertRaisesRegex(fs.FsExportError, "not a mountpoint"):
+                fs.check_root({"path": "/p", "mount": tmp, "allow_empty": True},
+                              require_mountpoint=True)
+
 
 class FakeStore:
     """Scripted gate readings; records every post and sleep."""
