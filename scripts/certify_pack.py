@@ -95,11 +95,26 @@ def scrub_pack(pack_path: Path) -> None:
         raise PackCertificationError("artifact scrub failed: " + ", ".join(findings))
 
 
+# The file suffix of a certified pack. Renamed from ".qpack.db" (aegis-fxpbys.3):
+# on a khipu, pendant cords hang from the primary cord and each carries a
+# self-contained record. New publications use only PENDANT_SUFFIX;
+# LEGACY_SUFFIX is read for one release so an existing durable root still
+# collision-checks, then it is removed.
+PENDANT_SUFFIX = ".pendant.db"
+LEGACY_SUFFIX = ".qpack.db"
+
+
 def publish_pack(pack_path: Path, manifest: PackManifest, publish_dir: Path) -> Path:
     """Atomically publish a content-addressed durable copy and return its path."""
     digest = manifest.content_hash.removeprefix("sha256:")
-    destination = publish_dir / "sha256" / f"{digest}.qpack.db"
+    destination = publish_dir / "sha256" / f"{digest}{PENDANT_SUFFIX}"
     destination.parent.mkdir(parents=True, exist_ok=True)
+    # A root published before the qpack -> pendant rename holds the same digest
+    # under the old name. It is still READ here, so the content-addressed
+    # collision check covers it; new publications are written as .pendant.db.
+    legacy = publish_dir / "sha256" / f"{digest}{LEGACY_SUFFIX}"
+    if legacy.exists() and legacy.read_bytes() != pack_path.read_bytes():
+        raise PackCertificationError("content-addressed publication collision")
     if destination.exists():
         if destination.read_bytes() != pack_path.read_bytes():
             raise PackCertificationError("content-addressed publication collision")
@@ -124,7 +139,7 @@ def publish_pack_s3(
     if not bucket or any(char in bucket for char in "/\\"):
         raise PackCertificationError("invalid S3 bucket")
     digest = manifest.content_hash.removeprefix("sha256:")
-    key = f"sha256/{digest}.qpack.db"
+    key = f"sha256/{digest}{PENDANT_SUFFIX}"
     try:
         if client is None:
             import boto3
@@ -217,7 +232,7 @@ def _require_hash(value: str, field: str) -> None:
 
 
 def read_manifest(pack_path: Path) -> PackManifest:
-    """Read the one authoritative manifest row from a `.qpack.db`."""
+    """Read the one authoritative manifest row from a `.pendant.db`."""
     try:
         with sqlite3.connect(f"file:{pack_path}?mode=ro", uri=True) as conn:
             rows = conn.execute(
@@ -261,7 +276,7 @@ def build_envelope(manifest: PackManifest, certification: Certification) -> str:
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 
 {bundle} a aegis:CertifiedShareBundle ;
-    rdfs:label {_literal(manifest.name + '.qpack.db')} ;
+    rdfs:label {_literal(manifest.name + PENDANT_SUFFIX)} ;
     aegis:canonicalGraphHash {_literal(manifest.content_hash)} ;
     aegis:shapesBundleVersion {_literal(certification.shapes_version)} ;
     aegis:provenanceManifest {provenance} ;

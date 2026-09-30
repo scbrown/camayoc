@@ -45,7 +45,7 @@ shantytown / git / yupana / sessions        (activity: raw fiber)
    The declarative structured-source lane is specified as a governed RML/R2RML
    subset in [docs/design/rml-executor.md](design/rml-executor.md).
 3. **Domain ontologies as certified knowledge packs** — each domain ships as
-   Quipu's `.qpack.db` (quipu #81): graph + shapes + competency queries +
+   Quipu's `.pendant.db` (quipu #81): graph + shapes + competency queries +
    labels + manifest, one attachable file. A Camayoc pack is the
    `CertifiedShareBundle`, not a second format; publisher and certifier claims
    bind independently to the manifest content hash.
@@ -211,7 +211,7 @@ measured, claim-by-claim ledger.
   (`bobbin:Chunk`, `nextChunk`, `chunkOrder`) in `shapes/code-entities.ttl`,
   value constraints only until the emitter ships and is measured.
 - **Certified-pack producer boundary** (`scripts/certify_pack.py`) — invokes
-  Quipu's `.qpack.db` pack and verify path, reads the manifest content hash, and
+  Quipu's `.pendant.db` pack and verify path, reads the manifest content hash, and
   renders distinct publisher/certifier claims plus the governed source mapping.
   It verifies two distinct Ed25519 keys, derives the hash from a conforming
   machine-readable SHACL report, and scans the complete pack artifact before
