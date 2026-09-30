@@ -26,11 +26,14 @@ Behaviour:
   applies to a crawl that shrinks too far, and to an unreadable subtree
   (which would produce undercounts), unless ``--allow-errors`` is given.
 * **Writer gates** (the store owner's conditions for this producer). A
-  Prometheus probe of the store's memory skips the run at ``--skip-at`` and
+  probe of the store's memory skips the run at ``--skip-at`` and
   aborts between snapshots at ``--abort-at``. Snapshots are written
   sequentially at least ``MIN_PACE_S`` apart. The store's ``/version`` must
   not change during the run, i.e. never during a deploy. A probe that cannot
-  answer is not a pass: the run does not write.
+  answer is not a pass: the run does not write. The memory probe is either
+  the store's own systemd unit (``CAMAYOC_STORE_MEMORY_UNIT``, when the crawl
+  runs on the store's host: ``MemoryCurrent``, no credential) or a Prometheus
+  query (``CAMAYOC_PROM_URL`` + ``CAMAYOC_STORE_MEMORY_QUERY``).
 
 Exit codes: 0 done · 1 error or refusal · 2 a gate could not be evaluated
 (nothing written) · 3 skipped, store memory at or above ``--skip-at`` (nothing
@@ -63,6 +66,7 @@ import json
 import os
 import re
 import stat
+import subprocess
 import sys
 import time
 import urllib.error
@@ -88,6 +92,8 @@ DEFAULT_MAX_SHRINK = 0.5
 PROM_URL_ENV = "CAMAYOC_PROM_URL"
 PROM_PASSWORD_FILE_ENV = "CAMAYOC_PROM_PASSWORD_FILE"
 MEMORY_QUERY_ENV = "CAMAYOC_STORE_MEMORY_QUERY"
+MEMORY_UNIT_ENV = "CAMAYOC_STORE_MEMORY_UNIT"
+UNIT_RE = re.compile(r"^[A-Za-z0-9@_.:-]+\.service$")
 
 EXIT_OK, EXIT_ERROR, EXIT_UNKNOWN, EXIT_SKIPPED, EXIT_ABORTED = 0, 1, 2, 3, 4
 
@@ -295,6 +301,23 @@ def prom_query(url: str, query: str, password_file: str | None) -> float:
     return float(result[0]["value"][1])
 
 
+def unit_memory(unit: str, run=subprocess.run) -> float:
+    """The unit's systemd ``MemoryCurrent``, in bytes. Anything else is unknown."""
+    if not UNIT_RE.match(unit):
+        raise GateUnknown(f"{MEMORY_UNIT_ENV} must name a .service unit, got {unit!r}")
+    try:
+        out = run(["systemctl", "show", "-p", "MemoryCurrent", "--value", unit],
+                  capture_output=True, text=True, timeout=15, check=False)
+    except (OSError, subprocess.SubprocessError) as e:
+        raise GateUnknown(f"systemctl unavailable: {e}") from e
+    value = out.stdout.strip()
+    # systemd prints "[not set]" with exit 0 for a unit it does not know, and
+    # for one with no accounting. Neither is a reading of zero.
+    if out.returncode != 0 or not value.isdigit():
+        raise GateUnknown(f"{unit} MemoryCurrent unreadable: rc={out.returncode} {value!r}")
+    return float(value)
+
+
 def store_version() -> str:
     req = urllib.request.Request(f"{planes.SERVER}/version",
                                  headers={"X-Quipu-Client": "camayoc-ingress"})
@@ -473,10 +496,16 @@ def main(argv: list[str] | None = None) -> int:
 
     prom_url = os.environ.get(PROM_URL_ENV, "").strip()
     query = os.environ.get(MEMORY_QUERY_ENV, "").strip()
+    unit = os.environ.get(MEMORY_UNIT_ENV, "").strip()
 
     def memory() -> float:
+        if unit and (prom_url or query):
+            raise GateUnknown(f"set {MEMORY_UNIT_ENV} or the Prometheus probe, not both")
+        if unit:
+            return unit_memory(unit)
         if not prom_url or not query:
-            raise GateUnknown(f"{PROM_URL_ENV} and {MEMORY_QUERY_ENV} must both be set")
+            raise GateUnknown(
+                f"set {MEMORY_UNIT_ENV}, or {PROM_URL_ENV} and {MEMORY_QUERY_ENV}")
         try:
             return prom_query(prom_url, query, os.environ.get(PROM_PASSWORD_FILE_ENV) or None)
         except OSError as e:
