@@ -326,9 +326,23 @@ class Delivery(unittest.TestCase):
         self.tick()
         receipt = self.tick(now=1000 + 7200)
         self.assertEqual(receipt['oldest_verified_seconds'], 7200)
-        want = round((1 / (sync.RECHECK / 3600)) / (3600 / sync.INTERVAL), 4)
-        self.assertEqual(receipt['recheck_utilization'], want)
+        self.assertEqual(receipt['recheck_utilization'], 0.0007)  # 1 item / 24h / 60 per h
         self.assertEqual(sync.RECHECK, 24 * 3600)
+        self.assertEqual(receipt['unverified_items'], 0)
+
+    def test_utilization_at_the_measured_population_is_a_pinned_literal(self):
+        # 645 current items (measured 2026-10-01): a literal, not the formula mirrored.
+        records = [{**RECORD, 'id': f'proj-{n}'} for n in range(645)]
+        receipt = self.tick(records)
+        self.assertEqual(receipt['recheck_utilization'], 0.4479)
+
+    def test_zero_coverage_is_visible_not_fresh(self):
+        # Nothing verified: oldest_verified_seconds reads 0, which looks fresh, so
+        # unverified_items must carry the signal (malcolm, review of #60).
+        self.control = False
+        receipt = self.tick([RECORD, {**RECORD, 'id': 'proj-b'}])
+        self.assertEqual(receipt['oldest_verified_seconds'], 0)
+        self.assertEqual(receipt['unverified_items'], 2)
 
     def test_successful_version_not_reposted_and_recheck_is_read_only(self):
         self.tick()
