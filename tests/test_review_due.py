@@ -10,6 +10,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 import review_due as rd  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from sparql_fake import TripleStore  # noqa: E402
+from blocked_by import Q  # noqa: E402
 
 A = rd.A
 NOW = dt.datetime(2026, 9, 24, 12, 0, tzinfo=dt.timezone.utc)
@@ -24,21 +27,7 @@ class Store:
     def post(self, endpoint, body):
         if body.get("graph"):
             return {"rows": [], "truncated": False}
-        q = body["query"]
-        where = q[q.index("{"):]
-        if " . " in where.strip("{} "):
-            raise AssertionError(f"multi-pattern query (quipu 408s joins live): {q}")
-        m = re.search(r"\{ \?s <" + re.escape(A) + r"(\w+)> \?v \}", q)
-        if m:
-            return self.rows([{"s": f"aegis:{s}"} for s, p, o in self.t if p == m.group(1)])
-        m = re.search(r"\{ \?ver <" + re.escape(A) + r"verifies> <" + re.escape(A) + r"([^>]+)> \}", q)
-        if m:
-            return self.rows([{"ver": f"aegis:{s}"} for s, p, o in self.t if p == "verifies" and o == m.group(1)])
-        m = re.search(r"\{ <" + re.escape(A) + r"([^>]+)> <" + re.escape(A) + r"(\w+)> \?v \}", q)
-        if m:
-            s0, p0 = m.groups()
-            return self.rows([{"v": o} for s, p, o in self.t if s == s0 and p == p0])
-        raise AssertionError(f"unexpected query {q}")
+        return self.rows(TripleStore(self.t, A, Q, {"verifies", "ownedBy"}).select(body["query"]))
 
     @staticmethod
     def rows(r):
@@ -159,3 +148,34 @@ class ShapeAndReaderAgree(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class QuechuaDualRead(unittest.TestCase):
+    """aegis-9dpcta: ages and owners are read under the legacy AND the quechua
+    IRI. verifies/verifiedAt have no quechua twin, so they stay legacy."""
+
+    def test_a_quechua_age_and_owner_are_read(self):
+        r = run([("f", "q:reviewAfter", '"2026-09-20T00:00:00Z"'), ("f", "q:ownedBy", "aegis:dearing")])["f"]
+        self.assertEqual((r["verdict"], r["owner"]), ("DUE", "dearing"))
+
+    def test_a_quechua_max_age_anchors_on_a_legacy_verification(self):
+        r = run([("f", "q:maxAge", '"P1D"'), ("v1", "verifies", "f"),
+                 ("v1", "verifiedAt", '"2026-09-20T00:00:00Z"')])["f"]
+        self.assertEqual(r["verdict"], "DUE")
+
+    def test_the_same_age_under_both_iris_changes_nothing(self):
+        legacy = run([("f", "reviewAfter", '"2026-09-20T00:00:00Z"')])["f"]
+        dual = run([("f", "reviewAfter", '"2026-09-20T00:00:00Z"'),
+                    ("f", "q:reviewAfter", '"2026-09-20T00:00:00Z"')])["f"]
+        self.assertEqual(len(dual["basis"]), 1)
+        self.assertEqual((dual["evidence"], dual.get("event_id")), (legacy["evidence"], legacy.get("event_id")))
+
+    def test_conflicting_ages_are_both_kept_and_the_earliest_decides(self):
+        r = run([("f", "reviewAfter", '"2026-12-01T00:00:00Z"'),
+                 ("f", "q:reviewAfter", '"2026-09-20T00:00:00Z"')])["f"]
+        self.assertEqual(len(r["basis"]), 2)
+        self.assertEqual(r["verdict"], "DUE")
+
+    def test_controls_absent_and_foreign_namespace_ages_are_not_read(self):
+        self.assertEqual(run([("f", "x:reviewAfter", '"2026-09-20T00:00:00Z"')]), {})
+        self.assertEqual(run([("f", "ownedBy", "aegis:dearing")]), {})

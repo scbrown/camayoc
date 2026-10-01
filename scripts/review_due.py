@@ -41,7 +41,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import planes  # noqa: E402
-from blocked_by import A, CLIENT, _local, select  # noqa: E402
+from blocked_by import A, CLIENT, _local, pattern, select  # noqa: E402
 
 DUE, NOT_DUE, UNKNOWN = "DUE", "NOT_DUE", "UNKNOWN"
 # The SAME grammar as CamayocReviewAgeShape: at least one component, and a T
@@ -72,14 +72,14 @@ def parse_duration(raw: str) -> dt.timedelta | None:
 
 
 def _values(post, entity: str, prop: str) -> list[str]:
-    return [str(r["v"]) for r in select(post, f"SELECT ?v WHERE {{ <{A}{entity}> <{A}{prop}> ?v }}")]
+    return [str(r["v"]) for r in select(post, f"SELECT ?v WHERE {{ {pattern(f'<{A}{entity}>', prop, '?v')} }}")]
 
 
 def last_verified(post, entity: str) -> dt.datetime | None:
     """Latest verifiedAt over Verifications that verify this entity: two bound
     single-pattern steps, never a join."""
     latest = None
-    for row in select(post, f"SELECT ?ver WHERE {{ ?ver <{A}verifies> <{A}{entity}> }}"):
+    for row in select(post, f"SELECT ?ver WHERE {{ {pattern('?ver', 'verifies', f'<{A}{entity}>')} }}"):
         for raw in _values(post, _local(row["ver"]), "verifiedAt"):
             when = parse_instant(raw)
             if when and (latest is None or when > latest):
@@ -110,7 +110,7 @@ def judge(post, entity: str, now: dt.datetime) -> dict:
         verdict = NOT_DUE
     else:
         verdict = UNKNOWN
-    owners = [_local(r["v"]) for r in select(post, f"SELECT ?v WHERE {{ <{A}{entity}> <{A}ownedBy> ?v }}")]
+    owners = [_local(r["v"]) for r in select(post, f"SELECT ?v WHERE {{ {pattern(f'<{A}{entity}>', 'ownedBy', '?v')} }}")]
     ident = json.dumps([entity, sorted((b["age"], b["value"], b["due_at"] or "") for b in basis)],
                        separators=(",", ":"))
     passed = [t for t in known if t <= now]
@@ -131,7 +131,7 @@ def evaluate(post, *, now: dt.datetime | None = None) -> list[dict]:
     now = now or dt.datetime.now(dt.timezone.utc)
     aged = set()
     for prop in ("reviewAfter", "maxAge"):
-        for row in select(post, f"SELECT ?s WHERE {{ ?s <{A}{prop}> ?v }}"):
+        for row in select(post, f"SELECT ?s WHERE {{ {pattern('?s', prop, '?v')} }}"):
             aged.add(_local(row["s"]))
     return [judge(post, e, now) for e in sorted(aged)]
 
