@@ -237,7 +237,12 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
     candidates.sort(key=lambda i: entries[i].get('created_at', ''), reverse=True)
     # A version change (a real transition) goes ahead of the periodic recheck
     # rotation; otherwise it waited behind every current item at one per tick.
+    # A recheck that FAILED is owed work too, not rotation: its error keeps the
+    # whole receipt UNKNOWN until it is retried, and behind a standing backlog
+    # of transitions it was never retried (aegis-alfe2l: 629 ticks, 0 attempts).
+    # The fair clock below still rotates it behind work already waiting.
     candidates.sort(key=lambda i: (not (entries[i].get('pending')
+                                        or entries[i].get('error')
                                         or entries[i].get('version') != current[i]['name']),
                                    max(entries[i]['last_attempt'], entries[i]['first_seen']),
                                    entries[i]['last_attempt'] != 0,
