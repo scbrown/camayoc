@@ -52,6 +52,38 @@ from ingest_work_items import BASE_NS  # noqa: E402
 CLIENT = "chaski-adapter"
 A = BASE_NS
 TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+
+# The quechua transition (aegis-9dpcta). The served quipu does NOT honour
+# owl:equivalentClass on reads (measured 0/4 cross-reads vs 1/4 controls), so a
+# reader names both IRIs itself: every term that has a quechua twin is read
+# under the legacy aegis: IRI AND the public one. The pairs come from ian's
+# transition map (aegis-9dpcta PR124 a5467313, complete-shape-term-map.json).
+# Terms the map does not carry (closedAt, observes, verifies, verifiedAt) stay
+# legacy-only: a pair nobody published is a guess, not a mapping. Instance IRIs
+# never move, only terms do.
+#
+# UNION, not a property-path alternation: the served quipu's (p1|p2) drops
+# every literal-object match (measured 0 vs 1 on reviewAfter, aegis-sxlptn).
+Q = "https://scbrown.github.io/quechua/ns#"
+DUAL = frozenset({
+    "blockedOn", "observedBlockedOn", "observedAt", "observedStatus", "observedValue", "blockerKind",
+    "prRef", "tool", "minVersion", "repoRef", "resolvesOn", "resolutionQuery",
+    "reviewAfter", "maxAge", "ownedBy", "WorkItem", "Blocker",
+})
+
+
+def term_iris(name: str) -> list[str]:
+    """Every IRI a reader must accept for one term, legacy first."""
+    return [A + name, Q + name] if name in DUAL else [A + name]
+
+
+def pattern(subject: str, name: str, obj: str) -> str:
+    """One triple pattern per IRI of `name`, as a UNION of single patterns.
+    Each branch stays one bound pattern, so the never-a-join rule holds."""
+    branches = [f"{subject} <{iri}> {obj}" for iri in term_iris(name)]
+    if len(branches) == 1:
+        return branches[0]
+    return " UNION ".join("{ " + b + " }" for b in branches)
 RESOLVED, UNRESOLVED, UNKNOWN = "resolved", "unresolved", "unknown"
 BLOCKED, UNBLOCKED = "BLOCKED", "UNBLOCKED"
 
@@ -103,12 +135,12 @@ def select(post, query: str) -> list[dict]:
 def current_status(post, item: str) -> str | None:
     """The tracker status of a WorkItem from its LATEST Observation; "closed"
     also when the WorkItem carries aegis:closedAt; None when nothing says."""
-    if select(post, f"SELECT ?c WHERE {{ <{A}{item}> <{A}closedAt> ?c }}"):
+    if select(post, f"SELECT ?c WHERE {{ {pattern(f'<{A}{item}>', 'closedAt', '?c')} }}"):
         return "closed"
     obs = latest_observation(post, item)
     if obs is None:
         return None
-    rows = select(post, f"SELECT ?st WHERE {{ <{A}{obs}> <{A}observedStatus> ?st }}")
+    rows = select(post, f"SELECT ?st WHERE {{ {pattern(f'<{A}{obs}>', 'observedStatus', '?st')} }}")
     if rows:
         return str(rows[0]["st"]).strip('"')
     # Older Observations carry status only inside their JSON snapshot.
@@ -117,7 +149,7 @@ def current_status(post, item: str) -> str | None:
 
 def snapshot(post, obs: str) -> dict:
     """The tracker record an Observation captured (its observedValue JSON), or {}."""
-    rows = select(post, f"SELECT ?v WHERE {{ <{A}{obs}> <{A}observedValue> ?v }}")
+    rows = select(post, f"SELECT ?v WHERE {{ {pattern(f'<{A}{obs}>', 'observedValue', '?v')} }}")
     try:
         raw = str(rows[0]["v"])
         raw = raw[1:-1].encode().decode("unicode_escape") if raw.startswith('"') else raw
@@ -181,9 +213,9 @@ def _read_latest_observation(post, item: str) -> str | None:
     # Two BOUND single-pattern queries, never a join: quipu plans even a
     # bound-subject two-pattern query from its unbound side and 408s it live.
     stamped = []
-    for row in select(post, f"SELECT ?obs WHERE {{ <{A}{item}> <{A}observes> ?obs }}"):
+    for row in select(post, f"SELECT ?obs WHERE {{ {pattern(f'<{A}{item}>', 'observes', '?obs')} }}"):
         obs = _local(row["obs"])
-        at = select(post, f"SELECT ?at WHERE {{ <{A}{obs}> <{A}observedAt> ?at }}")
+        at = select(post, f"SELECT ?at WHERE {{ {pattern(f'<{A}{obs}>', 'observedAt', '?at')} }}")
         if at:
             stamped.append((str(at[0]["at"]), obs))
     if not stamped:
@@ -200,7 +232,7 @@ def _read_latest_observation(post, item: str) -> str | None:
     # untouched since the projection read as having no status and no blockers
     # (aegis-3b3nrb, measured on aegis-sfpfwf).
     projected = [obs for obs in tied
-                 if select(post, f"SELECT ?st WHERE {{ <{A}{obs}> <{A}observedStatus> ?st }}")]
+                 if select(post, f"SELECT ?st WHERE {{ {pattern(f'<{A}{obs}>', 'observedStatus', '?st')} }}")]
     return (projected or tied)[0]
 
 
@@ -263,19 +295,19 @@ PROBES = {"pr-merged": probe_pr_merged, "release-installed": probe_release_insta
 
 
 def _prop(post, target: str, name: str) -> str | None:
-    rows = select(post, f"SELECT ?v WHERE {{ <{A}{target}> <{A}{name}> ?v }}")
+    rows = select(post, f"SELECT ?v WHERE {{ {pattern(f'<{A}{target}>', name, '?v')} }}")
     return str(rows[0]["v"]).split("^^")[0].strip('"') if rows else None
 
 
 def blocker_state(post, target: str, today: dt.date, probes=None) -> tuple[str, str]:
     """(state, why) for one blockedOn target."""
     types = {_iri(r["t"]) for r in select(post, f"SELECT ?t WHERE {{ <{A}{target}> a ?t }}")}
-    if A + "WorkItem" in types:
+    if types & set(term_iris("WorkItem")):
         status = current_status(post, target)
         if status is None:
             return UNKNOWN, f"{target}: no tracker status in the graph"
         return (RESOLVED if status == "closed" else UNRESOLVED), f"{target}: {status}"
-    if A + "Blocker" in types:
+    if types & set(term_iris("Blocker")):
         probes = PROBES if probes is None else probes
         kind = _prop(post, target, "blockerKind")
         if kind in ("pr-merged", "release-installed", "ci-green"):
@@ -288,8 +320,8 @@ def blocker_state(post, target: str, today: dt.date, probes=None) -> tuple[str, 
             if answer is None:
                 return UNKNOWN, f"{target}: {kind} {' '.join(values)} could not be checked"
             return (RESOLVED if answer else UNRESOLVED), f"{target}: {kind} {' '.join(values)} -> {answer}"
-        dates = select(post, f"SELECT ?d WHERE {{ <{A}{target}> <{A}resolvesOn> ?d }}")
-        asks = select(post, f"SELECT ?q WHERE {{ <{A}{target}> <{A}resolutionQuery> ?q }}")
+        dates = select(post, f"SELECT ?d WHERE {{ {pattern(f'<{A}{target}>', 'resolvesOn', '?d')} }}")
+        asks = select(post, f"SELECT ?q WHERE {{ {pattern(f'<{A}{target}>', 'resolutionQuery', '?q')} }}")
         if dates:
             raw = str(dates[0]["d"]).split("^^")[0].strip('"')
             try:
@@ -327,7 +359,7 @@ def evaluate(post, *, item: str | None = None, today: dt.date | None = None,
     today = today or dt.date.today()
     scope = f"<{A}{item}>" if item else "?w"
     # Declared by an agent on the WorkItem ...
-    edges = select(post, f"SELECT {'?w ' if not item else ''}?t WHERE {{ {scope} <{A}blockedOn> ?t }}")
+    edges = select(post, f"SELECT {'?w ' if not item else ''}?t WHERE {{ {pattern(scope, 'blockedOn', '?t')} }}")
     by_item: dict[str, list[str]] = {}
     for row in edges:
         w = item or _local(row["w"])
@@ -339,14 +371,14 @@ def evaluate(post, *, item: str | None = None, today: dt.date | None = None,
     if item:
         latest = latest_observation(post, item)
         if latest:
-            for row in select(post, f"SELECT ?t WHERE {{ <{A}{latest}> <{A}observedBlockedOn> ?t }}"):
+            for row in select(post, f"SELECT ?t WHERE {{ {pattern(f'<{A}{latest}>', 'observedBlockedOn', '?t')} }}"):
                 by_item.setdefault(item, []).append(_local(row["t"]))
     else:
         owner: dict[str, str | None] = {}
-        for row in select(post, f"SELECT ?obs ?t WHERE {{ ?obs <{A}observedBlockedOn> ?t }}"):
+        for row in select(post, f"SELECT ?obs ?t WHERE {{ {pattern('?obs', 'observedBlockedOn', '?t')} }}"):
             obs = _local(row["obs"])
             if obs not in owner:
-                found = select(post, f"SELECT ?w WHERE {{ ?w <{A}observes> <{A}{obs}> }}")
+                found = select(post, f"SELECT ?w WHERE {{ {pattern('?w', 'observes', f'<{A}{obs}>')} }}")
                 owner[obs] = _local(found[0]["w"]) if found else None
             w = owner[obs]
             if w and latest_observation(post, w) == obs:
