@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_ex_stale_facts",
+  "description": "Facts due for re-checking as of an instant: anything whose aegis:reviewAfter has passed. The staleness is computed at read time from a date written at write time; nothing stores the judgment 'stale'.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?entity ?label ?reviewAfter WHERE { ?entity aegis:reviewAfter ?reviewAfter ; rdfs:label ?label . FILTER(?reviewAfter < '{asof}') } ORDER BY ?reviewAfter ?label",
+  "params": [
+    {
+      "name": "asof",
+      "type": "text",
+      "required": true,
+      "description": "ISO-8601 date or instant to judge against"
+    }
+  ]
+}

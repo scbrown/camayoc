@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_ex_symbols_in_module",
+  "description": "The code symbols a module defines (bobbin:definedIn), with their kind.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> PREFIX bobbin: <http://aegis.gastown.local/ontology/> SELECT ?symbol ?name ?kind WHERE { ?symbol a bobbin:CodeSymbol ; bobbin:definedIn <{module}> ; bobbin:name ?name . OPTIONAL { ?symbol bobbin:symbolKind ?kind } } ORDER BY ?name",
+  "params": [
+    {
+      "name": "module",
+      "type": "iri",
+      "required": true,
+      "description": "The CodeModule"
+    }
+  ]
+}
