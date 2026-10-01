@@ -21,7 +21,10 @@ from ingest_work_items import BASE_NS, _entity_name, episode_for
 import planes
 
 INTERVAL = 60
-RECHECK = 6 * 3600
+# 24h, not 6h (aegis-7dcleu, malcolm's call). At one item per INTERVAL the lane
+# serves ~60/h shared with transitions; 645 items at 6h needed ~107/h, so rechecks
+# lagged without bound (31h measured). 645 / 24h is ~27/h, ~45% utilization.
+RECHECK = 24 * 3600
 MAX_BODY = 256 * 1024
 MAX_ATTEMPTS = 3
 MAX_BATCH = 4
@@ -334,6 +337,13 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
                    (i in current and (e.get('version') != current[i]['name'] or e.get('error')))]
     receipt['backlog'] = len(outstanding)
     receipt['oldest_seconds'] = max((now - e.get('due_since', now) for e in outstanding), default=0)
+    # Recheck staleness, invisible since due_since counts owed work only (camayoc#59):
+    # the oldest verification among current items, and the recheck demand as a
+    # fraction of lane capacity (> 1 means rechecks can never keep up).
+    receipt['oldest_verified_seconds'] = max(
+        (now - entries[i]['verified_at'] for i in current if entries.get(i, {}).get('verified_at')),
+        default=0)
+    receipt['recheck_utilization'] = round((len(current) / (RECHECK / 3600)) / (3600 / INTERVAL), 4)
     pending_entries = [e for e in outstanding if e.get('pending')]
     receipt['indeterminate'] = len(pending_entries)
     if (invalid or any(e['pending']['attempts'] >= MAX_ATTEMPTS for e in pending_entries)
@@ -395,6 +405,8 @@ def main():
                 ('camayoc_workitem_ingress_exit_status', {}, code),
                 ('camayoc_workitem_ingress_backlog', {}, receipt.get('backlog', -1)),
                 ('camayoc_workitem_ingress_oldest_seconds', {}, receipt.get('oldest_seconds', -1)),
+                ('camayoc_workitem_ingress_oldest_verified_seconds', {}, receipt.get('oldest_verified_seconds', -1)),
+                ('camayoc_workitem_ingress_recheck_utilization', {}, receipt.get('recheck_utilization', -1)),
                 ('camayoc_workitem_ingress_indeterminate', {}, receipt.get('indeterminate', -1)),
                 ('camayoc_workitem_ingress_degraded', {}, int(receipt['status'] == 'DEGRADED')),
             ]

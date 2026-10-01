@@ -320,6 +320,16 @@ class Delivery(unittest.TestCase):
         self.assertEqual(receipt['item'], 'proj-b')
         self.assertNotIn('due_since', self.state['items']['proj-a'])  # stale stamp cleared
 
+    def test_recheck_staleness_and_utilization_are_reported(self):
+        # aegis-7dcleu: with due_since owed-only, a starving recheck needs its own
+        # signal. Oldest verification among current items, and demand/capacity.
+        self.tick()
+        receipt = self.tick(now=1000 + 7200)
+        self.assertEqual(receipt['oldest_verified_seconds'], 7200)
+        want = round((1 / (sync.RECHECK / 3600)) / (3600 / sync.INTERVAL), 4)
+        self.assertEqual(receipt['recheck_utilization'], want)
+        self.assertEqual(sync.RECHECK, 24 * 3600)
+
     def test_successful_version_not_reposted_and_recheck_is_read_only(self):
         self.tick()
         self.assertEqual(0, self.tick(now=1060)['requests'])
