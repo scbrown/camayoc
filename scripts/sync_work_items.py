@@ -213,12 +213,20 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
     for item, entry in entries.items():
         if item not in current and not entry.get('pending'):
             continue
-        due = (entry.get('pending') or entry.get('version') != current[item]['name']
-               or now - entry.get('verified_at', 0) >= RECHECK)
-        if due:
+        owed = bool(entry.get('pending') or entry.get('error')
+                    or entry.get('version') != current[item]['name'])
+        due = owed or now - entry.get('verified_at', 0) >= RECHECK
+        # due_since measures OWED work only (backlog age, the Unhealthy signal). A
+        # periodic recheck is lowest-priority rotation and may legitimately wait
+        # many hours; stamping it made a recheck that later timed out carry its
+        # whole rotation wait into oldest_seconds and page (31h, 2026-10-01,
+        # aegis-64cr5o). Its clock starts when it becomes owed (error / pending).
+        if owed:
             entry.setdefault('due_since', now)
-            if now >= entry.get('not_before', 0):
-                candidates.append(item)
+        else:
+            entry.pop('due_since', None)
+        if due and now >= entry.get('not_before', 0):
+            candidates.append(item)
     receipt = {'status': 'OK', 'requests': 0, 'writes': 0, 'verified': 0,
                'current': len(current), 'invalid': len(invalid), 'parked': invalid[:20],
                'items': [], 'max_items': max_items}
@@ -319,6 +327,7 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
         except Exception as exc:
             # Do not print transport response bodies or credential-bearing URLs.
             entry['error'] = type(exc).__name__
+            entry.setdefault('due_since', now)  # owed from now (see the candidate loop)
             entry['not_before'] = now + (900 if entry.get('pending', {}).get('attempts', 0) >= MAX_ATTEMPTS else INTERVAL)
             receipt.update(status='UNKNOWN', error=type(exc).__name__)
     outstanding = [e for i, e in entries.items() if e.get('pending') or
