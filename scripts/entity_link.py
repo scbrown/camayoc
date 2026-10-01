@@ -50,11 +50,20 @@ RETRIES = 1
 NOISE = re.compile(r"(^|[:/])(bead-(closed|created)-|ledger-[0-9a-f]{6,}-|"
                    r"reactor-(closed|created)-)|/commit/")
 DESCRIPTION_HEAD = 400
+#: Names the three near-miss classes an independent blind rating found in ALL 7
+#: of its rejections (13/20 at the first instruction): a parent or umbrella
+#: entity, a sibling or predecessor issue, and an instrument used in the work.
+#: None of those rejections was unrelated, so this is a ranking instruction,
+#: not a retrieval change (aegis-4hhqoe.12).
 INSTRUCTIONS = (
-    "The state is one work item (a tracker bead). Which knowledge-graph entity "
-    "is this work item primarily ABOUT: the service, component, failure mode, "
-    "rule or thing the work acts on? Pick none-of-these unless one option is "
-    "clearly the subject; a merely related or similarly worded entity is not it."
+    "The state is one work item (a tracker bead). Pick the knowledge-graph "
+    "entity this work item ACTS ON: the most specific thing it builds, fixes, "
+    "measures or changes. Do NOT pick a neighbour of that subject: not its "
+    "parent, umbrella or containing component (e.g. a whole service or a "
+    "stack-wide standard when the work targets one part of it); not a sibling, "
+    "predecessor or earlier related issue; not a tool, record, snapshot or "
+    "observation used or produced along the way. If every option is only such "
+    "a neighbour, pick none-of-these."
 )
 NONE_TEXT = "None of these is the subject of this work item"
 
