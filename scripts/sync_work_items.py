@@ -344,6 +344,10 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
         (now - entries[i]['verified_at'] for i in current if entries.get(i, {}).get('verified_at')),
         default=0)
     receipt['recheck_utilization'] = round((len(current) / (RECHECK / 3600)) / (3600 / INTERVAL), 4)
+    # oldest_verified_seconds skips never-verified items and reads 0 when NONE are
+    # verified, so a warning on it alone is blind to zero coverage (malcolm, review
+    # of #60). Count the current items that have never been verified.
+    receipt['unverified_items'] = sum(1 for i in current if not entries.get(i, {}).get('verified_at'))
     pending_entries = [e for e in outstanding if e.get('pending')]
     receipt['indeterminate'] = len(pending_entries)
     if (invalid or any(e['pending']['attempts'] >= MAX_ATTEMPTS for e in pending_entries)
@@ -407,6 +411,7 @@ def main():
                 ('camayoc_workitem_ingress_oldest_seconds', {}, receipt.get('oldest_seconds', -1)),
                 ('camayoc_workitem_ingress_oldest_verified_seconds', {}, receipt.get('oldest_verified_seconds', -1)),
                 ('camayoc_workitem_ingress_recheck_utilization', {}, receipt.get('recheck_utilization', -1)),
+                ('camayoc_workitem_ingress_unverified_items', {}, receipt.get('unverified_items', -1)),
                 ('camayoc_workitem_ingress_indeterminate', {}, receipt.get('indeterminate', -1)),
                 ('camayoc_workitem_ingress_degraded', {}, int(receipt['status'] == 'DEGRADED')),
             ]
