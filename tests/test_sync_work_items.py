@@ -300,6 +300,26 @@ class Delivery(unittest.TestCase):
         self.assertNotIn('error', self.state['items']['proj-a'])
         self.assertNotEqual('UNKNOWN', receipt['status'])
 
+    def test_a_long_rotation_wait_is_not_counted_as_backlog_age(self):
+        # aegis-64cr5o 2026-10-01: a recheck waited ~31h in rotation (by design),
+        # then failed its read-back and went pending; oldest_seconds reported the
+        # whole rotation wait and paged WorkItemIngressUnhealthy.
+        self.tick()
+        late = 1000 + 30 * 3600
+        self.state['items']['proj-a']['due_since'] = 1000 + sync.RECHECK  # a stale stamp
+        self.present = False
+        receipt = self.tick(now=late)
+        self.assertIn('pending', self.state['items']['proj-a'])
+        self.assertLess(receipt['oldest_seconds'], sync.INTERVAL * 2, receipt)
+
+    def test_a_pure_recheck_carries_no_backlog_clock(self):
+        self.tick()
+        self.state['items']['proj-a']['due_since'] = 1000  # stale stamp from before
+        # proj-a is a due RECHECK; the new arrival proj-b is owed and is served first.
+        receipt = self.tick([RECORD, {**RECORD, 'id': 'proj-b'}], now=1000 + sync.RECHECK)
+        self.assertEqual(receipt['item'], 'proj-b')
+        self.assertNotIn('due_since', self.state['items']['proj-a'])  # stale stamp cleared
+
     def test_successful_version_not_reposted_and_recheck_is_read_only(self):
         self.tick()
         self.assertEqual(0, self.tick(now=1060)['requests'])
