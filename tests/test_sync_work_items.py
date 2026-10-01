@@ -282,6 +282,24 @@ class Delivery(unittest.TestCase):
         self.assertEqual('DEGRADED', result['status'])
         self.assertEqual(1, result['indeterminate'])
 
+    def test_a_failed_recheck_is_retried_behind_a_standing_backlog(self):
+        a = {**RECORD, 'id': 'proj-a'}
+        self.tick([a])
+        self.control = False
+        failed = self.tick([a], now=1000 + sync.RECHECK)
+        self.assertEqual('proj-a', failed['item'])
+        self.assertIn('error', self.state['items']['proj-a'])
+        self.control = True
+        # A transition arrives on every tick, so the backlog never drains.
+        records, served = [a], []
+        for offset in range(1, 6):
+            records.append({**RECORD, 'id': f'proj-new-{offset}'})
+            receipt = self.tick(records, now=1000 + sync.RECHECK + offset * sync.INTERVAL)
+            served.append(receipt['item'])
+        self.assertIn('proj-a', served, 'a failed recheck must not starve behind arrivals')
+        self.assertNotIn('error', self.state['items']['proj-a'])
+        self.assertNotEqual('UNKNOWN', receipt['status'])
+
     def test_successful_version_not_reposted_and_recheck_is_read_only(self):
         self.tick()
         self.assertEqual(0, self.tick(now=1060)['requests'])
@@ -292,8 +310,13 @@ class Delivery(unittest.TestCase):
         self.tick()
         self.control = False
         self.tick(now=1000 + sync.RECHECK)
+        records = [RECORD, {**RECORD, 'id': 'proj-b'}]
+        # The failed recheck is owed work (aegis-alfe2l), so it is retried
+        # first; it fails again and must stay visible while proj-b succeeds.
+        self.assertEqual('proj-a', self.tick(records, now=1060 + sync.RECHECK)['item'])
         self.control = True
-        result = self.tick([RECORD, {**RECORD, 'id': 'proj-b'}], now=1060 + sync.RECHECK)
+        result = self.tick(records, now=1120 + sync.RECHECK)
+        self.assertEqual('proj-b', result['item'])
         self.assertEqual(1, result['verified'])
         self.assertEqual('UNKNOWN', result['status'])
         self.assertEqual(1, result['backlog'])
