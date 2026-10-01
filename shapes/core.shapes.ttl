@@ -507,3 +507,17 @@ aegis:CamayocUsageRecordShape a sh:NodeShape ;
         sh:class aegis:WorkItem ;
         sh:message "camayoc: usage attribution, when present, points at a WorkItem — cost as a property of work, not of a window" ;
     ] .
+
+# aegis:ownedBy names a PRINCIPAL, so its object is an IRI on every subject, not
+# only on the classes shaped above. One literal ("aegis-crew") among 591 IRI
+# owners was invisible to every reader that joins the owner to a principal or
+# crew node: owner routing and the ownership views silently skipped it
+# (aegis-j32oup). Targeted by subject, so a new class that uses ownedBy is
+# covered without anyone remembering to add it here.
+aegis:CamayocOwnedByIsIriShape a sh:NodeShape ;
+    sh:targetSubjectsOf aegis:ownedBy ;
+    sh:property [
+        sh:path aegis:ownedBy ;
+        sh:nodeKind sh:IRI ;
+        sh:message "camayoc: aegis:ownedBy names a principal by IRI, never a string" ;
+    ] .
