@@ -442,6 +442,16 @@ class TrackerFormats(unittest.TestCase):
         self.assertEqual(['br', '--db', '/tmp/fixture.db', 'list'], argv[:4])
         self.assertIn('--deferred', argv)
         self.assertEqual('0', argv[argv.index('--limit') + 1])
+        # aegis-prhnn4: `--deferred` alone added 0 of 156 deferred rows beside
+        # explicit --status filters. The status must be requested by name.
+        statuses = {argv[i + 1] for i, a in enumerate(argv) if a == '--status'}
+        self.assertEqual({'open', 'in_progress', 'blocked', 'deferred'}, statuses)
+
+    def test_scope_includes_assigned_deferred_work_only(self):
+        # aegis-prhnn4: the probe doc promises deferred ASSIGNMENTS are covered.
+        variants = [{**RECORD, 'id': 'proj-def', 'status': 'deferred'},
+                    {**RECORD, 'id': 'proj-def-free', 'status': 'deferred', 'assignee': None}]
+        self.assertEqual(['proj-def'], [r['id'] for r in sync.records_from(variants)])
 
 
 class Transitions(unittest.TestCase):
@@ -504,6 +514,40 @@ class Transitions(unittest.TestCase):
         state = {}
         sync.tick([done], state, path, actor='t', source='br:x', now=1000, post=post)
         self.assertTrue(state['items']['proj-done'].get('final'))
+
+    def test_a_tracked_deferred_item_that_closes_ends_closed(self):
+        # aegis-prhnn4 [prhnn4-close-gap] (dearing): a dep-less deferred bead that
+        # closed kept observedStatus=deferred forever, because the sync never
+        # tracked it and the backfill re-projects a covered bead only when it has
+        # blocked_on. Once deferred work is current, its close trails out.
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        path = Path(temp.name) / 'state.json'
+        deferred = {**RECORD, 'id': 'proj-def', 'status': 'deferred'}
+        closed = {**deferred, 'status': 'closed', 'closed_at': '2026-10-01T05:00:00Z',
+                  'updated_at': '2026-10-01T05:00:00Z'}
+        bodies = []
+
+        def post(endpoint, body):
+            if endpoint == '/episode':
+                bodies.append(body)
+                return {'outcome': 'created'}
+            return {'rows': [{'s': 'c', 't': 'WorkItem', 'o': 'Observation'}]}
+        state = {}
+        run, _ = self.fake_br([deferred], {})
+        records = sync.collect(Path('/tmp/f.db'), run=run)
+        self.assertEqual(['proj-def'], [r['id'] for r in records], 'deferred work is current')
+        sync.tick(records, state, path, actor='t', source='br:x', now=1000, post=post)
+        self.assertIn('proj-def', state['items'], 'the sync now tracks it')
+        # It closes: it leaves the current set and trails out through `tracked`.
+        run, _ = self.fake_br([], {'proj-def': closed})
+        records = sync.collect(Path('/tmp/f.db'), tracked=list(state['items']), run=run)
+        self.assertTrue(records[0]['trailing'])
+        sync.tick(records, state, path, actor='t', source='br:x', now=1060, post=post)
+        self.assertTrue(state['items']['proj-def'].get('final'))
+        last = json.dumps(bodies[-1])
+        self.assertIn('closed', last, 'the final observation is closed')
+        self.assertNotIn('"deferred"', last)
 
     def test_dependencies_are_looked_up_only_when_updated_at_moves(self):
         looked = []

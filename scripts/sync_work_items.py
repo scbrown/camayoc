@@ -75,7 +75,7 @@ def records_from(payload):
     if len({r['id'] for r in records}) != len(records):
         raise ValueError('duplicate tracker identifiers')
     return [r for r in records if r.get('status') == 'in_progress' or
-            (r.get('status') in ('open', 'blocked') and r.get('assignee'))]
+            (r.get('status') in ('open', 'blocked', 'deferred') and r.get('assignee'))]
 
 
 def fetch_ids(db, ids, run=None):
@@ -108,9 +108,11 @@ def collect(db, tracked=(), run=None, deps_cache=None):
     current set, until its final state is verified.
     """
     run = run or subprocess.run
+    # `--status deferred` explicitly: in this br, `--deferred` beside explicit
+    # --status filters adds NO deferred rows (aegis-prhnn4, measured 0 of 156).
     result = run(['br', '--db', str(db), 'list', '--status', 'open',
                   '--status', 'in_progress', '--status', 'blocked',
-                  '--deferred', '--limit', '0', '--json'],
+                  '--status', 'deferred', '--deferred', '--limit', '0', '--json'],
                  check=True, capture_output=True, text=True, timeout=15)
     records = records_from(json.loads(result.stdout))
     # Same dependency set the backfill projects (aegis-3b3nrb), so both writers
