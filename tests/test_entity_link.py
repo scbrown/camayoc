@@ -102,20 +102,46 @@ class EntityLinkTest(unittest.TestCase):
         self.assertIsNone(res["choice"])
         self.assertEqual(client.offered, [])
 
-    def test_the_written_link_is_inferred_and_quarantined(self):
-        sent = {}
+    def _write(self, responses):
+        """Run write_link against scripted /knot answers; return (posts, ensured)."""
+        import io
+        import urllib.error
+        posts, ensured = [], []
         fake = type(sys)("planes")
-        fake.ensure_planes = lambda ts: None
+        fake.ensure_planes = lambda ts: ensured.append(ts)
         fake.plane_for = lambda kind: f"urn:plane:{kind}"
-        post = lambda path, body, token="": sent.update(path=path, **body) or {}
+        answers = list(responses)
+
+        def post(path, body, token=""):
+            posts.append((path, body))
+            a = answers.pop(0)
+            if isinstance(a, str):
+                raise urllib.error.HTTPError(path, 400, "bad", {}, io.BytesIO(a.encode()))
+            return a
         with mock.patch.dict(sys.modules, {"planes": fake}), \
                 mock.patch.object(el, "_post", post):
             el.write_link("aegis-x1", "aegis:svc-a", "tok", "2026-10-01T00:00:00Z")
-        self.assertEqual(sent["path"], "/knot")
-        self.assertEqual(sent["graph"], "urn:plane:inferred")
-        self.assertIn(f"<{el.ONTOLOGY}about> <{el.ONTOLOGY}svc-a>", sent["turtle"])
-        self.assertIn('"inferred"', sent["turtle"])
+        return posts, ensured
 
+    def test_the_written_link_is_inferred_and_quarantined(self):
+        posts, ensured = self._write([{"conforms": True}])
+        path, body = posts[0]
+        self.assertEqual(path, "/knot")
+        self.assertEqual(body["graph"], "urn:plane:inferred")
+        self.assertIn(f"<{el.ONTOLOGY}about> <{el.ONTOLOGY}svc-a>", body["turtle"])
+        self.assertIn('"inferred"', body["turtle"])
+        self.assertEqual(ensured, [], "an existing plane is not re-registered")
+
+    def test_an_unregistered_plane_is_registered_once_then_written(self):
+        posts, ensured = self._write(
+            ["unknown graph: urn:plane:inferred — create and register it first",
+             {"conforms": True}])
+        self.assertEqual(len(ensured), 1)
+        self.assertEqual([p for p, _ in posts], ["/knot", "/knot"])
+
+    def test_any_other_refusal_is_raised_not_retried(self):
+        with self.assertRaises(Exception):
+            self._write(["shape violation"])
 
 if __name__ == "__main__":
     unittest.main()

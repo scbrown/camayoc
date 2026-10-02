@@ -158,13 +158,28 @@ def bead(item: str, db: str) -> tuple[str, str]:
 
 
 def write_link(item: str, entity: str, token: str, timestamp: str) -> dict:
-    """`<item> aegis:about <entity>`, sourceKind inferred, in the quarantine plane."""
+    """`<item> aegis:about <entity>`, sourceKind inferred, in the quarantine plane.
+
+    The plane is registered only when quipu says it is not. Registering on
+    every write re-POSTed /graph/create and /graph/label for every plane on
+    each dispatch that named no node, which is load on a single writer for
+    nothing once the planes exist (review note on aegis-4hhqoe.12).
+    """
+    import urllib.error
+
     import planes
-    planes.ensure_planes(timestamp)
     subject = f"<{WORKITEM_NS}{item}>"
     turtle = (f"{subject} <{ONTOLOGY}about> <{_full(entity)}> .\n"
               f"{subject} <{ONTOLOGY}sourceKind> \"inferred\" .\n")
-    return _post("/knot", {"turtle": turtle, "graph": planes.plane_for("inferred")}, token)
+    body = {"turtle": turtle, "graph": planes.plane_for("inferred")}
+    try:
+        return _post("/knot", body, token)
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode(errors="replace")
+        if "unknown graph" not in detail:
+            raise
+    planes.ensure_planes(timestamp)
+    return _post("/knot", body, token)
 
 
 def _full(iri: str) -> str:
