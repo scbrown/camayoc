@@ -98,6 +98,23 @@ class Incremental(unittest.TestCase):
         self.assertEqual(len(calls), 6)
         self.assertFalse(any("observedStatus" in q for q in calls))
 
+    def test_catalogue_bounds_reverse_reads_instead_of_scanning_all_history(self):
+        triples = []
+        for i in range(70):
+            triples += [("w", "observes", f"o{i}"), (f"o{i}", "observedBlockedOn", "d")]
+        store = Store(triples)
+        queries = []
+        def post(endpoint, body):
+            q = body["query"]
+            if "SELECT ?w ?o" in q:
+                return {"rows": [], "truncated": True}
+            queries.append(q)
+            return store.post(endpoint, body)
+        result = ca.evaluate("blocked", post, {"now": NOW, "discover": True})
+        self.assertEqual(result["items"], ["w"])
+        self.assertEqual(len(queries), 15)
+        self.assertFalse(any("?w32" in q for q in queries))
+
     def test_recorded_day_parity_close_reopen_remove_and_add(self):
         store = Store(item("w", "open") + item("other", "open") + item("d", "open", obs="od")
                       + [("w", "blockedOn", "d"), ("other", "blockedOn", "d")])
