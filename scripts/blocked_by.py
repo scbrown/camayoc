@@ -402,7 +402,12 @@ def evaluate(post, *, item: str | None = None, today: dt.date | None = None,
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--item", help="one work item id (e.g. aegis-bgk9ho)")
+    parser.add_argument("--changes", action="store_true", help="incremental JSON protocol on stdin")
+    parser.add_argument("--describe", action="store_true", help="print change subscription, no graph reads")
     args = parser.parse_args(argv)
+    if args.changes or args.describe:
+        import change_adapter
+        return change_adapter.main("blocked", describe=args.describe)
     post = lambda endpoint, body: planes._post(endpoint, body, client=CLIENT)  # noqa: E731
     print(json.dumps(evaluate(post, item=args.item), indent=2))
     return 0
