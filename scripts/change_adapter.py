@@ -136,7 +136,7 @@ def evaluate(kind, post, request):
     if full:
         records = bb.evaluate(post, today=instant.date()) if kind == "blocked" else rd.evaluate(post, now=instant)
     elif kind == "blocked":
-        records = [r for item in scope for r in bb.evaluate(post, item=item, today=instant.date())]
+        records = [r for item in scope for r in bb.evaluate(post, item=item, today=instant.date(), batch_history=True)]
     else:
         records = [rd.judge(post, item, instant) for item in scope]
         records = [r for r in records if r["basis"]]

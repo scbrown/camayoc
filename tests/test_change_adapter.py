@@ -20,6 +20,32 @@ def change(subject, prop, value=None, old=None):
 
 
 class Incremental(unittest.TestCase):
+    def test_batched_history_matches_full_and_bounds_reads(self):
+        triples = item("w", "open") + [("w", "blockedOn", "d")]
+        for i in range(100):
+            triples += item("d", "closed" if i == 99 else "open",
+                            at=f"2026-09-{1 + i // 24:02d}T{i % 24:02d}:00:00Z", obs=f"od{i}")
+        store = Store(triples)
+        calls = []
+        def post(endpoint, body):
+            calls.append(body["query"])
+            return store.post(endpoint, body)
+        old = bb.evaluate(post, item="w")
+        old_count = len(calls)
+        calls.clear()
+        new = bb.evaluate(post, item="w", batch_history=True)
+        self.assertEqual(new, old)
+        self.assertLess(len(calls), old_count // 3)
+        self.assertTrue(any("?at31" in q for q in calls))
+        self.assertFalse(any("VALUES" in q or "BIND" in q or " . " in q for q in calls))
+
+    def test_batched_tie_preserves_projected_status_preference(self):
+        store = Store(item("w", "open") + [("w", "blockedOn", "d"), ("d", "a", "WorkItem"),
+                      ("d", "observes", "older"), ("d", "observes", "projected"),
+                      ("older", "observedAt", "2026-09-30"), ("projected", "observedAt", "2026-09-30"),
+                      ("projected", "observedStatus", "closed")])
+        self.assertEqual(bb.evaluate(store.post, item="w", batch_history=True), bb.evaluate(store.post, item="w"))
+
     def test_idle_does_no_reads(self):
         def no_reads(*args):
             self.fail("idle adapter made a graph request")
