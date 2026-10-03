@@ -123,10 +123,17 @@ def evaluate(kind, post, request):
                      f"SELECT ?w WHERE {{ {bb.pattern('?w', 'blockedOn', '?d')} }}")}
             observations = {bb._local(r["o"]) for r in bb.select(post,
                             f"SELECT ?o WHERE {{ {bb.pattern('?o', 'observedBlockedOn', '?d')} }}")}
-            if observations:
-                names.update(bb._local(r["w"]) for r in bb.select(post,
-                             f"SELECT ?w ?o WHERE {{ {bb.pattern('?w', 'observes', '?o')} }}")
-                             if bb._local(r["o"]) in observations)
+            # Reading every observes edge exceeds the server's row budget.
+            # Resolve only blocker-bearing observations, in bounded UNIONs of
+            # single reverse patterns; no joins or OFFSET scans of the graph.
+            observations = sorted(observations)
+            for start in range(0, len(observations), 32):
+                batch = observations[start:start + 32]
+                columns = " ".join(f"?w{i}" for i in range(len(batch)))
+                branches = " UNION ".join(f"{{ ?w{i} <{bb.A}observes> <{bb.A}{obs}> }}"
+                                          for i, obs in enumerate(batch))
+                for row in bb.select(post, f"SELECT {columns} WHERE {{ {branches} }}"):
+                    names.update(bb._local(v) for v in row.values() if v is not None)
         return {"version": 1, "items": sorted(names)}
     if "route" in request:
         return {"version": 1, "items": targets(post, kind, request["route"], [])}
@@ -136,7 +143,7 @@ def evaluate(kind, post, request):
     if full:
         records = bb.evaluate(post, today=instant.date()) if kind == "blocked" else rd.evaluate(post, now=instant)
     elif kind == "blocked":
-        records = [r for item in scope for r in bb.evaluate(post, item=item, today=instant.date())]
+        records = [r for item in scope for r in bb.evaluate(post, item=item, today=instant.date(), batch_history=True)]
     else:
         records = [rd.judge(post, item, instant) for item in scope]
         records = [r for r in records if r["basis"]]

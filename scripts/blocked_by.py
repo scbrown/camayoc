@@ -91,8 +91,9 @@ BLOCKED, UNBLOCKED = "BLOCKED", "UNBLOCKED"
 class _EvaluationReads:
     """One run's transport and history resolutions, never shared across runs."""
 
-    def __init__(self, post):
+    def __init__(self, post, batch_history=False):
         self.post = post
+        self.batch_history = batch_history
         self.latest: dict[str, str | None] = {}
 
     def __call__(self, endpoint, body):
@@ -212,12 +213,28 @@ def latest_observation(post, item: str) -> str | None:
 def _read_latest_observation(post, item: str) -> str | None:
     # Two BOUND single-pattern queries, never a join: quipu plans even a
     # bound-subject two-pattern query from its unbound side and 408s it live.
+    observations = [_local(row["obs"]) for row in select(post,
+                    f"SELECT ?obs WHERE {{ {pattern(f'<{A}{item}>', 'observes', '?obs')} }}")]
     stamped = []
-    for row in select(post, f"SELECT ?obs WHERE {{ {pattern(f'<{A}{item}>', 'observes', '?obs')} }}"):
-        obs = _local(row["obs"])
-        at = select(post, f"SELECT ?at WHERE {{ {pattern(f'<{A}{obs}>', 'observedAt', '?at')} }}")
-        if at:
-            stamped.append((str(at[0]["at"]), obs))
+    if isinstance(post, _EvaluationReads) and post.batch_history:
+        # Each UNION branch is still ONE bound pattern. Distinct output variables
+        # identify the observation without BIND, VALUES or a graph join. Keep the
+        # legacy evaluator unbatched as an independent parity oracle.
+        for start in range(0, len(observations), 32):
+            batch = observations[start:start + 32]
+            branches = [f"{{ <{A}{obs}> <{iri}> ?at{i} }}" for i, obs in enumerate(batch)
+                        for iri in term_iris("observedAt")]
+            columns = " ".join(f"?at{i}" for i in range(len(batch)))
+            rows = select(post, f"SELECT {columns} WHERE {{ {' UNION '.join(branches)} }}")
+            for i, obs in enumerate(batch):
+                first = next((r[f"at{i}"] for r in rows if r.get(f"at{i}") is not None), None)
+                if first is not None:
+                    stamped.append((str(first), obs))
+    else:
+        for obs in observations:
+            at = select(post, f"SELECT ?at WHERE {{ {pattern(f'<{A}{obs}>', 'observedAt', '?at')} }}")
+            if at:
+                stamped.append((str(at[0]["at"]), obs))
     if not stamped:
         return None
     newest = max(at for at, _ in stamped)
@@ -351,11 +368,11 @@ def verdict(states: list[str]) -> str:
 
 
 def evaluate(post, *, item: str | None = None, today: dt.date | None = None,
-             probes=None) -> list[dict]:
+             probes=None, batch_history=False) -> list[dict]:
     # Historical dependency rows can repeat the same WorkItem many times.
     # All consumers (status, assignee and event identity too) share this run's
     # resolution, so each history is walked once, not once per historical row.
-    post = _EvaluationReads(post)
+    post = _EvaluationReads(post, batch_history=batch_history)
     today = today or dt.date.today()
     scope = f"<{A}{item}>" if item else "?w"
     # Declared by an agent on the WorkItem ...

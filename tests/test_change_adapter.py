@@ -20,6 +20,32 @@ def change(subject, prop, value=None, old=None):
 
 
 class Incremental(unittest.TestCase):
+    def test_batched_history_matches_full_and_bounds_reads(self):
+        triples = item("w", "open") + [("w", "blockedOn", "d")]
+        for i in range(100):
+            triples += item("d", "closed" if i == 99 else "open",
+                            at=f"2026-09-{1 + i // 24:02d}T{i % 24:02d}:00:00Z", obs=f"od{i}")
+        store = Store(triples)
+        calls = []
+        def post(endpoint, body):
+            calls.append(body["query"])
+            return store.post(endpoint, body)
+        old = bb.evaluate(post, item="w")
+        old_count = len(calls)
+        calls.clear()
+        new = bb.evaluate(post, item="w", batch_history=True)
+        self.assertEqual(new, old)
+        self.assertLess(len(calls), old_count // 3)
+        self.assertTrue(any("?at31" in q for q in calls))
+        self.assertFalse(any("VALUES" in q or "BIND" in q or " . " in q for q in calls))
+
+    def test_batched_tie_preserves_projected_status_preference(self):
+        store = Store(item("w", "open") + [("w", "blockedOn", "d"), ("d", "a", "WorkItem"),
+                      ("d", "observes", "older"), ("d", "observes", "projected"),
+                      ("older", "observedAt", "2026-09-30"), ("projected", "observedAt", "2026-09-30"),
+                      ("projected", "observedStatus", "closed")])
+        self.assertEqual(bb.evaluate(store.post, item="w", batch_history=True), bb.evaluate(store.post, item="w"))
+
     def test_idle_does_no_reads(self):
         def no_reads(*args):
             self.fail("idle adapter made a graph request")
@@ -71,6 +97,23 @@ class Incremental(unittest.TestCase):
         self.assertEqual(result["items"], ["w"])
         self.assertEqual(len(calls), 6)
         self.assertFalse(any("observedStatus" in q for q in calls))
+
+    def test_catalogue_bounds_reverse_reads_instead_of_scanning_all_history(self):
+        triples = []
+        for i in range(70):
+            triples += [("w", "observes", f"o{i}"), (f"o{i}", "observedBlockedOn", "d")]
+        store = Store(triples)
+        queries = []
+        def post(endpoint, body):
+            q = body["query"]
+            if "SELECT ?w ?o" in q:
+                return {"rows": [], "truncated": True}
+            queries.append(q)
+            return store.post(endpoint, body)
+        result = ca.evaluate("blocked", post, {"now": NOW, "discover": True})
+        self.assertEqual(result["items"], ["w"])
+        self.assertEqual(len(queries), 15)
+        self.assertFalse(any("?w32" in q for q in queries))
 
     def test_recorded_day_parity_close_reopen_remove_and_add(self):
         store = Store(item("w", "open") + item("other", "open") + item("d", "open", obs="od")
