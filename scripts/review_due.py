@@ -139,7 +139,12 @@ def evaluate(post, *, now: dt.datetime | None = None) -> list[dict]:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--due-only", action="store_true")
+    parser.add_argument("--changes", action="store_true", help="incremental JSON protocol on stdin")
+    parser.add_argument("--describe", action="store_true", help="print change subscription, no graph reads")
     args = parser.parse_args(argv)
+    if args.changes or args.describe:
+        import change_adapter
+        return change_adapter.main("review", describe=args.describe)
     post = lambda endpoint, body: planes._post(endpoint, body, client=CLIENT)  # noqa: E731
     rows = evaluate(post)
     if args.due_only:
