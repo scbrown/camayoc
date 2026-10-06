@@ -135,6 +135,7 @@ Caboodle installs these together and proves each one works; every tool also stan
 | [bobbin](https://github.com/scbrown/bobbin) | search and context over your repositories, served over MCP |
 | [yupana](https://github.com/scbrown/yupana) | which code calls which: the blast radius before an edit |
 | [desire-path](https://github.com/scbrown/desire-path) | the tool calls your agents get wrong, so you can fix them |
+| [seeds](https://github.com/scbrown/seeds) | the work your agents track, as facts in the graph with full history |
 
 ## Contributing
 
@@ -146,3 +147,27 @@ just check   # the local quality gate
 ## 📜 License
 
 [Apache-2.0](LICENSE)
+
+### Incremental verdict adapters
+
+`blocked_by.py` and `review_due.py` also accept `--describe` and `--changes`
+for Chaski's incremental protocol. `--describe` prints watched predicates, type
+IRIs and trusted planes without querying the store. `--changes` consumes one
+JSON request with `now` and either `discover: true`, `route: [fact changes]`, or
+`items: [local keys]`. Responses carry protocol `version: 1` and respectively
+`items`, `items`, or `scope`/`records`/`next_checks`.
+
+Routing follows changed observations to their WorkItems, then reverse blocker
+edges to dependent work. Review routing follows verification links, including
+retracted `old_value` links. Existing graph-plane and legacy/public vocabulary
+rules apply unchanged. Discovery reads the candidate catalogue only; Chaski
+queues bounded evaluation batches instead of scanning verdicts in one process.
+The command budgets graph reads at eight per second and caches identical reads
+within a request. The ordinary full-evaluation CLI remains the parity oracle.
+
+Future review ages and date blockers supply exact deadlines. Only external
+probes and arbitrary resolution queries retain individual 15-minute checks,
+because their dependencies cannot be enumerated from graph changes. Missing
+facts and unanchored ages remain UNKNOWN and await a relevant change; they do
+not cause a repeated population scan. Transport failures fail the invocation,
+so the consumer retains pending work. This protocol performs no graph writes.

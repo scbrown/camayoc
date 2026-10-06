@@ -21,7 +21,10 @@ from ingest_work_items import BASE_NS, _entity_name, episode_for
 import planes
 
 INTERVAL = 60
-RECHECK = 6 * 3600
+# 24h, not 6h (aegis-7dcleu, malcolm's call). At one item per INTERVAL the lane
+# serves ~60/h shared with transitions; 645 items at 6h needed ~107/h, so rechecks
+# lagged without bound (31h measured). 645 / 24h is ~27/h, ~45% utilization.
+RECHECK = 24 * 3600
 MAX_BODY = 256 * 1024
 MAX_ATTEMPTS = 3
 MAX_BATCH = 4
@@ -72,7 +75,7 @@ def records_from(payload):
     if len({r['id'] for r in records}) != len(records):
         raise ValueError('duplicate tracker identifiers')
     return [r for r in records if r.get('status') == 'in_progress' or
-            (r.get('status') in ('open', 'blocked') and r.get('assignee'))]
+            (r.get('status') in ('open', 'blocked', 'deferred') and r.get('assignee'))]
 
 
 def fetch_ids(db, ids, run=None):
@@ -105,9 +108,11 @@ def collect(db, tracked=(), run=None, deps_cache=None):
     current set, until its final state is verified.
     """
     run = run or subprocess.run
+    # `--status deferred` explicitly: in this br, `--deferred` beside explicit
+    # --status filters adds NO deferred rows (aegis-prhnn4, measured 0 of 156).
     result = run(['br', '--db', str(db), 'list', '--status', 'open',
                   '--status', 'in_progress', '--status', 'blocked',
-                  '--deferred', '--limit', '0', '--json'],
+                  '--status', 'deferred', '--deferred', '--limit', '0', '--json'],
                  check=True, capture_output=True, text=True, timeout=15)
     records = records_from(json.loads(result.stdout))
     # Same dependency set the backfill projects (aegis-3b3nrb), so both writers
@@ -213,12 +218,20 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
     for item, entry in entries.items():
         if item not in current and not entry.get('pending'):
             continue
-        due = (entry.get('pending') or entry.get('version') != current[item]['name']
-               or now - entry.get('verified_at', 0) >= RECHECK)
-        if due:
+        owed = bool(entry.get('pending') or entry.get('error')
+                    or entry.get('version') != current[item]['name'])
+        due = owed or now - entry.get('verified_at', 0) >= RECHECK
+        # due_since measures OWED work only (backlog age, the Unhealthy signal). A
+        # periodic recheck is lowest-priority rotation and may legitimately wait
+        # many hours; stamping it made a recheck that later timed out carry its
+        # whole rotation wait into oldest_seconds and page (31h, 2026-10-01,
+        # aegis-64cr5o). Its clock starts when it becomes owed (error / pending).
+        if owed:
             entry.setdefault('due_since', now)
-            if now >= entry.get('not_before', 0):
-                candidates.append(item)
+        else:
+            entry.pop('due_since', None)
+        if due and now >= entry.get('not_before', 0):
+            candidates.append(item)
     receipt = {'status': 'OK', 'requests': 0, 'writes': 0, 'verified': 0,
                'current': len(current), 'invalid': len(invalid), 'parked': invalid[:20],
                'items': [], 'max_items': max_items}
@@ -237,7 +250,12 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
     candidates.sort(key=lambda i: entries[i].get('created_at', ''), reverse=True)
     # A version change (a real transition) goes ahead of the periodic recheck
     # rotation; otherwise it waited behind every current item at one per tick.
+    # A recheck that FAILED is owed work too, not rotation: its error keeps the
+    # whole receipt UNKNOWN until it is retried, and behind a standing backlog
+    # of transitions it was never retried (aegis-alfe2l: 629 ticks, 0 attempts).
+    # The fair clock below still rotates it behind work already waiting.
     candidates.sort(key=lambda i: (not (entries[i].get('pending')
+                                        or entries[i].get('error')
                                         or entries[i].get('version') != current[i]['name']),
                                    max(entries[i]['last_attempt'], entries[i]['first_seen']),
                                    entries[i]['last_attempt'] != 0,
@@ -314,12 +332,24 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
         except Exception as exc:
             # Do not print transport response bodies or credential-bearing URLs.
             entry['error'] = type(exc).__name__
+            entry.setdefault('due_since', now)  # owed from now (see the candidate loop)
             entry['not_before'] = now + (900 if entry.get('pending', {}).get('attempts', 0) >= MAX_ATTEMPTS else INTERVAL)
             receipt.update(status='UNKNOWN', error=type(exc).__name__)
     outstanding = [e for i, e in entries.items() if e.get('pending') or
                    (i in current and (e.get('version') != current[i]['name'] or e.get('error')))]
     receipt['backlog'] = len(outstanding)
     receipt['oldest_seconds'] = max((now - e.get('due_since', now) for e in outstanding), default=0)
+    # Recheck staleness, invisible since due_since counts owed work only (camayoc#59):
+    # the oldest verification among current items, and the recheck demand as a
+    # fraction of lane capacity (> 1 means rechecks can never keep up).
+    receipt['oldest_verified_seconds'] = max(
+        (now - entries[i]['verified_at'] for i in current if entries.get(i, {}).get('verified_at')),
+        default=0)
+    receipt['recheck_utilization'] = round((len(current) / (RECHECK / 3600)) / (3600 / INTERVAL), 4)
+    # oldest_verified_seconds skips never-verified items and reads 0 when NONE are
+    # verified, so a warning on it alone is blind to zero coverage (malcolm, review
+    # of #60). Count the current items that have never been verified.
+    receipt['unverified_items'] = sum(1 for i in current if not entries.get(i, {}).get('verified_at'))
     pending_entries = [e for e in outstanding if e.get('pending')]
     receipt['indeterminate'] = len(pending_entries)
     if (invalid or any(e['pending']['attempts'] >= MAX_ATTEMPTS for e in pending_entries)
@@ -381,6 +411,9 @@ def main():
                 ('camayoc_workitem_ingress_exit_status', {}, code),
                 ('camayoc_workitem_ingress_backlog', {}, receipt.get('backlog', -1)),
                 ('camayoc_workitem_ingress_oldest_seconds', {}, receipt.get('oldest_seconds', -1)),
+                ('camayoc_workitem_ingress_oldest_verified_seconds', {}, receipt.get('oldest_verified_seconds', -1)),
+                ('camayoc_workitem_ingress_recheck_utilization', {}, receipt.get('recheck_utilization', -1)),
+                ('camayoc_workitem_ingress_unverified_items', {}, receipt.get('unverified_items', -1)),
                 ('camayoc_workitem_ingress_indeterminate', {}, receipt.get('indeterminate', -1)),
                 ('camayoc_workitem_ingress_degraded', {}, int(receipt['status'] == 'DEGRADED')),
             ]

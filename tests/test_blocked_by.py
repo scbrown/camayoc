@@ -15,9 +15,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 import blocked_by as bb  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from sparql_fake import TripleStore  # noqa: E402
 
 A = bb.A
 TODAY = dt.date(2026, 9, 24)
+
+
+# Predicates whose objects are instances (returned as aegis:<name>).
+IRI_OBJECTS = {"blockedOn", "observes", "observedBlockedOn"}
 
 
 class Store:
@@ -38,39 +44,7 @@ class Store:
         return {"rows": self._select(q), "truncated": False}
 
     def _select(self, q):
-        where = q[q.index("{"):]
-        if " . " in where.strip("{} "):
-            raise AssertionError(f"multi-pattern query (quipu 408s joins live): {q}")
-        subj = re.search(r"\{ <" + re.escape(A) + r"([^>]+)>", q)
-        s = subj.group(1) if subj else None
-        if "> <%sblockedOn> ?t" % A in q or "?w <%sblockedOn> ?t" % A in q:
-            return [{"w": f"aegis:{a}", "t": f"aegis:{c}"} for a, b, c in self.t
-                    if b == "blockedOn" and (s is None or a == s)]
-        if "> a ?t" in q:
-            return [{"t": f"aegis:{c}"} for a, b, c in self.t if a == s and b == "a"]
-        if f"> ?v }}" in q:
-            pred = re.search(r"<" + re.escape(A) + r"([A-Za-z]+)> \?v", q).group(1)
-            return [{"v": c} for a, b, c in self.t if a == s and b == pred]
-        for pred, var in (("closedAt", "c"), ("resolvesOn", "d"), ("resolutionQuery", "q")):
-            if f"<{A}{pred}> ?{var}" in q:
-                return [{var: c} for a, b, c in self.t if a == s and b == pred]
-        if " ?w <%sobserves> ?obs . ?obs " % A in q:
-            raise AssertionError("multi-pattern join over the whole store: quipu 408s it live")
-        if q.startswith("SELECT ?obs ?t WHERE { ?obs <%sobservedBlockedOn> ?t }" % A):
-            return [{"obs": f"aegis:{o}", "t": f"aegis:{t}"} for o, b, t in self.t if b == "observedBlockedOn"]
-        m = re.search(r"\?w <" + re.escape(A) + r"observes> <" + re.escape(A) + r"([^>]+)>", q)
-        if m:
-            return [{"w": f"aegis:{w}"} for w, b, o in self.t if b == "observes" and o == m.group(1)]
-        if f"<{A}observedBlockedOn> ?t" in q:
-            return [{"t": f"aegis:{c}"} for a, b, c in self.t if a == s and b == "observedBlockedOn"]
-        if f"<{A}observes> ?obs" in q:
-            return [{"obs": f"aegis:{o}"} for a, b, o in self.t if a == s and b == "observes"]
-        if f"<{A}observedAt> ?at" in q:
-            return [{"at": c} for a, b, c in self.t if a == s and b == "observedAt"]
-        for pred, var in (("observedStatus", "st"), ("observedValue", "v")):
-            if f"<{A}{pred}> ?{var}" in q:
-                return [{var: c} for a, b, c in self.t if a == s and b == pred]
-        raise AssertionError(f"unexpected query {q}")
+        return TripleStore(self.t, A, bb.Q, IRI_OBJECTS).select(q)
 
 
 def item(name, status=None, at="2026-09-20T00:00:00Z", obs=None):
@@ -350,3 +324,56 @@ class EventId(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def q_item(name, status=None, at="2026-09-20T00:00:00Z", obs=None):
+    """A WorkItem written entirely in quechua terms. `observes` has no quechua
+    twin in the transition map, so it stays legacy (aegis-9dpcta)."""
+    out = [(name, "a", "q:WorkItem")]
+    if status:
+        o = obs or f"obs-{name}-{at}"
+        out += [(name, "observes", o), (o, "q:observedAt", at), (o, "q:observedStatus", status)]
+    return out
+
+
+class QuechuaDualRead(unittest.TestCase):
+    """aegis-9dpcta: the served quipu does not honour owl:equivalentClass, so
+    the reader names both IRIs. Old, new and mixed data read alike."""
+
+    def test_a_quechua_typed_graph_blocks_and_unblocks_like_a_legacy_one(self):
+        for maker, edge in ((item, "blockedOn"), (q_item, "q:blockedOn")):
+            with self.subTest(edge=edge):
+                store = Store(maker("work", "open") + maker("dep", "open") + [("work", edge, "dep")])
+                self.assertEqual(run(store)["work"]["verdict"], "BLOCKED")
+                store.t.update(maker("dep", "closed", at="2026-09-25T00:00:00Z"))
+                self.assertEqual(run(store)["work"]["verdict"], "UNBLOCKED")
+
+    def test_mixed_edges_are_both_read(self):
+        store = Store(item("work", "open") + item("a", "closed") + q_item("b", "open")
+                      + [("work", "blockedOn", "a"), ("work", "q:blockedOn", "b")])
+        r = run(store)["work"]
+        self.assertEqual(sorted(b["target"] for b in r["blockers"]), ["a", "b"])
+        self.assertEqual(r["verdict"], "BLOCKED")
+
+    def test_the_same_edge_under_both_iris_is_one_blocker_with_unchanged_evidence(self):
+        legacy = run(Store(item("work", "open") + item("dep", "open") + [("work", "blockedOn", "dep")]))
+        dual = run(Store(item("work", "open") + item("dep", "open")
+                         + [("work", "blockedOn", "dep"), ("work", "q:blockedOn", "dep")]))
+        self.assertEqual(len(dual["work"]["blockers"]), 1)
+        self.assertEqual(dual["work"]["evidence"], legacy["work"]["evidence"])
+
+    def test_a_quechua_blocker_resolves_by_date(self):
+        store = Store(item("work", "open") + [("b", "a", "q:Blocker"), ("b", "q:resolvesOn", "2026-09-01"),
+                                              ("work", "q:blockedOn", "b")])
+        self.assertEqual(run(store)["work"]["verdict"], "UNBLOCKED")
+
+    def test_a_projected_quechua_dependency_blocks(self):
+        store = Store(item("work", "open", obs="o1") + item("dep", "open")
+                      + [("o1", "q:observedBlockedOn", "dep")])
+        self.assertEqual(run(store, item="work")["work"]["verdict"], "BLOCKED")
+        self.assertEqual(run(store)["work"]["verdict"], "BLOCKED")
+
+    def test_controls_absent_and_foreign_namespace_edges_are_not_read(self):
+        store = Store(item("work", "open") + item("dep", "open") + [("work", "x:blockedOn", "dep")])
+        self.assertEqual(run(store), {})  # a third namespace is no blocker
+        self.assertEqual(run(Store(item("work", "open"))), {})  # absent: nothing blocks

@@ -282,6 +282,68 @@ class Delivery(unittest.TestCase):
         self.assertEqual('DEGRADED', result['status'])
         self.assertEqual(1, result['indeterminate'])
 
+    def test_a_failed_recheck_is_retried_behind_a_standing_backlog(self):
+        a = {**RECORD, 'id': 'proj-a'}
+        self.tick([a])
+        self.control = False
+        failed = self.tick([a], now=1000 + sync.RECHECK)
+        self.assertEqual('proj-a', failed['item'])
+        self.assertIn('error', self.state['items']['proj-a'])
+        self.control = True
+        # A transition arrives on every tick, so the backlog never drains.
+        records, served = [a], []
+        for offset in range(1, 6):
+            records.append({**RECORD, 'id': f'proj-new-{offset}'})
+            receipt = self.tick(records, now=1000 + sync.RECHECK + offset * sync.INTERVAL)
+            served.append(receipt['item'])
+        self.assertIn('proj-a', served, 'a failed recheck must not starve behind arrivals')
+        self.assertNotIn('error', self.state['items']['proj-a'])
+        self.assertNotEqual('UNKNOWN', receipt['status'])
+
+    def test_a_long_rotation_wait_is_not_counted_as_backlog_age(self):
+        # aegis-64cr5o 2026-10-01: a recheck waited ~31h in rotation (by design),
+        # then failed its read-back and went pending; oldest_seconds reported the
+        # whole rotation wait and paged WorkItemIngressUnhealthy.
+        self.tick()
+        late = 1000 + 30 * 3600
+        self.state['items']['proj-a']['due_since'] = 1000 + sync.RECHECK  # a stale stamp
+        self.present = False
+        receipt = self.tick(now=late)
+        self.assertIn('pending', self.state['items']['proj-a'])
+        self.assertLess(receipt['oldest_seconds'], sync.INTERVAL * 2, receipt)
+
+    def test_a_pure_recheck_carries_no_backlog_clock(self):
+        self.tick()
+        self.state['items']['proj-a']['due_since'] = 1000  # stale stamp from before
+        # proj-a is a due RECHECK; the new arrival proj-b is owed and is served first.
+        receipt = self.tick([RECORD, {**RECORD, 'id': 'proj-b'}], now=1000 + sync.RECHECK)
+        self.assertEqual(receipt['item'], 'proj-b')
+        self.assertNotIn('due_since', self.state['items']['proj-a'])  # stale stamp cleared
+
+    def test_recheck_staleness_and_utilization_are_reported(self):
+        # aegis-7dcleu: with due_since owed-only, a starving recheck needs its own
+        # signal. Oldest verification among current items, and demand/capacity.
+        self.tick()
+        receipt = self.tick(now=1000 + 7200)
+        self.assertEqual(receipt['oldest_verified_seconds'], 7200)
+        self.assertEqual(receipt['recheck_utilization'], 0.0007)  # 1 item / 24h / 60 per h
+        self.assertEqual(sync.RECHECK, 24 * 3600)
+        self.assertEqual(receipt['unverified_items'], 0)
+
+    def test_utilization_at_the_measured_population_is_a_pinned_literal(self):
+        # 645 current items (measured 2026-10-01): a literal, not the formula mirrored.
+        records = [{**RECORD, 'id': f'proj-{n}'} for n in range(645)]
+        receipt = self.tick(records)
+        self.assertEqual(receipt['recheck_utilization'], 0.4479)
+
+    def test_zero_coverage_is_visible_not_fresh(self):
+        # Nothing verified: oldest_verified_seconds reads 0, which looks fresh, so
+        # unverified_items must carry the signal (malcolm, review of #60).
+        self.control = False
+        receipt = self.tick([RECORD, {**RECORD, 'id': 'proj-b'}])
+        self.assertEqual(receipt['oldest_verified_seconds'], 0)
+        self.assertEqual(receipt['unverified_items'], 2)
+
     def test_successful_version_not_reposted_and_recheck_is_read_only(self):
         self.tick()
         self.assertEqual(0, self.tick(now=1060)['requests'])
@@ -292,8 +354,13 @@ class Delivery(unittest.TestCase):
         self.tick()
         self.control = False
         self.tick(now=1000 + sync.RECHECK)
+        records = [RECORD, {**RECORD, 'id': 'proj-b'}]
+        # The failed recheck is owed work (aegis-alfe2l), so it is retried
+        # first; it fails again and must stay visible while proj-b succeeds.
+        self.assertEqual('proj-a', self.tick(records, now=1060 + sync.RECHECK)['item'])
         self.control = True
-        result = self.tick([RECORD, {**RECORD, 'id': 'proj-b'}], now=1060 + sync.RECHECK)
+        result = self.tick(records, now=1120 + sync.RECHECK)
+        self.assertEqual('proj-b', result['item'])
         self.assertEqual(1, result['verified'])
         self.assertEqual('UNKNOWN', result['status'])
         self.assertEqual(1, result['backlog'])
@@ -375,6 +442,16 @@ class TrackerFormats(unittest.TestCase):
         self.assertEqual(['br', '--db', '/tmp/fixture.db', 'list'], argv[:4])
         self.assertIn('--deferred', argv)
         self.assertEqual('0', argv[argv.index('--limit') + 1])
+        # aegis-prhnn4: `--deferred` alone added 0 of 156 deferred rows beside
+        # explicit --status filters. The status must be requested by name.
+        statuses = {argv[i + 1] for i, a in enumerate(argv) if a == '--status'}
+        self.assertEqual({'open', 'in_progress', 'blocked', 'deferred'}, statuses)
+
+    def test_scope_includes_assigned_deferred_work_only(self):
+        # aegis-prhnn4: the probe doc promises deferred ASSIGNMENTS are covered.
+        variants = [{**RECORD, 'id': 'proj-def', 'status': 'deferred'},
+                    {**RECORD, 'id': 'proj-def-free', 'status': 'deferred', 'assignee': None}]
+        self.assertEqual(['proj-def'], [r['id'] for r in sync.records_from(variants)])
 
 
 class Transitions(unittest.TestCase):
@@ -437,6 +514,40 @@ class Transitions(unittest.TestCase):
         state = {}
         sync.tick([done], state, path, actor='t', source='br:x', now=1000, post=post)
         self.assertTrue(state['items']['proj-done'].get('final'))
+
+    def test_a_tracked_deferred_item_that_closes_ends_closed(self):
+        # aegis-prhnn4 [prhnn4-close-gap] (dearing): a dep-less deferred bead that
+        # closed kept observedStatus=deferred forever, because the sync never
+        # tracked it and the backfill re-projects a covered bead only when it has
+        # blocked_on. Once deferred work is current, its close trails out.
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        path = Path(temp.name) / 'state.json'
+        deferred = {**RECORD, 'id': 'proj-def', 'status': 'deferred'}
+        closed = {**deferred, 'status': 'closed', 'closed_at': '2026-10-01T05:00:00Z',
+                  'updated_at': '2026-10-01T05:00:00Z'}
+        bodies = []
+
+        def post(endpoint, body):
+            if endpoint == '/episode':
+                bodies.append(body)
+                return {'outcome': 'created'}
+            return {'rows': [{'s': 'c', 't': 'WorkItem', 'o': 'Observation'}]}
+        state = {}
+        run, _ = self.fake_br([deferred], {})
+        records = sync.collect(Path('/tmp/f.db'), run=run)
+        self.assertEqual(['proj-def'], [r['id'] for r in records], 'deferred work is current')
+        sync.tick(records, state, path, actor='t', source='br:x', now=1000, post=post)
+        self.assertIn('proj-def', state['items'], 'the sync now tracks it')
+        # It closes: it leaves the current set and trails out through `tracked`.
+        run, _ = self.fake_br([], {'proj-def': closed})
+        records = sync.collect(Path('/tmp/f.db'), tracked=list(state['items']), run=run)
+        self.assertTrue(records[0]['trailing'])
+        sync.tick(records, state, path, actor='t', source='br:x', now=1060, post=post)
+        self.assertTrue(state['items']['proj-def'].get('final'))
+        last = json.dumps(bodies[-1])
+        self.assertIn('closed', last, 'the final observation is closed')
+        self.assertNotIn('"deferred"', last)
 
     def test_dependencies_are_looked_up_only_when_updated_at_moves(self):
         looked = []

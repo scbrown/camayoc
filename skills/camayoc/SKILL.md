@@ -12,7 +12,9 @@ guidance — a refused write means the gate is working, not that you should
 route around it.
 
 **Server:** resolve in this order: `$QUIPU_SERVER` → project config
-(`.bobbin/config.toml` or `env.json`) → `http://localhost:3030`. Reads are
+(`env.json`, then `.bobbin/config.toml` `[quipu.server] bind`) → `http://localhost:3030`.
+A server reached only through that default is UNVERIFIED: any process can hold
+the port, so it is not your governed memory until you configure it. Reads are
 open; writes need `Authorization: Bearer $QUIPU_AUTH_TOKEN` when the server
 is gated. Never hardcode a server or namespace — they are deployment
 parameters.
