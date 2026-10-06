@@ -1,0 +1,48 @@
+{
+  "work-ledger": {
+    "description": "A tracker's work items, their dependencies, assignees and version observations, plus the decisions made under them.",
+    "ontology": [
+      "ontology/core.ttl"
+    ],
+    "shapes": [
+      "shapes/core.shapes.ttl"
+    ],
+    "queries": [
+      "camayoc_ex_ready_work",
+      "camayoc_ex_blocked_by_chain",
+      "camayoc_ex_my_plate",
+      "camayoc_ex_recently_changed",
+      "camayoc_ex_who_said_this",
+      "camayoc_ex_stale_facts",
+      "camayoc_ex_orphaned_entities"
+    ]
+  },
+  "code-graph": {
+    "description": "Modules and symbols as bobbin's knowledge export emits them.",
+    "ontology": [],
+    "shapes": [
+      "shapes/code-entities.ttl"
+    ],
+    "queries": [
+      "camayoc_ex_symbols_in_module",
+      "camayoc_ex_orphaned_entities"
+    ]
+  },
+  "directive-graph": {
+    "description": "Directives and decisions about shared topics, with supersession kept rather than deleted.",
+    "ontology": [
+      "ontology/core.ttl"
+    ],
+    "shapes": [
+      "shapes/core.shapes.ttl",
+      "examples/shapes/directives.shapes.ttl"
+    ],
+    "queries": [
+      "camayoc_ex_active_directives",
+      "camayoc_ex_directives_about",
+      "camayoc_ex_who_said_this",
+      "camayoc_ex_stale_facts",
+      "camayoc_ex_orphaned_entities"
+    ]
+  }
+}
