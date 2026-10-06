@@ -86,6 +86,67 @@ class Selection(unittest.TestCase):
         self.assertEqual(q.writes[0], episode_for(bead(7), actor="a", source="s"))
 
 
+def dep(i, deps, created="2026-09-01T00:00:00Z"):
+    record = bead(i, created)
+    record["blocked_on"] = list(deps)
+    return record
+
+
+class Reprojection(unittest.TestCase):
+    """aegis-ima1hq: a covered bead is re-projected only when its deps CHANGED."""
+
+    def test_unchanged_deps_are_written_once_then_never_again(self):
+        q = FakeQuipu(covered={"aegis-1"})
+        projected = {}
+        first = go(q, [dep(1, ["aegis-9"])], projected=projected)
+        self.assertEqual((first["written"], first["reproject_pending"]), (1, 1))
+        second = go(q, [dep(1, ["aegis-9"])], projected=projected)
+        self.assertEqual((second["attempted"], second["reproject_pending"]), (0, 0))
+        self.assertEqual(len(q.writes), 1)
+
+    def test_changed_deps_are_reprojected(self):
+        q = FakeQuipu(covered={"aegis-1"})
+        projected = {"aegis-1": "aegis-9"}
+        report = go(q, [dep(1, ["aegis-9", "aegis-8"])], projected=projected)
+        self.assertEqual(report["written"], 1)
+        self.assertEqual(projected["aegis-1"], "aegis-8,aegis-9")
+
+    def test_a_newly_written_missing_bead_records_its_deps(self):
+        q = FakeQuipu()
+        projected = {}
+        go(q, [dep(1, ["aegis-9"])], projected=projected)
+        self.assertEqual(go(q, [dep(1, ["aegis-9"])], projected=projected)["attempted"], 0)
+
+    def test_missing_beads_come_before_reprojections_under_max(self):
+        # The starvation shape: more stale covered beads than --max, all NEWER.
+        covered = {f"aegis-{i}" for i in range(10, 20)}
+        q = FakeQuipu(covered=covered)
+        recs = [dep(i, ["aegis-x"], "2026-09-09T00:00:00Z") for i in range(10, 20)]
+        recs += [bead(1), bead(2)]
+        report = go(q, recs, limit=3, projected={})
+        names = [b["nodes"][0]["name"] for b in q.writes]
+        self.assertEqual(sorted(names[:2]), ["aegis-1", "aegis-2"])
+        self.assertEqual(report["written"], 3)
+
+    def test_an_indeterminate_write_is_not_recorded(self):
+        q = FakeQuipu(covered={"aegis-1"}, fail_on={"aegis-1"})
+        projected = {}
+        go(q, [dep(1, ["aegis-9"])], projected=projected)
+        self.assertNotIn("aegis-1", projected)
+
+    def test_state_roundtrip_and_malformed_state_means_empty(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "x.projected.json"
+            self.assertEqual(bf.load_projected(path), {})
+            bf.save_projected(path, {"aegis-1": "aegis-9"})
+            self.assertEqual(bf.load_projected(path), {"aegis-1": "aegis-9"})
+            path.write_text("[1, 2")
+            self.assertEqual(bf.load_projected(path), {})
+            path.write_text('{"aegis-1": 5}')
+            self.assertEqual(bf.load_projected(path), {})
+
+
 class Safety(unittest.TestCase):
     def test_no_workitems_at_all_is_a_broken_instrument_not_a_green_light(self):
         with self.assertRaises(ValueError):
