@@ -63,8 +63,8 @@ jobs:
       - name: Fetch quipu-server
         id: fetch
         env:
-          QUIPU_TAG: quipu-ai-v0.9.0
-          QUIPU_SHA256: eb24d632632ced0013f9e80f5fe1718053596ceac0267266c8258636575bbe4a
+          QUIPU_TAG: quipu-ai-v0.11.0
+          QUIPU_SHA256: 328eacceb9f9c0e8fcb03c0ef2a4af53ca390b65bc02ca25550fce72f98806c7
         run: |
           set -euo pipefail
           tag="$QUIPU_TAG"
