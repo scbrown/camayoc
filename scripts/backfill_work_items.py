@@ -128,7 +128,7 @@ def run(records, done: set[str], post, *, actor, source, rate, stop_after,
     # differs from the one this store last wrote successfully (`projected`,
     # id -> deps_key). Re-posting every covered bead with dependencies on every
     # tick was a graph no-op and NOT a server no-op: ~2.2 s of writer time each,
-    # ~10.7k a day, 43% of quipu's wall time, and at 1,046 such beads in one
+    # ~10.7k a day, 43% of quipu's wall time, and at 486 such beads in one
     # store it filled --max, so missing beads were never reached (aegis-ima1hq).
     # MISSING beads go first for the same reason: a re-projection must never
     # starve coverage.
