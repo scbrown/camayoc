@@ -194,10 +194,19 @@ def run(quipu: str, server_bin: str, work: Path) -> dict:
     )
     if staged["outcome"] != "staged":
         raise Failure(f"import was {staged['outcome']}: {staged['promotion']['blockers']}")
-    installed = sorted(staged["queries"]["installed"])
-    if installed != sorted(f"{NAMESPACE}/{n}" for n in names):
-        raise Failure(f"import installed {installed}")
-    cli(quipu, "import", "promote", staged["share_id"], "--db", str(receiver))
+    expected = sorted(f"{NAMESPACE}/{n}" for n in names)
+    # A staged import installs NOTHING: its queries wait behind the same promote gate
+    # as its data (quipu >= 0.10.0, aegis-9ofqqs). Installing at import is the bug.
+    early = sorted(staged["queries"].get("installed", []))
+    if early:
+        raise Failure(f"staged import already installed {early}; queries must wait for promote")
+    waiting = sorted(staged["queries"].get("awaiting_promotion", []))
+    if waiting != expected:
+        raise Failure(f"import holds {waiting} for promotion, expected {expected}")
+    promoted = json.loads(cli(quipu, "import", "promote", staged["share_id"], "--db", str(receiver)))
+    installed = sorted(promoted["queries"]["installed"])
+    if installed != expected:
+        raise Failure(f"promote installed {installed}")
     with Server(server_bin, receiver) as srv:
         after = ask_all(srv, prefix=f"{NAMESPACE}/")
 
