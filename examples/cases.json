@@ -1,0 +1,114 @@
+[
+  {
+    "query": "camayoc_ex_ready_work",
+    "params": {},
+    "expect": [
+      "http://camayoc.test/examples/w2",
+      "http://camayoc.test/examples/w5"
+    ]
+  },
+  {
+    "query": "camayoc_ex_blocked_by_chain",
+    "params": {
+      "item": "http://camayoc.test/examples/w4"
+    },
+    "expect": [
+      "http://camayoc.test/examples/w1",
+      "http://camayoc.test/examples/w2",
+      "http://camayoc.test/examples/w3"
+    ]
+  },
+  {
+    "query": "camayoc_ex_blocked_by_chain",
+    "params": {
+      "item": "http://camayoc.test/examples/w2"
+    },
+    "expect": [
+      "http://camayoc.test/examples/w1"
+    ]
+  },
+  {
+    "query": "camayoc_ex_my_plate",
+    "params": {
+      "assignee": "http://camayoc.test/examples/alice"
+    },
+    "expect": [
+      "http://camayoc.test/examples/w2",
+      "http://camayoc.test/examples/w4"
+    ]
+  },
+  {
+    "query": "camayoc_ex_my_plate",
+    "params": {
+      "assignee": "http://camayoc.test/examples/bob"
+    },
+    "expect": [
+      "http://camayoc.test/examples/w5",
+      "http://camayoc.test/examples/w3"
+    ]
+  },
+  {
+    "query": "camayoc_ex_recently_changed",
+    "params": {
+      "since": "2026-09-20T00:00:00Z"
+    },
+    "expect": [
+      "http://camayoc.test/examples/w2"
+    ]
+  },
+  {
+    "query": "camayoc_ex_who_said_this",
+    "params": {
+      "subject": "http://camayoc.test/examples/qpack-format"
+    },
+    "expect": [
+      "http://camayoc.test/examples/d1",
+      "http://camayoc.test/examples/dir0",
+      "http://camayoc.test/examples/dir1"
+    ]
+  },
+  {
+    "query": "camayoc_ex_stale_facts",
+    "params": {
+      "asof": "2026-09-20"
+    },
+    "expect": [
+      "http://camayoc.test/examples/dir0",
+      "http://camayoc.test/examples/w5"
+    ]
+  },
+  {
+    "query": "camayoc_ex_orphaned_entities",
+    "params": {},
+    "expect": [
+      "http://camayoc.test/examples/lonely"
+    ]
+  },
+  {
+    "query": "camayoc_ex_symbols_in_module",
+    "params": {
+      "module": "http://camayoc.test/examples/mod-share"
+    },
+    "expect": [
+      "http://camayoc.test/examples/sym-payload",
+      "http://camayoc.test/examples/sym-share"
+    ]
+  },
+  {
+    "query": "camayoc_ex_active_directives",
+    "params": {},
+    "expect": [
+      "http://camayoc.test/examples/dir1"
+    ]
+  },
+  {
+    "query": "camayoc_ex_directives_about",
+    "params": {
+      "subject": "http://camayoc.test/examples/qpack-format"
+    },
+    "expect": [
+      "http://camayoc.test/examples/dir0",
+      "http://camayoc.test/examples/dir1"
+    ]
+  }
+]

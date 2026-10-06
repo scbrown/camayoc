@@ -60,3 +60,10 @@ competency-list:
 # A question with no stored query is an ontology GAP reported as itself.
 query-coverage *args:
     @python3 scripts/query_coverage.py {{args}}
+
+# Ship the example query library (examples/) in a qpack, import it into a fresh
+# store and ask every case back (quipu aegis-fxpbys.2). Needs quipu + quipu-server
+# on PATH or QUIPU_BIN / QUIPU_SERVER_BIN; exits 3 on a quipu that predates
+# queries.ttl, which is a dependency state, not a pass.
+examples-qpack *args:
+    @python3 scripts/examples_qpack.py {{args}}

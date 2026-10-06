@@ -1,0 +1,7 @@
+{
+  "action": "load",
+  "name": "camayoc_ex_orphaned_entities",
+  "description": "Labelled entities the graph cannot reach: no outgoing link to another IRI (rdf:type aside) and nothing pointing at them. Usually an ingest that minted a node and never connected it.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> SELECT ?entity ?label WHERE { ?entity rdfs:label ?label . FILTER NOT EXISTS { ?entity ?predicate ?object . FILTER(isIRI(?object) && ?predicate != rdf:type) } FILTER NOT EXISTS { ?subject ?link ?entity } } ORDER BY ?label",
+  "params": []
+}

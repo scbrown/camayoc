@@ -1,0 +1,14 @@
+{
+  "action": "load",
+  "name": "camayoc_ex_directives_about",
+  "description": "Every directive about a subject, active or not, with what superseded each one.",
+  "template": "PREFIX aegis: <http://aegis.gastown.local/ontology/> PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#> SELECT ?directive ?label ?supersededBy WHERE { ?directive a aegis:Directive ; aegis:about <{subject}> ; rdfs:label ?label . OPTIONAL { ?directive aegis:supersededBy ?supersededBy } } ORDER BY ?label",
+  "params": [
+    {
+      "name": "subject",
+      "type": "iri",
+      "required": true,
+      "description": "The entity or topic"
+    }
+  ]
+}

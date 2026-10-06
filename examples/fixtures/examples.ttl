@@ -1,0 +1,81 @@
+# Fixture for the example query library (examples/README.md).
+#
+# One small graph that exercises every example: a work ledger with a blocker
+# chain, tracker observations, a decision, two directives (one superseded), a
+# code module with symbols, and one deliberately orphaned node. Each example in
+# examples/cases.json names the rows it must return AND is written so a query
+# that returned every row would fail — see tests/test_examples.py.
+#
+# Conforms to shapes/core.shapes.ttl, shapes/code-entities.ttl and
+# examples/shapes/directives.shapes.ttl, so a receiver with those shapes loaded
+# stages it rather than quarantining it.
+
+@prefix aegis:  <http://aegis.gastown.local/ontology/> .
+@prefix bobbin: <http://aegis.gastown.local/ontology/> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix ex:     <http://camayoc.test/examples/> .
+
+# ---- principals (untyped: a label is all these examples need) ----------
+ex:alice rdfs:label "alice" .
+ex:bob   rdfs:label "bob" .
+
+# ---- work ledger: w4 -> w3 -> w2 -> w1 ---------------------------------
+ex:w1 a aegis:WorkItem ; aegis:sourceKind "declared" ;
+    rdfs:label "Design share queries" ;
+    aegis:assignedTo ex:alice ; aegis:closedAt "2026-09-01T12:00:00Z" .
+ex:w2 a aegis:WorkItem ; aegis:sourceKind "declared" ;
+    rdfs:label "Implement queries.ttl" ;
+    aegis:assignedTo ex:alice ; aegis:blockedOn ex:w1 .
+ex:w3 a aegis:WorkItem ; aegis:sourceKind "declared" ;
+    rdfs:label "Write example queries" ;
+    aegis:assignedTo ex:bob ; aegis:blockedOn ex:w2 .
+ex:w4 a aegis:WorkItem ; aegis:sourceKind "declared" ;
+    rdfs:label "Publish the qpack" ;
+    aegis:assignedTo ex:alice ; aegis:blockedOn ex:w3 .
+ex:w5 a aegis:WorkItem ; aegis:sourceKind "declared" ;
+    rdfs:label "Triage the backlog" ;
+    aegis:assignedTo ex:bob ; aegis:reviewAfter "2026-09-10" .
+
+# ---- tracker observations (one per record version) ---------------------
+ex:obs-w2 a aegis:Observation ; aegis:sourceKind "observed" ;
+    rdfs:label "tracker snapshot of w2" ; aegis:about ex:w2 ;
+    aegis:observedAt "2026-09-25T10:00:00Z" ; aegis:observedStatus "in_progress" ;
+    aegis:observedValue "{\"id\":\"w2\",\"status\":\"in_progress\"}" .
+ex:obs-w5 a aegis:Observation ; aegis:sourceKind "observed" ;
+    rdfs:label "tracker snapshot of w5" ; aegis:about ex:w5 ;
+    aegis:observedAt "2026-09-02T09:00:00Z" ; aegis:observedStatus "open" ;
+    aegis:observedValue "{\"id\":\"w5\",\"status\":\"open\"}" .
+
+# ---- decisions and directives about one topic --------------------------
+ex:qpack-format rdfs:label "qpack format" .
+ex:d1 a aegis:Decision ; aegis:sourceKind "declared" ;
+    rdfs:label "Carry stored queries as queries.ttl" ;
+    aegis:chose "queries.ttl" ; aegis:about ex:qpack-format ;
+    aegis:decidedBy ex:alice ; aegis:decidedIn ex:w1 .
+ex:dir0 a aegis:Directive ; aegis:sourceKind "declared" ;
+    rdfs:label "Stored queries travel only in SQLite packs" ;
+    aegis:about ex:qpack-format ; aegis:supersededBy ex:dir1 ;
+    aegis:reviewAfter "2026-08-01" .
+ex:dir1 a aegis:Directive ; aegis:sourceKind "declared" ;
+    rdfs:label "qpacks carry their stored queries" ;
+    aegis:about ex:qpack-format ; aegis:reviewAfter "2027-01-01" .
+
+# ---- code graph ---------------------------------------------------------
+ex:mod-share a bobbin:CodeModule ; aegis:sourceKind "observed" ;
+    rdfs:label "src/share.rs" ; bobbin:filePath "src/share.rs" ;
+    bobbin:repo "quipu" ; bobbin:language "rust" .
+ex:mod-queries a bobbin:CodeModule ; aegis:sourceKind "observed" ;
+    rdfs:label "src/share_queries.rs" ; bobbin:filePath "src/share_queries.rs" ;
+    bobbin:repo "quipu" ; bobbin:language "rust" .
+ex:sym-share a bobbin:CodeSymbol ; aegis:sourceKind "observed" ;
+    rdfs:label "share" ; bobbin:name "share" ; bobbin:symbolKind "function" ;
+    bobbin:definedIn ex:mod-share .
+ex:sym-payload a bobbin:CodeSymbol ; aegis:sourceKind "observed" ;
+    rdfs:label "build_share_payload" ; bobbin:name "build_share_payload" ;
+    bobbin:symbolKind "function" ; bobbin:definedIn ex:mod-share .
+ex:sym-select a bobbin:CodeSymbol ; aegis:sourceKind "observed" ;
+    rdfs:label "select" ; bobbin:name "select" ; bobbin:symbolKind "function" ;
+    bobbin:definedIn ex:mod-queries .
+
+# ---- the orphan ----------------------------------------------------------
+ex:lonely rdfs:label "Unlinked note" .
