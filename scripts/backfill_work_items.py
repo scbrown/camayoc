@@ -115,27 +115,43 @@ def covered(post) -> set[str]:
     return {i for w, s in ids.items() if w in wi for i in s}
 
 
+def deps_key(record: dict) -> str:
+    """The dependency set a write projects, in a stable comparable form."""
+    return ",".join(sorted({str(x) for x in (record.get("blocked_on") or []) if str(x).strip()}))
+
+
 def run(records, done: set[str], post, *, actor, source, rate, stop_after,
         limit=None, dry_run=False, clock=time.monotonic, sleep=time.sleep,
-        max_slow=2, backoff=60.0) -> dict:
+        max_slow=2, backoff=60.0, projected: dict | None = None) -> dict:
     # A covered bead with dependencies is re-projected too: its Observation must
-    # carry observedBlockedOn (aegis-3b3nrb). episode_for is deterministic, so a
-    # bead already projected with the same dependencies re-posts as a no-op.
+    # carry observedBlockedOn (aegis-3b3nrb). But only when its dependency set
+    # differs from the one this store last wrote successfully (`projected`,
+    # id -> deps_key). Re-posting every covered bead with dependencies on every
+    # tick was a graph no-op and NOT a server no-op: ~2.2 s of writer time each,
+    # ~10.7k a day, 43% of quipu's wall time, and at 486 such beads in one
+    # store it filled --max, so missing beads were never reached (aegis-ima1hq).
+    # MISSING beads go first for the same reason: a re-projection must never
+    # starve coverage.
     # A record whose dependencies could not be read is SKIPPED, never written
     # without them: that would record "blocks on nothing" (see attach_blocked_on).
-    missing = [r for r in records if not r.get("dep_unknown")
-               and (r.get("id") not in done or r.get("blocked_on"))]
-    missing.sort(key=lambda r: r.get("created_at", ""), reverse=True)  # newest first
+    projected = {} if projected is None else projected
+    newest_first = lambda r: r.get("created_at", "")  # noqa: E731
+    eligible = [r for r in records if not r.get("dep_unknown")]
+    missing = sorted((r for r in eligible if r.get("id") not in done), key=newest_first, reverse=True)
+    stale = sorted((r for r in eligible if r.get("id") in done and r.get("blocked_on")
+                    and projected.get(r["id"]) != deps_key(r)), key=newest_first, reverse=True)
+    queue = missing + stale
     if limit is not None:
-        missing = missing[:limit]
+        queue = queue[:limit]
     report = {"beads": len(records), "covered_before": len(done & {r["id"] for r in records}),
               "missing": len([r for r in records if r.get("id") not in done]),
+              "reproject_pending": len(stale),
               "attempted": 0, "written": 0, "indeterminate": 0, "invalid": 0,
               "stopped": None, "dry_run": dry_run}
     gap = 1.0 / rate if rate > 0 else 0.0
     latencies: list[float] = []
     slow_streak = 0
-    for record in missing:
+    for record in queue:
         try:
             body = episode_for(record, actor=actor, source=source)
         except WorkItemError:
@@ -149,6 +165,8 @@ def run(records, done: set[str], post, *, actor, source, rate, stop_after,
         try:
             post("/episode", body)
             report["written"] += 1
+            if record.get("blocked_on"):
+                projected[record["id"]] = deps_key(record)
         except (planes.PlaneError, TimeoutError, OSError) as error:
             # Lost response, 502, timeout: the write may have LANDED. Leave it
             # to the next run's coverage query; never re-post blind.
@@ -183,6 +201,24 @@ def run(records, done: set[str], post, *, actor, source, rate, stop_after,
     return report
 
 
+def load_projected(path: Path) -> dict:
+    """The last-written dependency sets. Unreadable means EMPTY: the safe
+    direction is one extra re-projection of each bead, never a skipped one."""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {k: v for k, v in data.items() if isinstance(k, str) and isinstance(v, str)}
+
+
+def save_projected(path: Path, projected: dict) -> None:
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(projected, sort_keys=True) + "\n")
+    tmp.replace(path)
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--db", required=True, type=Path)
@@ -193,8 +229,11 @@ def main(argv=None) -> int:
                         help="stop if one write takes longer than this (writer-hold rule)")
     parser.add_argument("--max", type=int, help="at most this many writes this run")
     parser.add_argument("--lock", type=Path, default=Path("/tmp/camayoc-workitem-backfill.lock"))
+    parser.add_argument("--state", type=Path,
+                        help="dependency sets last written per bead (default: beside --lock)")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
+    state = args.state or args.lock.with_suffix(".projected.json")
 
     with args.lock.open("a") as lock:
         try:
@@ -207,8 +246,12 @@ def main(argv=None) -> int:
         from ingest_work_items import attach_blocked_on
         dep_unknown = attach_blocked_on(records, args.db)
         done = covered(post)
+        projected = load_projected(state)
         report = run(records, done, post, actor=args.actor, source=args.source, rate=args.rate,
-                     stop_after=args.stop_after, limit=args.max, dry_run=args.dry_run)
+                     stop_after=args.stop_after, limit=args.max, dry_run=args.dry_run,
+                     projected=projected)
+        if not args.dry_run:
+            save_projected(state, projected)
         if dep_unknown:
             report["dep_unknown"] = len(dep_unknown)
             report["dep_unknown_ids"] = dep_unknown[:20]
