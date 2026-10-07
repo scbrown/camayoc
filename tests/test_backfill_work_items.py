@@ -8,6 +8,7 @@ import json
 import sys
 import types
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -228,21 +229,57 @@ class Paging(unittest.TestCase):
 
     def test_more_rows_than_the_server_cap_are_all_read(self):
         post, calls = self.pages(12_345)
-        got = bf.paged(post, bf.WORKITEM_QUERY, {}, "WorkItem", None)
+        got = bf.paged(post, bf.WORKITEM_QUERIES[0], {}, "WorkItem", None)
         self.assertEqual(12_345, len(got))
         self.assertEqual(12_345, len({r["w"] for r in got}))
         self.assertTrue(all("ORDER BY ?w" in q for q in calls))
 
     def test_an_exact_multiple_of_the_page_ends_on_an_empty_page(self):
         post, calls = self.pages(2 * bf.PAGE)
-        self.assertEqual(2 * bf.PAGE, len(bf.paged(post, bf.WORKITEM_QUERY, {}, "WorkItem", None)))
+        self.assertEqual(2 * bf.PAGE, len(bf.paged(post, bf.WORKITEM_QUERIES[0], {}, "WorkItem", None)))
         self.assertEqual(3, len(calls))
 
     def test_a_truncated_page_is_still_refused(self):
         post, _ = self.pages(12_000, cap=100)  # a server cap below the page size
         with self.assertRaises(ValueError):
-            bf.paged(post, bf.WORKITEM_QUERY, {}, "WorkItem", None)
+            bf.paged(post, bf.WORKITEM_QUERIES[0], {}, "WorkItem", None)
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SplitTypeQuipu(FakeQuipu):
+    """Answers each asserted-type query with only the items typed THAT way:
+    `legacy` under the old class, `quechua` under its Quechua twin."""
+
+    def __init__(self, legacy, quechua):
+        super().__init__(covered=set(legacy) | set(quechua))
+        self.by_type = {bf.WORKITEM_TYPES[0]: set(legacy), bf.WORKITEM_TYPES[1]: set(quechua)}
+
+    def post(self, endpoint, body):
+        if endpoint == "/query" and "identifier" not in body["query"]:
+            iri = next(t for t in self.by_type if f"<{t}>" in body["query"])
+            return {"rows": [{"w": f"{NS}{i}"} for i in sorted(self.by_type[iri])],
+                    "truncated": False}
+        return super().post(endpoint, body)
+
+
+class QuechuaTypedItemsAreCovered(unittest.TestCase):
+    """aegis-9dpcta: the class may be renamed, the identifier may not. An item
+    typed only with the Quechua twin is already covered; re-posting it through
+    /episode would write the legacy type beside it and double-type the record."""
+
+    def test_a_quechua_typed_item_is_not_rewritten(self):
+        q = SplitTypeQuipu(legacy={"aegis-1"}, quechua={"aegis-2"})
+        report = go(q, [bead(1), bead(2), bead(3, "2026-09-03T00:00:00Z")])
+        self.assertEqual([b["nodes"][0]["name"] for b in q.writes], ["aegis-3"])
+        self.assertEqual(report["covered_before"], 2)
+
+    def test_a_legacy_only_reader_would_rewrite_it(self):
+        """The mutant: read only the legacy class and the Quechua-typed item
+        looks missing. This is the double-typing the dual read prevents."""
+        q = SplitTypeQuipu(legacy={"aegis-1"}, quechua={"aegis-2"})
+        with mock.patch.object(bf, "WORKITEM_QUERIES", bf.WORKITEM_QUERIES[:1]):
+            go(q, [bead(1), bead(2), bead(3, "2026-09-03T00:00:00Z")])
+        self.assertIn("aegis-2", [b["nodes"][0]["name"] for b in q.writes])
