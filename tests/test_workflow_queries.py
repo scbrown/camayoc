@@ -394,7 +394,7 @@ class PromotionReplayTests(unittest.TestCase):
 
     def replay(self, source_episode):
         episode, close = promote_plane.promote(
-            subject=self.FACT,
+            triples=[(f"<{self.FACT}>", "<http://aegis.gastown.local/ontology/governedBy>", "<http://camayoc.test/fixture/policy>")],
             target_plane="crew:records",
             promoted_by="alice",
             authored_by="claude",
@@ -405,7 +405,7 @@ class PromotionReplayTests(unittest.TestCase):
         )
         dataset = rdflib.Dataset()
         dataset.get_context(rdflib.URIRef(episode["graph"])).parse(
-            data=episode["episode_body"], format="turtle"
+            data=episode["turtle"], format="turtle"
         )
         return dataset, episode, close
 
