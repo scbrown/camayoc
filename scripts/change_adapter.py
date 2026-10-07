@@ -20,9 +20,19 @@ REVIEW = {"reviewAfter", "maxAge", "idleLimit", "ownedBy", "verifies", "verified
 # A tracker Observation is the ACTIVITY an idleLimit is anchored on (aegis-qx96wr):
 # its arrival routes the WorkItem that observes it, which pushes the deadline on.
 REVIEW_ACTIVITY = {"observedAt", "observedStatus"}
+# A Directive's traceability (aegis-q9m5mp.47). Its edges live in ROOT, the
+# declared plane, or the inferred plane (a proposal awaiting promotion), so the
+# subscription covers all three; a new Directive arrives as its rdf:type.
+DIRECTIVE = {"governedBy", "trackedBy", "inferredAt"}
+DIRECTIVE_KINDS = ("directive", "directive-lapse")
 
 
 def description(kind):
+    if kind in DIRECTIVE_KINDS:
+        import directive_edges as de
+        return {"version": 1, "attributes": sorted(bb.A + p for p in DIRECTIVE),
+                "graphs": ["ROOT", de.DECLARED, de.INFERRED],
+                "types": [bb.A + "Directive"]}
     props = WORK | OBS | BLOCKER if kind == "blocked" else REVIEW | REVIEW_ACTIVITY
     return {"version": 1, "attributes": sorted({iri for p in props for iri in bb.term_iris(p)}),
             "graphs": [g or "ROOT" for g in bb.graphs()],
@@ -46,6 +56,9 @@ def values(post, subject, prop, reverse=False):
 
 def targets(post, kind, changes, items):
     out = set(items)
+    if kind in DIRECTIVE_KINDS:
+        # Every subscribed change is ON the Directive itself.
+        return sorted(out | {e for e in (local(c["entity"]) for c in changes) if e})
     subjects = set()
     for change in changes:
         entity = local(change["entity"])
@@ -86,6 +99,12 @@ def next_check(post, kind, record, now):
     dependency set. Only those items retain a bounded 15-minute check.
     """
     deadlines = []
+    if kind == "directive-lapse":
+        from review_due import parse_instant
+        when = parse_instant(record["due_at"]) if record.get("due_at") else None
+        return when.timestamp() if when and when.timestamp() > now else None
+    if kind == "directive":
+        return None
     if kind == "review":
         from review_due import parse_instant
         if record["verdict"] != "DUE":
@@ -119,6 +138,8 @@ def evaluate(kind, post, request):
         return cache[key]
     now = float(request["now"])
     instant = dt.datetime.fromtimestamp(now, dt.timezone.utc)
+    if kind in DIRECTIVE_KINDS:
+        return _directive(kind, post, request, instant, now)
     if request.get("discover"):
         if kind == "review":
             names = {bb._local(r["s"]) for prop in ("reviewAfter", "maxAge", "idleLimit")
@@ -154,6 +175,28 @@ def evaluate(kind, post, request):
         records = [r for r in records if r["basis"]]
     return {"version": 1, "scope": scope, "records": records,
             "next_checks": {r[key]: next_check(post, kind, r, now) for r in records}}
+
+
+def _directive(kind, post, request, instant, now):
+    """The two views of directive_edges.judge, in the emitter's record shape:
+    `directive` (verdict UNTRACED drives the proposer) and `directive-lapse`
+    (LAPSED drives the alert, with the grace deadline as a next check)."""
+    import directive_edges as de
+    if request.get("discover"):
+        return {"version": 1, "items": de.discover(post)}
+    if "route" in request:
+        return {"version": 1, "items": targets(post, kind, request["route"], [])}
+    full = request.get("full", False)
+    scope = de.discover(post) if full else targets(post, kind, request.get("changes", []),
+                                                   request.get("items", []))
+    records = []
+    for name in scope:
+        r = de.judge(post, name, instant)
+        if kind == "directive-lapse":
+            r = {**r, "verdict": r["lapse"], "event_id": r["lapse_event_id"]}
+        records.append(r)
+    return {"version": 1, "scope": None if full else scope, "records": records,
+            "next_checks": {r["entity"]: next_check(post, kind, r, now) for r in records}}
 
 
 def main(kind, describe=False):
