@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import json
+import os
 import subprocess
 import sys
 import time
@@ -103,11 +104,23 @@ def _local(term: str) -> str:
 
 #: The seeds board graph(s) the tracker writes once a board is cut over to
 #: seeds (aegis-wmeqa6 N1). seeds keeps each board in its OWN named graph, so a
-#: seed is invisible to the default graph and to crew:records; without this the
-#: backfill would call every seed uncovered and re-post it as a legacy WorkItem.
-#: Read explicitly by name, never by widening the default graph: that would pull
-#: the quarantined crew:inferred plane into every read.
-DEFAULT_BOARD_GRAPHS = ("https://seeds.local/project/aegis",)
+#: seed is invisible to the default graph and to crew:records; after the flip,
+#: without this the backfill would call every seed uncovered and re-post it as a
+#: legacy WorkItem. Read explicitly by name, never by widening the default graph:
+#: that would pull the quarantined crew:inferred plane into every read.
+#:
+#: OFF until the flip (aegis-67p0lj). Before it the board is a MIRROR of br, so
+#: reading it re-reads beads the backfill already has, for zero coverage gain,
+#: and it is a 730k-triple graph paged per store per tick. Turn it on at the flip
+#: with CAMAYOC_BOARD_GRAPHS=<iri>[,<iri>...] (or --board-graph).
+BOARD_GRAPHS_ENV = "CAMAYOC_BOARD_GRAPHS"
+
+
+def default_board_graphs(environ=os.environ) -> tuple[str, ...]:
+    return tuple(g.strip() for g in environ.get(BOARD_GRAPHS_ENV, "").split(",") if g.strip())
+
+
+DEFAULT_BOARD_GRAPHS: tuple[str, ...] = ()
 
 
 #: Where a WorkItem can live: the default graph (older ingests), the plane
@@ -279,8 +292,8 @@ def main(argv=None) -> int:
     parser.add_argument("--state", type=Path,
                         help="dependency sets last written per bead (default: beside --lock)")
     parser.add_argument("--board-graph", action="append", dest="board_graphs", metavar="IRI",
-                        help="seeds board graph to read coverage from; repeatable, replaces "
-                             f"the default ({', '.join(DEFAULT_BOARD_GRAPHS)})")
+                        help="seeds board graph to read coverage from; repeatable. Default: none, "
+                             f"or the comma list in ${BOARD_GRAPHS_ENV} (off until the flip)")
     parser.add_argument("--no-board-graphs", action="store_true",
                         help="read no board graph (default graph and crew:records only)")
     parser.add_argument("--dry-run", action="store_true")
@@ -288,7 +301,7 @@ def main(argv=None) -> int:
     if args.no_board_graphs and args.board_graphs:
         parser.error("--board-graph and --no-board-graphs are mutually exclusive")
     board_graphs = (() if args.no_board_graphs
-                    else tuple(args.board_graphs) if args.board_graphs else DEFAULT_BOARD_GRAPHS)
+                    else tuple(args.board_graphs) if args.board_graphs else default_board_graphs())
     state = args.state or args.lock.with_suffix(".projected.json")
 
     with args.lock.open("a") as lock:
