@@ -161,6 +161,35 @@ def covered(post, board_graphs=DEFAULT_BOARD_GRAPHS) -> set[str]:
     return {i for w, s in ids.items() if w in wi for i in s}
 
 
+#: One coverage scan per tick, shared by every store's run (aegis-67p0lj). The
+#: wrapper runs this once per store, and coverage is GLOBAL (every WorkItem in
+#: every graph), so nine stores scanned the same ~24k identifiers nine times a
+#: tick to check a few hundred beads, holding the quipu store for about half of
+#: each tick. A stale set can only re-post a covered bead (an idempotent upsert)
+#: or leave a missing one for the next run, so a short max age is safe.
+COVERAGE_MAX_AGE = 300.0
+
+
+def shared_covered(post, board_graphs, cache: Path | None, max_age: float,
+                   now=time.time, refresh: bool = False) -> tuple[set[str], str]:
+    """(coverage, source): the cached set if fresh for this scope, else a scan."""
+    scope = sorted(board_graphs)
+    if cache is not None and max_age > 0 and not refresh:
+        try:
+            data = json.loads(cache.read_text())
+            fresh = now() - float(data["at"]) <= max_age
+            if fresh and data["scope"] == scope and data["ids"]:
+                return set(data["ids"]), "cache"
+        except (OSError, ValueError, KeyError, TypeError):
+            pass  # unreadable or foreign cache: scan, never trust it
+    found = covered(post, board_graphs)
+    if cache is not None and max_age > 0:
+        tmp = cache.with_name(cache.name + ".tmp")
+        tmp.write_text(json.dumps({"at": now(), "scope": scope, "ids": sorted(found)}))
+        tmp.replace(cache)
+    return found, "scan"
+
+
 def deps_key(record: dict) -> str:
     """The dependency set a write projects, in a stable comparable form."""
     return ",".join(sorted({str(x) for x in (record.get("blocked_on") or []) if str(x).strip()}))
@@ -296,6 +325,12 @@ def main(argv=None) -> int:
                              f"or the comma list in ${BOARD_GRAPHS_ENV} (off until the flip)")
     parser.add_argument("--no-board-graphs", action="store_true",
                         help="read no board graph (default graph and crew:records only)")
+    parser.add_argument("--coverage-cache", type=Path,
+                        help="coverage shared across stores' runs (default: beside --lock, one "
+                             "file for every store)")
+    parser.add_argument("--coverage-max-age", type=float, default=COVERAGE_MAX_AGE,
+                        help=f"seconds a shared coverage scan is reused (default {COVERAGE_MAX_AGE:g}; "
+                             "0 scans every run)")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
     if args.no_board_graphs and args.board_graphs:
@@ -303,6 +338,8 @@ def main(argv=None) -> int:
     board_graphs = (() if args.no_board_graphs
                     else tuple(args.board_graphs) if args.board_graphs else default_board_graphs())
     state = args.state or args.lock.with_suffix(".projected.json")
+    cache = None if args.dry_run else (
+        args.coverage_cache or args.lock.parent / "camayoc-workitem-coverage.json")
 
     with args.lock.open("a") as lock:
         try:
@@ -325,7 +362,7 @@ def main(argv=None) -> int:
         if not args.dry_run:
             live = {r["id"] for r in records}
             save_projected(deps_path, {k: v for k, v in deps_cache.items() if k in live})
-        done = covered(post, board_graphs)
+        done, done_source = shared_covered(post, board_graphs, cache, args.coverage_max_age)
         projected = load_projected(state)
         report = run(records, done, post, actor=args.actor, source=args.source, rate=args.rate,
                      stop_after=args.stop_after, limit=args.max, dry_run=args.dry_run,
@@ -342,13 +379,15 @@ def main(argv=None) -> int:
             # half of the backfill's request budget (aegis-wmeqa6). An attempted
             # write, landed or indeterminate, always re-reads.
             if report["attempted"]:
-                after = covered(post, board_graphs)
+                after, _ = shared_covered(post, board_graphs, cache, args.coverage_max_age,
+                                          refresh=True)
                 report["covered_after_source"] = "reread"
             else:
                 after = done
                 report["covered_after_source"] = "unchanged"
             report["covered_after"] = len(after & {r["id"] for r in records})
             report["coverage_after"] = round(report["covered_after"] / max(1, len(records)), 4)
+        report["covered_before_source"] = done_source
         print(json.dumps(report, sort_keys=True))
         return 3 if report["stopped"] else 0
 

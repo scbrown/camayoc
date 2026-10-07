@@ -495,5 +495,84 @@ class CoverageReread(unittest.TestCase):
         self.assertEqual(report["covered_after_source"], "reread")
 
 
+class SharedCoverage(unittest.TestCase):
+    """One coverage scan per tick, reused by every store's run (aegis-67p0lj)."""
+
+    def setUp(self):
+        import tempfile
+        self.dir = tempfile.TemporaryDirectory()
+        self.cache = Path(self.dir.name) / "coverage.json"
+        self.scans = 0
+        self.clock = 1000.0
+
+    def tearDown(self):
+        self.dir.cleanup()
+
+    def fake_covered(self, post, board_graphs=()):
+        self.scans += 1
+        return {"aegis-1", "aegis-2"}
+
+    def call(self, board=(), max_age=300.0, refresh=False):
+        with mock.patch.object(bf, "covered", self.fake_covered):
+            return bf.shared_covered(None, board, self.cache, max_age,
+                                     now=lambda: self.clock, refresh=refresh)
+
+    def test_a_second_run_within_max_age_reuses_the_scan(self):
+        self.assertEqual(self.call(), ({"aegis-1", "aegis-2"}, "scan"))
+        self.clock += 120
+        self.assertEqual(self.call(), ({"aegis-1", "aegis-2"}, "cache"))
+        self.assertEqual(self.scans, 1)
+
+    def test_a_stale_cache_is_rescanned(self):
+        self.call()
+        self.clock += 301
+        self.assertEqual(self.call()[1], "scan")
+        self.assertEqual(self.scans, 2)
+
+    def test_a_cache_for_another_graph_scope_is_not_used(self):
+        self.call(board=())
+        self.assertEqual(self.call(board=("https://seeds.local/project/aegis",))[1], "scan")
+
+    def test_refresh_always_scans_and_rewrites(self):
+        self.call()
+        self.assertEqual(self.call(refresh=True)[1], "scan")
+        self.assertEqual(self.scans, 2)
+
+    def test_an_empty_or_corrupt_cache_is_never_trusted(self):
+        for body in ('{"at": 1000, "scope": [], "ids": []}', "not json", '{"at": "x"}'):
+            self.cache.write_text(body)
+            self.assertEqual(self.call()[1], "scan", body)
+
+    def test_max_age_zero_scans_every_time_and_writes_nothing(self):
+        self.call(max_age=0)
+        self.call(max_age=0)
+        self.assertEqual(self.scans, 2)
+        self.assertFalse(self.cache.exists())
+
+    def test_nine_stores_in_one_tick_scan_once(self):
+        # MUTANT GUARD: the pre-fix backfill scanned once per store.
+        calls = []
+
+        def counting(post, board_graphs=()):
+            calls.append(1)
+            return {"aegis-1"}
+
+        printed = []
+        import tempfile
+        with tempfile.TemporaryDirectory() as d, \
+             mock.patch.object(bf, "covered", counting), \
+             mock.patch.object(bf, "all_beads", lambda db: [bead(1)]), \
+             mock.patch.dict(sys.modules, {"sync_work_items": types.SimpleNamespace(
+                 attach_deps=lambda *a: None)}), \
+             mock.patch.object(bf, "load_deps_cache", lambda p: {}), \
+             mock.patch.object(bf, "save_projected", lambda *a: None), \
+             mock.patch("builtins.print", lambda *a, **k: printed.append(a[0])):
+            for store in range(9):
+                bf.main(["--db", "x", "--actor", "a", "--source", "s", "--rate", "0",
+                         "--lock", str(Path(d) / f"lock-{store}.lock")])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(json.loads(printed[-1])["covered_before_source"], "cache")
+
+
 if __name__ == "__main__":
     unittest.main()
