@@ -27,6 +27,28 @@ SOURCE_KIND = "observed"
 BASE_NS = "http://aegis.gastown.local/ontology/"
 
 
+#: Planned work that must not stall silently (aegis-qx96wr, aegis-2idcev; Steve
+#: 2026-10-07). Kind is derived from the tracker record, first match wins; the
+#: idle limit is the expiry review_due evaluates from tracker activity. Ordinary
+#: work gets neither. Windows: an in-flight Stiwi directive is flagged after 3
+#: quiet days (replay: aegis-vj3uet would have fired 2026-10-03), designs and plans
+#: after 7, and a dream cycle after two 6h dream intervals.
+WORK_KINDS = (
+    ("Directive", lambda labels, kind: "stiwi-directive" in labels),
+    ("DreamCycle", lambda labels, kind: "dream-cycle" in labels),
+    ("Design", lambda labels, kind: "design" in labels or kind == "design"),
+    ("Plan", lambda labels, kind: "plan" in labels or kind == "epic"),
+)
+IDLE_LIMIT = {"Directive": "P3D", "Design": "P7D", "Plan": "P7D", "DreamCycle": "PT12H"}
+
+
+def work_kind(record: dict) -> str | None:
+    """The planned-work kind of a tracker record, or None for ordinary work."""
+    labels = {str(l) for l in (record.get("labels") or [])}
+    kind = record.get("issue_type")
+    return next((name for name, test in WORK_KINDS if test(labels, kind)), None)
+
+
 class WorkItemError(ValueError):
     """The tracker record cannot be mapped without guessing."""
 
@@ -110,6 +132,10 @@ def episode_for(payload: object, *, actor: str, source: str, about: list[str] | 
         "identifier": item_id,
         "createdAt": created,
     }
+    kind = work_kind(record)
+    if kind:
+        properties["workKind"] = kind
+        properties["idleLimit"] = IDLE_LIMIT[kind]
 
     snapshot = {
         "id": item_id,
@@ -127,6 +153,10 @@ def episode_for(payload: object, *, actor: str, source: str, about: list[str] | 
     blocked_on = sorted({str(x) for x in (record.get("blocked_on") or []) if str(x).strip()})
     if blocked_on:
         snapshot["blocked_on"] = blocked_on
+    # Same rule as blocked_on: only when present, so ordinary work keeps the
+    # version digest it always had and only planned work is re-minted once.
+    if kind:
+        snapshot["kind"] = kind
     canonical = json.dumps(snapshot, sort_keys=True, separators=(",", ":"))
     version = hashlib.sha256(canonical.encode()).hexdigest()[:16]
     observation = f"tracker-observation-{item_id}-{version}"

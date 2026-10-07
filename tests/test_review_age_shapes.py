@@ -44,6 +44,17 @@ class ReviewAgeShape(unittest.TestCase):
             self.assertFalse(self.valid(f'aegis:fact1 aegis:maxAge "{bad}" .'), bad)
         self.assertTrue(self.valid('aegis:fact1 aegis:maxAge "P1DT2H30M" .'))
 
+    def test_a_work_item_declares_an_idle_limit_and_kind(self):
+        # aegis-qx96wr. Two limits are ALLOWED (a kind change appends one; each is a basis).
+        self.assertTrue(self.valid('aegis:w1 rdfs:label "w" ; aegis:idleLimit "P3D" ; aegis:workKind "Directive" .'))
+        self.assertTrue(self.valid('aegis:w1 rdfs:label "w" ; aegis:idleLimit "P3D", "P7D" .'))
+        self.assertTrue(self.valid('aegis:w1 rdfs:label "w" ; aegis:idleLimit "PT12H" ; aegis:workKind "DreamCycle" .'))
+
+    def test_a_malformed_idle_limit_or_unknown_kind_is_refused(self):
+        for bad in ("P1M", "3 days", "P", "P1DT"):
+            self.assertFalse(self.valid(f'aegis:w1 aegis:idleLimit "{bad}" .'), bad)
+        self.assertFalse(self.valid('aegis:w1 aegis:idleLimit "P3D" ; aegis:workKind "Chore" .'))
+
     def test_two_review_instants_are_refused(self):
         self.assertFalse(self.valid('aegis:fact1 aegis:reviewAfter "2026-10-01", "2026-11-01" .'))
 

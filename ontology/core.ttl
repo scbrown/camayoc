@@ -249,6 +249,23 @@ aegis:maxAge a rdf:Property ;
     rdfs:comment "An ISO-8601 duration (PnW, or PnDTnHnM) the entity may go without a fresh check. Anchored on the latest aegis:verifiedAt of a Verification that aegis:verifies it; with no such verification the age is UNKNOWN, never fresh and never due." ;
     rdfs:range xsd:string .
 
+# Idle expiry for tracked work (aegis-qx96wr / aegis-2idcev; Steve 2026-10-07:
+# "use quipu's idea of expiration as part of our beads shape", event-based).
+# Anchored on tracker ACTIVITY, not on a Verification: a tracker Observation is
+# not a check that established a claim, so it must never pose as aegis:verifies.
+
+aegis:idleLimit a rdf:Property ;
+    rdfs:label "idle limit" ;
+    rdfs:comment "An ISO-8601 duration (PnW, or PnDTnHnM) a tracked WorkItem may go without tracker activity. Anchored on the observedAt of its latest tracker Observation (aegis:observes); a latest observed status of closed or deferred resolves it. No Observation means UNKNOWN, never fresh and never due." ;
+    rdfs:domain aegis:WorkItem ;
+    rdfs:range xsd:string .
+
+aegis:workKind a rdf:Property ;
+    rdfs:label "work kind" ;
+    rdfs:comment "What kind of planned work a tracked WorkItem is: Directive, Design, Plan or DreamCycle. Derived from the tracker record's labels and type; it is why the item carries an aegis:idleLimit. Ordinary work carries none." ;
+    rdfs:domain aegis:WorkItem ;
+    rdfs:range xsd:string .
+
 # Typed probe PARAMETERS (aegis-c0awwp). The graph holds only the parameters;
 # the code that checks them is fixed in camayoc, never a command read from the
 # graph, which would be command injection through the knowledge store.

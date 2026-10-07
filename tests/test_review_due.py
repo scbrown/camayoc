@@ -179,3 +179,66 @@ class QuechuaDualRead(unittest.TestCase):
     def test_controls_absent_and_foreign_namespace_ages_are_not_read(self):
         self.assertEqual(run([("f", "x:reviewAfter", '"2026-09-20T00:00:00Z"')]), {})
         self.assertEqual(run([("f", "ownedBy", "aegis:dearing")]), {})
+
+
+def run_obs(triples):
+    """As run(), with `observes` an object property (WorkItem -> tracker Observation)."""
+    class S(Store):
+        def post(self, endpoint, body):
+            if body.get("graph"):
+                return {"rows": [], "truncated": False}
+            return self.rows(TripleStore(self.t, A, Q, {"verifies", "ownedBy", "observes"}).select(body["query"]))
+    return {r["entity"]: r for r in rd.evaluate(S(triples).post, now=NOW)}
+
+
+class IdleLimit(unittest.TestCase):
+    """aegis-qx96wr: a live WorkItem lapses when its tracker has been silent for idleLimit.
+
+    The anchor is the LATEST tracker Observation's observedAt (activity pushes the
+    expiry forward with no mutation); a latest Observation that says closed or
+    deferred RESOLVES the obligation, so finished work never fires."""
+
+    def obs(self, name, at, status="in_progress"):
+        return [("w", "observes", name), (name, "observedAt", f'"{at}"'), (name, "observedStatus", f'"{status}"')]
+
+    def test_silence_past_the_limit_is_due_from_the_last_activity(self):
+        r = run_obs([("w", "idleLimit", '"P3D"')] + self.obs("o1", "2026-09-20T06:32:51Z"))["w"]
+        self.assertEqual((r["verdict"], r["due_at"]), ("DUE", "2026-09-23T06:32:51+00:00"))
+        self.assertTrue(r["event_id"].startswith("sha256:"))
+
+    def test_recent_activity_is_not_due(self):
+        self.assertEqual(run_obs([("w", "idleLimit", '"P3D"')] + self.obs("o1", "2026-09-23T00:00:00Z"))["w"]["verdict"],
+                         "NOT_DUE")
+
+    def test_the_latest_observation_is_the_anchor_not_the_first_listed(self):
+        triples = [("w", "idleLimit", '"P3D"')] + self.obs("o2", "2026-09-23T00:00:00Z") + self.obs("o1", "2026-09-01T00:00:00Z")
+        self.assertEqual(run_obs(triples)["w"]["verdict"], "NOT_DUE")
+
+    def test_activity_moves_the_event_id(self):
+        a = run_obs([("w", "idleLimit", '"P1D"')] + self.obs("o1", "2026-09-20T00:00:00Z"))["w"]
+        b = run_obs([("w", "idleLimit", '"P1D"')] + self.obs("o1", "2026-09-20T00:00:00Z")
+                    + self.obs("o2", "2026-09-22T00:00:00Z"))["w"]
+        self.assertEqual((a["verdict"], b["verdict"]), ("DUE", "DUE"))
+        self.assertNotEqual(a["event_id"], b["event_id"])
+
+    def test_closed_or_deferred_resolves_and_never_fires(self):
+        for status in ("closed", "deferred"):
+            triples = [("w", "idleLimit", '"P1D"')] + self.obs("o1", "2026-09-01T00:00:00Z") \
+                + self.obs("o2", "2026-09-02T00:00:00Z", status)
+            r = run_obs(triples)["w"]
+            self.assertEqual(r["verdict"], "NOT_DUE", status)
+            self.assertIsNone(r["due_at"], status)
+            self.assertIn("resolved", r["basis"][0]["why"])
+
+    def test_no_observation_is_unknown_never_fresh(self):
+        r = run_obs([("w", "idleLimit", '"P3D"')])["w"]
+        self.assertEqual(r["verdict"], "UNKNOWN")
+
+    def test_the_vj3uet_replay_fires_on_2026_10_03(self):
+        # Measured on the seeds mirror: in_progress, last activity 2026-09-30T06:32:51Z.
+        triples = [("w", "idleLimit", '"P3D"')] + self.obs("o1", "2026-09-30T06:32:51Z")
+        before = {r["entity"]: r for r in rd.evaluate(
+            type("S", (), {"post": staticmethod(lambda e, b: {"rows": [], "truncated": False})}).post, now=NOW)}
+        self.assertEqual(before, {})
+        r = run_obs(triples)
+        self.assertEqual(r["w"]["due_at"], "2026-10-03T06:32:51+00:00")

@@ -620,3 +620,44 @@ class Confirmed(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PlannedWorkKind(unittest.TestCase):
+    """aegis-qx96wr: covered, LIVE planned work is re-projected once to gain its kind."""
+
+    def planned(self, i, status="open", labels=("design",)):
+        record = bead(i, status=status)
+        record["labels"] = list(labels)
+        return record
+
+    def test_live_planned_work_is_reprojected_once(self):
+        q = FakeQuipu(covered={"aegis-1"})
+        projected = {}
+        first = go(q, [self.planned(1)], projected=projected)
+        self.assertEqual((first["written"], first["kind_pending"]), (1, 1))
+        self.assertEqual(q.writes[0]["nodes"][0]["properties"]["workKind"], "Design")
+        self.assertEqual(projected["kind:aegis-1"], "Design")
+        second = go(q, [self.planned(1)], projected=projected)
+        self.assertEqual((second["attempted"], second["kind_pending"]), (0, 0))
+
+    def test_closed_or_ordinary_work_is_never_reprojected_for_kind(self):
+        q = FakeQuipu(covered={"aegis-1", "aegis-2"})
+        report = go(q, [self.planned(1, status="closed"), self.planned(2, labels=("infra",))], projected={})
+        self.assertEqual((report["attempted"], report["kind_pending"]), (0, 0))
+
+    def test_kind_reprojection_never_starves_missing_beads(self):
+        covered = {f"aegis-{i}" for i in range(10, 20)}
+        q = FakeQuipu(covered=covered)
+        recs = [self.planned(i) for i in range(10, 20)] + [bead(1), bead(2)]
+        go(q, recs, limit=3, projected={})
+        self.assertEqual(sorted(b["nodes"][0]["name"] for b in q.writes[:2]), ["aegis-1", "aegis-2"])
+
+    def test_a_kind_key_never_reads_as_a_dependency_set(self):
+        # Same map, distinct namespace: a planned bead WITH deps is projected once for both.
+        q = FakeQuipu(covered={"aegis-1"})
+        record = self.planned(1)
+        record["blocked_on"] = ["aegis-9"]
+        projected = {}
+        go(q, [record], projected=projected)
+        self.assertEqual((projected["aegis-1"], projected["kind:aegis-1"]), ("aegis-9", "Design"))
+        self.assertEqual(go(q, [record], projected=projected)["attempted"], 0)
