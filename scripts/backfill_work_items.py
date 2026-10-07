@@ -171,29 +171,36 @@ COVERAGE_MAX_AGE = 300.0
 
 
 def shared_covered(post, board_graphs, cache: Path | None, max_age: float,
-                   now=time.time, refresh: bool = False) -> tuple[set[str], str]:
-    """(coverage, source): the cached set if fresh for this scope, else a scan."""
+                   now=time.time, refresh: bool = False) -> tuple[set[str], str, float]:
+    """(coverage, source, scanned_at): the cached set if fresh for this scope, else a scan.
+
+    `scanned_at` is when the underlying FULL scan ran, which is what the max age
+    bounds. A cache reused or extended by confirmation keeps that time.
+    """
     scope = sorted(board_graphs)
     if cache is not None and max_age > 0 and not refresh:
         try:
             data = json.loads(cache.read_text())
             fresh = now() - float(data["at"]) <= max_age
             if fresh and data["scope"] == scope and data["ids"]:
-                return set(data["ids"]), "cache"
+                return set(data["ids"]), "cache", float(data["at"])
         except (OSError, ValueError, KeyError, TypeError):
             pass  # unreadable or foreign cache: scan, never trust it
+    scanned_at = now()
     found = covered(post, board_graphs)
-    remember_coverage(cache, board_graphs, found, max_age, now=now)
-    return found, "scan"
+    remember_coverage(cache, board_graphs, found, max_age, scanned_at)
+    return found, "scan", scanned_at
 
 
 def remember_coverage(cache: Path | None, board_graphs, ids: set[str], max_age: float,
-                      now=time.time) -> None:
+                      scanned_at: float) -> None:
+    """Persist coverage stamped with its FULL scan's time, never the time of writing:
+    confirmation extends a set, it does not make the rest of it fresher."""
     if cache is None or max_age <= 0:
         return
     # Per-process temp name: two stores refreshing at once must not share one.
     tmp = cache.with_name(f"{cache.name}.{os.getpid()}.tmp")
-    tmp.write_text(json.dumps({"at": now(), "scope": sorted(board_graphs), "ids": sorted(ids)}))
+    tmp.write_text(json.dumps({"at": scanned_at, "scope": sorted(board_graphs), "ids": sorted(ids)}))
     tmp.replace(cache)
 
 
@@ -395,7 +402,8 @@ def main(argv=None) -> int:
         if not args.dry_run:
             live = {r["id"] for r in records}
             save_projected(deps_path, {k: v for k, v in deps_cache.items() if k in live})
-        done, done_source = shared_covered(post, board_graphs, cache, args.coverage_max_age)
+        done, done_source, scanned_at = shared_covered(post, board_graphs, cache,
+                                                       args.coverage_max_age)
         projected = load_projected(state)
         report = run(records, done, post, actor=args.actor, source=args.source, rate=args.rate,
                      stop_after=args.stop_after, limit=args.max, dry_run=args.dry_run,
@@ -415,7 +423,7 @@ def main(argv=None) -> int:
                 touched = report.get("written_ids", []) + report.get("indeterminate_ids", [])
                 after = done | confirmed(post, touched, board_graphs)
                 report["covered_after_source"] = "confirmed"
-                remember_coverage(cache, board_graphs, after, args.coverage_max_age)
+                remember_coverage(cache, board_graphs, after, args.coverage_max_age, scanned_at)
             else:
                 after = done
                 report["covered_after_source"] = "unchanged"

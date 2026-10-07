@@ -530,10 +530,19 @@ class SharedCoverage(unittest.TestCase):
                                      now=lambda: self.clock, refresh=refresh)
 
     def test_a_second_run_within_max_age_reuses_the_scan(self):
-        self.assertEqual(self.call(), ({"aegis-1", "aegis-2"}, "scan"))
+        self.assertEqual(self.call()[:2], ({"aegis-1", "aegis-2"}, "scan"))
         self.clock += 120
-        self.assertEqual(self.call(), ({"aegis-1", "aegis-2"}, "cache"))
+        self.assertEqual(self.call()[:2], ({"aegis-1", "aegis-2"}, "cache"))
         self.assertEqual(self.scans, 1)
+
+    def test_confirmation_does_not_reset_the_scan_age(self):
+        # malcolm, camayoc#82: if every run writes, re-stamping at write time means
+        # the max age never forces a rescan. The stamp is the FULL scan's time.
+        ids, _, scanned_at = self.call()
+        self.clock += 200
+        bf.remember_coverage(self.cache, (), ids | {"aegis-3"}, 300.0, scanned_at)
+        self.clock += 150  # 350s after the scan, 150s after the confirmation
+        self.assertEqual(self.call()[1], "scan")
 
     def test_a_stale_cache_is_rescanned(self):
         self.call()
