@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import re
 import sys
 import unittest
@@ -118,11 +119,19 @@ class Judge(unittest.TestCase):
         self.assertEqual(de.judge(q, "new", NOW + de.GRACE)["lapse"], de.NOT_LAPSED)
         self.assertEqual(de.judge(q, "new", NOW + de.GRACE + dt.timedelta(days=1))["lapse"], de.LAPSED)
 
-    def test_unanchored_never_lapses(self):
+    def test_unanchored_untraced_reaches_a_person_now(self):
+        # wu [wu-cm84-review] 1: 407/868 Directives have no datable episode;
+        # one of those left UNTRACED must not wait forever.
         q = board()
         q.g[None] = {t for t in q.g[None] if t[1] != PROV + "wasGeneratedBy"}
-        r = de.judge(q, "new", NOW + dt.timedelta(days=30))
-        self.assertEqual((r["lapse"], r["due_at"]), (de.NOT_LAPSED, None))
+        r = de.judge(q, "new", NOW)
+        self.assertEqual((r["lapse"], r["due_at"]), (de.LAPSED, None))
+        self.assertTrue(r["lapse_event_id"])
+
+    def test_unanchored_traced_never_lapses(self):
+        q = board()
+        q.add(A + "old", "a", A + "Directive")
+        self.assertEqual(de.judge(q, "old", NOW)["lapse"], de.NOT_LAPSED)
 
     def test_discover_is_asserted_directives_only(self):
         self.assertEqual(de.discover(board()), ["new"])
@@ -216,3 +225,40 @@ class AdapterProtocol(unittest.TestCase):
         self.assertEqual(r["verdict"], de.LAPSED)
         self.assertTrue(r["event_id"])
         self.assertIsNone(later["next_checks"]["new"])
+
+
+class Cli(unittest.TestCase):
+    def test_chaski_invocation_shape(self):
+        """chaski appends --describe / --changes to the configured command."""
+        import subprocess
+        script = Path(__file__).resolve().parents[1] / "scripts" / "directive_edges.py"
+        for view, kind in (("adapter", "directive"), ("lapse-adapter", "directive-lapse")):
+            out = subprocess.run([sys.executable, str(script), view, "--describe"],
+                                 capture_output=True, text=True, check=False, timeout=30)
+            self.assertEqual(out.returncode, 0, out.stderr)
+            self.assertEqual(json.loads(out.stdout)["types"], [A + "Directive"], kind)
+
+    def test_propose_reads_credentials_from_files(self):
+        import io
+        import os
+        import tempfile
+        from unittest import mock
+
+        planes = de.planes  # the module object directive_edges writes to
+        d = Path(tempfile.mkdtemp())
+        (d / "tok").write_text("bearer-from-file\n")
+        (d / "jev").write_text("k" * 24)
+        seen = {}
+
+        def fake_propose(post, write, client, event):
+            seen["auth"], seen["keyfile"] = planes.AUTH, os.environ.get(jev.KEY_FILE_ENV)
+            return {"outcome": "noop"}
+
+        with mock.patch.object(de, "propose", fake_propose), \
+             mock.patch.object(jev, "JevClient", lambda: object()), \
+             mock.patch.object(planes, "AUTH", None), \
+             mock.patch.dict(os.environ, {}, clear=False), \
+             mock.patch("sys.stdin", io.StringIO('{"item": "new", "event_id": "x"}')), \
+             mock.patch("sys.stdout", io.StringIO()):
+            de.main(["propose", "--token-file", str(d / "tok"), "--jev-key-file", str(d / "jev")])
+        self.assertEqual(seen, {"auth": "bearer-from-file", "keyfile": str(d / "jev")})

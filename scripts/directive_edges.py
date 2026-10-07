@@ -27,6 +27,8 @@ these", or a policy with no tracker yet writes nothing and says why: that
 Directive needs a human ruling, as the backfill's low-confidence rows did.
 
     python3 scripts/directive_edges.py judge <name>        # one verdict, JSON
+    python3 scripts/directive_edges.py adapter --describe  # chaski adapter (also --changes)
+    python3 scripts/directive_edges.py lapse-adapter --changes < request.json
     echo '<event>' | python3 scripts/directive_edges.py propose [--dry-run]
 """
 from __future__ import annotations
@@ -122,13 +124,22 @@ def judge(post, entity: str, now: dt.datetime | None = None) -> dict:
     verdict = TRACED if traced else PROPOSED if proposed else UNTRACED
     start = None if verdict == TRACED else anchor(post, entity, verdict)
     due = start + GRACE if start else None
-    lapse = LAPSED if due and due <= now else NOT_LAPSED
+    # UNANCHORED counts as LAPSED (wu, [wu-cm84-review] item 1): measured, 407 of
+    # 868 Directives have no datable capture episode. A stateless adapter cannot
+    # remember first sight, so an untraced Directive with no age reaches a person
+    # NOW rather than never.
+    unanchored = verdict != TRACED and start is None
+    lapse = LAPSED if unanchored or (due and due <= now) else NOT_LAPSED
     return {"entity": entity, "verdict": verdict,
+            # KNOWN LIMIT (item 2): constant per Directive, so a proposal that is
+            # withdrawn (back to UNTRACED) does not re-trigger the proposer. The
+            # lapse view still fires for it, so it is late, not silent.
             "event_id": event_id(entity) if verdict == UNTRACED else None,
             "lapse": lapse,
             # A lapse is a NEW event each time the anchor moves: a proposal that
             # lapses, is withdrawn and re-proposed is a second lapse, not a replay.
-            "lapse_event_id": (event_id(f"{entity}\0{verdict}\0{start.isoformat()}")
+            "lapse_event_id": (event_id(f"{entity}\0{verdict}\0"
+                                        f"{start.isoformat() if start else 'unanchored'}")
                                if lapse == LAPSED else None),
             "due_at": due.isoformat() if due else None,
             "evidence": verdict, "owner": None}
@@ -227,22 +238,35 @@ def _post(endpoint: str, body: dict) -> dict:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for view in ("changes", "lapse-changes"):
-        c = sub.add_parser(view, help="incremental JSON protocol on stdin (chaski adapter)")
+    # chaski runs `<command> --describe` or `<command> --changes` (incremental.py
+    # call()), so each adapter view is a subcommand that takes those flags.
+    for view in ("adapter", "lapse-adapter"):
+        c = sub.add_parser(view, help="chaski's incremental protocol, JSON on stdin")
         c.add_argument("--describe", action="store_true")
+        c.add_argument("--changes", action="store_true")
     j = sub.add_parser("judge")
     j.add_argument("entity")
     pr = sub.add_parser("propose", help="one event JSON on stdin")
     pr.add_argument("--dry-run", action="store_true")
+    # Credentials as FILES, never argv or a launcher export (jev.py, aegis-6qau3t).
+    pr.add_argument("--token-file", help="quipu bearer for the crew/inferred write")
+    pr.add_argument("--jev-key-file", help="Jev key; else jev.py's own resolution")
     a = ap.parse_args(argv)
-    if a.cmd in ("changes", "lapse-changes"):
+    if a.cmd in ("adapter", "lapse-adapter"):
         import change_adapter
-        return change_adapter.main("directive" if a.cmd == "changes" else "directive-lapse",
+        return change_adapter.main("directive" if a.cmd == "adapter" else "directive-lapse",
                                    describe=a.describe)
     if a.cmd == "judge":
         print(json.dumps(judge(_post, a.entity)))
         return 0
+    import os
+
     import jev
+    if a.token_file:
+        with open(a.token_file) as f:
+            planes.AUTH = f.read().strip() or None
+    if a.jev_key_file:
+        os.environ[jev.KEY_FILE_ENV] = a.jev_key_file
     event = json.load(sys.stdin)
     client = jev.JevClient()
     if a.dry_run:
