@@ -246,3 +246,42 @@ class Paging(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DependencyCache(unittest.TestCase):
+    """aegis-ky3zpa: dependency reads are cached across runs by updated_at."""
+
+    def run_main(self, d, records, lookups):
+        from unittest import mock
+        import ingest_work_items
+
+        def blocked(recs, db, run=None):
+            for r in recs:
+                lookups.append(r["id"])
+                r["blocked_on"] = ["aegis-x"]
+            return []
+        q = FakeQuipu(covered={r["id"] for r in records})
+        with mock.patch.object(bf, "all_beads", return_value=[dict(r) for r in records]), \
+                mock.patch.object(ingest_work_items, "attach_blocked_on", blocked), \
+                mock.patch.object(planes, "_post", lambda e, b, client=None: q.post(e, b)), \
+                mock.patch("sys.stdout"):
+            bf.main(["--db", "x.db", "--actor", "a", "--source", "s", "--rate", "0",
+                     "--lock", str(Path(d) / "b.lock")])
+
+    def test_an_unchanged_bead_is_read_once_and_a_touched_one_again(self):
+        import tempfile
+        rec = dict(bead(1), dependency_count=1)
+        with tempfile.TemporaryDirectory() as d:
+            lookups = []
+            self.run_main(d, [rec], lookups)
+            self.run_main(d, [rec], lookups)
+            self.assertEqual(lookups, ["aegis-1"], "second run must hit the cache")
+            self.run_main(d, [dict(rec, updated_at="2026-10-07T00:00:00Z")], lookups)
+            self.assertEqual(lookups, ["aegis-1", "aegis-1"])
+
+    def test_malformed_cache_entries_are_dropped(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "x.deps.json"
+            path.write_text(json.dumps({"a": ["t", ["b"]], "b": 5, "c": ["t", "b"], "d": [1, []]}))
+            self.assertEqual(bf.load_deps_cache(path), {"a": ["t", ["b"]]})

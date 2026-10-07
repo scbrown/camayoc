@@ -78,6 +78,15 @@ def records_from(payload):
             (r.get('status') in ('open', 'blocked', 'deferred') and r.get('assignee'))]
 
 
+#: A tracker read waits on the store lock, and under a crew write burst that wait
+#: is long: measured 2026-10-06 23:4xZ, the current-work read took up to 64.5 s
+#: while about 10 br processes queued on the store (aegis-ky3zpa). At 15 s every
+#: minute of a burst ended UNKNOWN. The run lock already turns an overrun into
+#: BUSY on the next tick, so a bound above the measured tail costs nothing but
+#: latency. A read that exceeds it is still UNKNOWN, never silently partial.
+BR_READ_TIMEOUT = 90
+
+
 def fetch_ids(db, ids, run=None):
     """Tracker records for these ids, closed ones included, in bounded chunks."""
     run = run or subprocess.run
@@ -87,7 +96,7 @@ def fetch_ids(db, ids, run=None):
         argv = ['br', '--db', str(db), 'list', '--all', '--limit', '0', '--json']
         for item in ids[start:start + 100]:
             argv += ['--id', item]
-        result = run(argv, check=True, capture_output=True, text=True, timeout=15)
+        result = run(argv, check=True, capture_output=True, text=True, timeout=BR_READ_TIMEOUT)
         payload = json.loads(result.stdout)
         records = payload.get('issues') if isinstance(payload, dict) else payload
         if not isinstance(records, list):
@@ -113,7 +122,7 @@ def collect(db, tracked=(), run=None, deps_cache=None):
     result = run(['br', '--db', str(db), 'list', '--status', 'open',
                   '--status', 'in_progress', '--status', 'blocked',
                   '--status', 'deferred', '--deferred', '--limit', '0', '--json'],
-                 check=True, capture_output=True, text=True, timeout=15)
+                 check=True, capture_output=True, text=True, timeout=BR_READ_TIMEOUT)
     records = records_from(json.loads(result.stdout))
     # Same dependency set the backfill projects (aegis-3b3nrb), so both writers
     # mint the SAME Observation version and never two competing "latest" ones.

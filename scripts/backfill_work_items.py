@@ -213,6 +213,20 @@ def load_projected(path: Path) -> dict:
     return {k: v for k, v in data.items() if isinstance(k, str) and isinstance(v, str)}
 
 
+def load_deps_cache(path: Path) -> dict:
+    """id -> [updated_at, blocked_on], keeping only well-formed entries. Missing
+    or unreadable means EMPTY: that costs a full re-read, never a wrong set."""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {k: v for k, v in data.items()
+            if isinstance(v, list) and len(v) == 2 and isinstance(v[0], str)
+            and isinstance(v[1], list) and all(isinstance(x, str) for x in v[1])}
+
+
 def save_projected(path: Path, projected: dict) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(json.dumps(projected, sort_keys=True) + "\n")
@@ -243,8 +257,19 @@ def main(argv=None) -> int:
             return 0
         post = lambda endpoint, body: planes._post(endpoint, body, client=CLIENT)  # noqa: E731
         records = all_beads(args.db)
-        from ingest_work_items import attach_blocked_on
-        dep_unknown = attach_blocked_on(records, args.db)
+        # Dependencies are read per bead (one `br dep list` each). Uncached that
+        # was ~1,000 reads a tick on the aegis store, a br read alive in 300 of
+        # 300 sampled seconds and contending with the crew for the store lock
+        # (aegis-ky3zpa). Reuse the standing sync's cache: re-read only beads
+        # whose updated_at moved, since br bumps it on dep add/remove.
+        from sync_work_items import attach_deps
+        deps_path = args.lock.with_suffix(".deps.json")
+        deps_cache = load_deps_cache(deps_path)
+        attach_deps(records, args.db, deps_cache)
+        dep_unknown = [r["id"] for r in records if r.get("dep_unknown")]
+        if not args.dry_run:
+            live = {r["id"] for r in records}
+            save_projected(deps_path, {k: v for k, v in deps_cache.items() if k in live})
         done = covered(post)
         projected = load_projected(state)
         report = run(records, done, post, actor=args.actor, source=args.source, rate=args.rate,
