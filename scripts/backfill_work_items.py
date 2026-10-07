@@ -184,7 +184,8 @@ def shared_covered(post, board_graphs, cache: Path | None, max_age: float,
             pass  # unreadable or foreign cache: scan, never trust it
     found = covered(post, board_graphs)
     if cache is not None and max_age > 0:
-        tmp = cache.with_name(cache.name + ".tmp")
+        # Per-process temp name: two stores refreshing at once must not share one.
+        tmp = cache.with_name(f"{cache.name}.{os.getpid()}.tmp")
         tmp.write_text(json.dumps({"at": now(), "scope": scope, "ids": sorted(found)}))
         tmp.replace(cache)
     return found, "scan"
