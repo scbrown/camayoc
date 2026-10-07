@@ -5,6 +5,7 @@ No network. A fake quipu records what would have been written.
 from __future__ import annotations
 
 import json
+import os
 import sys
 import types
 import unittest
@@ -382,10 +383,22 @@ LEGACY = (f"{NS}aegis-1", f"{NS}WorkItem", "aegis-1")
 class BoardGraphCoverage(unittest.TestCase):
     """aegis-wmeqa6 N1: a seed lives in its board graph and nowhere else."""
 
-    def test_a_seed_in_the_board_graph_is_covered_by_default(self):
+    def test_a_seed_in_a_configured_board_graph_is_covered(self):
         q = GraphScopedQuipu({None: [LEGACY], BOARD: [SEED]})
-        self.assertEqual(bf.covered(q.post), {"aegis-1", "aegis-s.1"})
+        self.assertEqual(bf.covered(q.post, board_graphs=(BOARD,)), {"aegis-1", "aegis-s.1"})
         self.assertIn(BOARD, q.scopes, "the board graph was read by name")
+
+    def test_by_default_no_board_graph_is_read(self):
+        # aegis-67p0lj: before the flip the board mirrors br, so reading it gains
+        # nothing and pages a 730k-triple graph per store per tick. Off by default.
+        q = GraphScopedQuipu({None: [LEGACY], BOARD: [SEED]})
+        self.assertEqual(bf.covered(q.post), {"aegis-1"})
+        self.assertNotIn(BOARD, q.scopes)
+
+    def test_the_environment_enables_board_graphs(self):
+        self.assertEqual(bf.default_board_graphs({}), ())
+        self.assertEqual(bf.default_board_graphs({bf.BOARD_GRAPHS_ENV: ""}), ())
+        self.assertEqual(bf.default_board_graphs({bf.BOARD_GRAPHS_ENV: f"{BOARD}, g2"}), (BOARD, "g2"))
 
     def test_without_the_board_graph_the_seed_would_be_reposted(self):
         # MUTANT: the pre-N1 reader. The seed is called uncovered, so run() would
@@ -401,9 +414,10 @@ class BoardGraphCoverage(unittest.TestCase):
         self.assertNotIn(BOARD, q.scopes)
 
     def test_the_default_graph_and_records_stay_in_scope(self):
-        gs = bf.graphs()
+        gs = bf.graphs((BOARD,))
         self.assertEqual(gs[:2], [None, planes.plane_for("observed")])
         self.assertIn(BOARD, gs)
+        self.assertEqual(bf.graphs(), [None, planes.plane_for("observed")])
         self.assertNotIn(planes.plane_for("inferred"), gs)
 
     def test_the_inferred_plane_is_refused_as_a_board_graph(self):
@@ -417,11 +431,16 @@ class BoardGraphCoverage(unittest.TestCase):
             seen.setdefault("calls", []).append(board_graphs)
             raise SystemExit(0)
 
-        for argv, want in ((["--board-graph", "g1", "--board-graph", "g2"], ("g1", "g2")),
-                           (["--no-board-graphs"], ()),
-                           ([], bf.DEFAULT_BOARD_GRAPHS)):
+        env_on = {bf.BOARD_GRAPHS_ENV: "g-env"}
+        for argv, env, want in ((["--board-graph", "g1", "--board-graph", "g2"], {}, ("g1", "g2")),
+                                (["--no-board-graphs"], env_on, ()),
+                                ([], {}, ()),
+                                ([], env_on, ("g-env",)),
+                                (["--board-graph", "g1"], env_on, ("g1",))):
             seen.clear()
+            environ = {k: v for k, v in os.environ.items() if k != bf.BOARD_GRAPHS_ENV} | env
             with mock.patch.object(bf, "covered", fake_covered), \
+                 mock.patch.dict(os.environ, environ, clear=True), \
                  mock.patch.object(bf, "all_beads", lambda db: []), \
                  mock.patch.dict(sys.modules, {"sync_work_items": types.SimpleNamespace(
                      attach_deps=lambda *a: None)}), \
