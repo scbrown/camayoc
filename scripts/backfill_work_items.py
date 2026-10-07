@@ -46,7 +46,15 @@ from ingest_work_items import BASE_NS, WorkItemError, episode_for  # noqa: E402
 
 CLIENT = "camayoc-ingress"
 IDENTIFIER_QUERY = f"SELECT ?w ?id WHERE {{ ?w <{BASE_NS}identifier> ?id }}"
-WORKITEM_QUERY = f"SELECT ?w WHERE {{ ?w a ?t . FILTER(?t = <{BASE_NS}WorkItem>) }}"
+#: One asserted-type query per spelling of WorkItem (aegis-9dpcta): the legacy
+#: class and its Quechua twin. Instance IRIs never move, only the class does, so
+#: a Quechua-typed item is the SAME identifier. Reading only the legacy class
+#: would call it uncovered and re-post it through /episode, which writes the
+#: legacy type: a double-typed record. Two queries, unioned here, never a join.
+WORKITEM_TYPES = (f"{BASE_NS}WorkItem", "https://scbrown.github.io/quechua/ns#WorkItem")
+WORKITEM_QUERIES = tuple(
+    f"SELECT ?w WHERE {{ ?w a ?t . FILTER(?t = <{iri}>) }}" for iri in WORKITEM_TYPES
+)
 #: quipu caps one result at 10,000 rows and says so with `truncated`. The
 #: crew:records plane passed 10,000 WorkItems on 2026-09-25 and every run from
 #: 15:40Z refused, correctly, on a truncated answer. So both reads page.
@@ -102,7 +110,8 @@ def covered(post) -> set[str]:
     any_rows = False
     for graph in graphs():
         scope = {"graph": graph} if graph else {}
-        workitems = paged(post, WORKITEM_QUERY, scope, "WorkItem", graph)
+        workitems = [row for query in WORKITEM_QUERIES
+                     for row in paged(post, query, scope, "WorkItem", graph)]
         pairs = paged(post, IDENTIFIER_QUERY, scope, "identifier", graph)
         any_rows = any_rows or bool(workitems)
         wi |= {_local(r["w"]) for r in workitems}
