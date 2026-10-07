@@ -16,11 +16,14 @@ import planes
 BLOCKER = {"blockerKind", "prRef", "tool", "minVersion", "repoRef", "resolvesOn", "resolutionQuery"}
 OBS = {"observedAt", "observedStatus", "observedValue", "observedBlockedOn"}
 WORK = {"blockedOn", "observes", "closedAt"}
-REVIEW = {"reviewAfter", "maxAge", "ownedBy", "verifies", "verifiedAt"}
+REVIEW = {"reviewAfter", "maxAge", "idleLimit", "ownedBy", "verifies", "verifiedAt"}
+# A tracker Observation is the ACTIVITY an idleLimit is anchored on (aegis-qx96wr):
+# its arrival routes the WorkItem that observes it, which pushes the deadline on.
+REVIEW_ACTIVITY = {"observedAt", "observedStatus"}
 
 
 def description(kind):
-    props = WORK | OBS | BLOCKER if kind == "blocked" else REVIEW
+    props = WORK | OBS | BLOCKER if kind == "blocked" else REVIEW | REVIEW_ACTIVITY
     return {"version": 1, "attributes": sorted({iri for p in props for iri in bb.term_iris(p)}),
             "graphs": [g or "ROOT" for g in bb.graphs()],
             "types": bb.term_iris("WorkItem") + bb.term_iris("Blocker") if kind == "blocked" else []}
@@ -55,7 +58,9 @@ def targets(post, kind, changes, items):
             else:
                 subjects.add(entity)
         else:
-            if prop in {"verifies", "verifiedAt"}:
+            if prop in REVIEW_ACTIVITY:
+                out.update(values(post, entity, "observes", reverse=True))
+            elif prop in {"verifies", "verifiedAt"}:
                 out.update(values(post, entity, "verifies"))
                 if prop == "verifies":
                     for field in ("value", "old_value"):
@@ -116,7 +121,7 @@ def evaluate(kind, post, request):
     instant = dt.datetime.fromtimestamp(now, dt.timezone.utc)
     if request.get("discover"):
         if kind == "review":
-            names = {bb._local(r["s"]) for prop in ("reviewAfter", "maxAge")
+            names = {bb._local(r["s"]) for prop in ("reviewAfter", "maxAge", "idleLimit")
                      for r in bb.select(post, f"SELECT ?s WHERE {{ {bb.pattern('?s', prop, '?v')} }}")}
         else:
             names = {bb._local(r["w"]) for r in bb.select(post,

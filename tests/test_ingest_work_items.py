@@ -81,3 +81,36 @@ class WorkItemIngressTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PlannedWorkExpiryTests(unittest.TestCase):
+    """aegis-qx96wr: planned work carries a kind and an idle limit; ordinary work is untouched."""
+
+    def body(self, **extra):
+        return ingest.episode_for({**OPEN, **extra}, actor="ian", source="br:aegis-abc123")
+
+    def test_ordinary_work_is_byte_identical_to_before(self):
+        # The digest of ordinary work must not move, or every bead is re-minted.
+        self.assertEqual(self.body(labels=["infra"]), self.body())
+        node = self.body(labels=["infra"])["nodes"][0]
+        self.assertNotIn("workKind", node["properties"])
+        self.assertNotIn("idleLimit", node["properties"])
+
+    def test_kinds_and_their_limits(self):
+        cases = [({"labels": ["stiwi-directive", "design"]}, "Directive", "P3D"),
+                 ({"labels": ["dream", "dream-cycle"]}, "DreamCycle", "PT12H"),
+                 ({"labels": ["design", "roles"]}, "Design", "P7D"),
+                 ({"issue_type": "epic"}, "Plan", "P7D"),
+                 ({"labels": ["plan"]}, "Plan", "P7D")]
+        for extra, kind, limit in cases:
+            props = self.body(**extra)["nodes"][0]["properties"]
+            self.assertEqual((props["workKind"], props["idleLimit"]), (kind, limit), extra)
+
+    def test_a_dream_proposal_is_not_a_dream_cycle(self):
+        # aegis-2idcev: proposals carry `dream` but are not cycles; only dream-cycle is.
+        self.assertNotIn("workKind", self.body(labels=["dream", "dream-proposal"])["nodes"][0]["properties"])
+
+    def test_planned_work_gets_a_new_version_once(self):
+        plain, planned = self.body(), self.body(labels=["stiwi-directive"])
+        self.assertNotEqual(plain["name"], planned["name"])
+        self.assertEqual(planned, self.body(labels=["stiwi-directive"]))

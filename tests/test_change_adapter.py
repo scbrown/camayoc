@@ -139,3 +139,54 @@ class Incremental(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class IdleLimitRouting(unittest.TestCase):
+    """aegis-qx96wr: tracker activity is an event for the review adapter, and an idle
+    deadline is a stored next_check, so a lapse fires with NO scan and NO timer."""
+
+    def store(self, triples):
+        from sparql_fake import TripleStore
+        from blocked_by import Q
+        class S(ReviewStore):
+            def post(self, endpoint, body):
+                if body.get("graph"):
+                    return {"rows": [], "truncated": False}
+                return self.rows(TripleStore(self.t, rd.A, Q, {"verifies", "ownedBy", "observes"}).select(body["query"]))
+        return S(triples)
+
+    def obs(self, name, at, status="in_progress"):
+        return [("w", "observes", name), (name, "observedAt", f'"{at}"'), (name, "observedStatus", f'"{status}"')]
+
+    def test_new_tracker_observation_routes_its_work_item_and_sets_the_deadline(self):
+        import datetime as dt
+        at = dt.datetime.fromtimestamp(NOW, dt.timezone.utc).isoformat()
+        store = self.store([("w", "idleLimit", '"P3D"')] + self.obs("o9", at))
+        result = ca.evaluate("review", store.post, {"now": NOW, "changes": [change("o9", "observedAt")]})
+        self.assertEqual(result["scope"], ["w"])
+        self.assertEqual(result["records"][0]["verdict"], "NOT_DUE")
+        self.assertEqual(result["next_checks"]["w"], NOW + 3 * 86400)
+        # The stored deadline matures with no graph change: DUE, nothing further owed.
+        later = ca.evaluate("review", store.post, {"now": NOW + 3 * 86400, "items": ["w"]})
+        self.assertEqual(later["records"][0]["verdict"], "DUE")
+        self.assertIsNone(later["next_checks"]["w"])
+
+    def test_a_closed_item_has_no_deadline(self):
+        import datetime as dt
+        at = dt.datetime.fromtimestamp(NOW, dt.timezone.utc).isoformat()
+        store = self.store([("w", "idleLimit", '"P3D"')] + self.obs("o9", at, "closed"))
+        result = ca.evaluate("review", store.post, {"now": NOW, "changes": [change("o9", "observedStatus")]})
+        self.assertEqual(result["records"][0]["verdict"], "NOT_DUE")
+        self.assertIsNone(result["next_checks"]["w"])
+
+    def test_a_work_item_with_no_idle_limit_yields_no_record(self):
+        import datetime as dt
+        at = dt.datetime.fromtimestamp(NOW, dt.timezone.utc).isoformat()
+        store = self.store(self.obs("o9", at))
+        result = ca.evaluate("review", store.post, {"now": NOW, "changes": [change("o9", "observedAt")]})
+        self.assertEqual(result["records"], [])
+
+    def test_the_subscription_names_the_activity_and_the_limit(self):
+        attrs = ca.description("review")["attributes"]
+        for term in ("idleLimit", "observedAt", "observedStatus"):
+            self.assertTrue(any(a.endswith(term) for a in attrs), term)

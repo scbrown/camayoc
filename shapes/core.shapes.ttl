@@ -53,7 +53,7 @@ aegis:CamayocWorkItemShape a sh:NodeShape ;
 # tell due from not-due (aegis-kxjack). Any subject that declares one is
 # checked; months and years are refused, because their length is ambiguous.
 aegis:CamayocReviewAgeShape a sh:NodeShape ;
-    sh:targetSubjectsOf aegis:reviewAfter , aegis:maxAge ;
+    sh:targetSubjectsOf aegis:reviewAfter , aegis:maxAge , aegis:idleLimit ;
     sh:property [
         sh:path aegis:reviewAfter ;
         sh:maxCount 1 ;
@@ -67,6 +67,21 @@ aegis:CamayocReviewAgeShape a sh:NodeShape ;
         sh:datatype xsd:string ;
         sh:pattern "^P([0-9]+W|[0-9]+D|([0-9]+D)?T([0-9]+H([0-9]+M)?|[0-9]+M))$" ;
         sh:message "camayoc: maxAge is one ISO-8601 duration in weeks, days, hours or minutes (no months or years)" ;
+    ] ;
+    # No maxCount: a WorkItem is re-emitted byte-identically, so a kind change APPENDS
+    # a second limit and a maxCount would refuse that item's every later write. Each
+    # value is its own basis instead; the earliest lapse wins (aegis-qx96wr).
+    sh:property [
+        sh:path aegis:idleLimit ;
+        sh:datatype xsd:string ;
+        sh:pattern "^P([0-9]+W|[0-9]+D|([0-9]+D)?T([0-9]+H([0-9]+M)?|[0-9]+M))$" ;
+        sh:message "camayoc: idleLimit is an ISO-8601 duration in weeks, days, hours or minutes (no months or years)" ;
+    ] ;
+    sh:property [
+        sh:path aegis:workKind ;
+        sh:datatype xsd:string ;
+        sh:in ("Directive" "Design" "Plan" "DreamCycle") ;
+        sh:message "camayoc: workKind is one of Directive|Design|Plan|DreamCycle" ;
     ] .
 
 aegis:CamayocDecisionShape a sh:NodeShape ;

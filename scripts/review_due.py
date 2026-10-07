@@ -9,6 +9,13 @@ Stiwi 2026-09-24: "check on this after this time and quipu will emit an event"
                      latest aegis:verifiedAt of a Verification that
                      aegis:verifies the entity. No such verification means
                      UNKNOWN: an unanchored age is neither fresh nor due.
+  aegis:idleLimit    an ISO-8601 duration a tracked WorkItem may go without
+                     tracker activity (aegis-qx96wr). Anchored on the observedAt
+                     of its LATEST tracker Observation (aegis:observes), so real
+                     activity pushes the expiry forward with no mutation. A
+                     latest Observation saying closed or deferred RESOLVES it:
+                     finished or deliberately parked work never fires. No
+                     Observation means UNKNOWN.
 
 An entity is DUE when any declared age has passed, NOT_DUE when every declared
 age is known and still ahead, and UNKNOWN otherwise. A known overdue age wins
@@ -87,6 +94,26 @@ def last_verified(post, entity: str) -> dt.datetime | None:
     return latest
 
 
+#: A latest tracker status that ends an idle obligation (aegis-qx96wr): closed
+#: work is finished, and a deferral is a deliberate park with its own date.
+RESOLVING_STATUS = {"closed", "deferred"}
+
+
+def latest_activity(post, entity: str) -> tuple[dt.datetime | None, str | None]:
+    """observedAt and observedStatus of the entity's LATEST tracker Observation.
+    Bound single-pattern reads per Observation, never a join (as last_verified)."""
+    latest, status = None, None
+    for row in select(post, f"SELECT ?obs WHERE {{ {pattern(f'<{A}{entity}>', 'observes', '?obs')} }}"):
+        obs = _local(row["obs"])
+        for raw in _values(post, obs, "observedAt"):
+            when = parse_instant(raw)
+            if when and (latest is None or when > latest):
+                latest = when
+                found = _values(post, obs, "observedStatus")
+                status = found[0].strip('"') if found else None
+    return latest, status
+
+
 def judge(post, entity: str, now: dt.datetime) -> dict:
     basis = []
     for raw in _values(post, entity, "reviewAfter"):
@@ -103,10 +130,23 @@ def judge(post, entity: str, now: dt.datetime) -> dict:
                f"last verified {anchor.isoformat()}")
         basis.append({"age": "maxAge", "value": raw.strip('"'),
                       "due_at": when.isoformat() if when else None, "why": why})
+    for raw in _values(post, entity, "idleLimit"):
+        span = parse_duration(raw)
+        anchor, status = latest_activity(post, entity) if span else (None, None)
+        resolved = status in RESOLVING_STATUS
+        when = anchor + span if anchor and span and not resolved else None
+        why = ("unreadable duration" if span is None else
+               "no tracker Observation, so the idle age has no anchor" if anchor is None else
+               f"resolved: the latest tracker status is {status}" if resolved else
+               f"last tracker activity {anchor.isoformat()}")
+        basis.append({"age": "idleLimit", "value": raw.strip('"'),
+                      "due_at": when.isoformat() if when else None, "why": why,
+                      **({"resolved": True} if resolved else {})})
     known = [dt.datetime.fromisoformat(b["due_at"]) for b in basis if b["due_at"]]
+    settled = len(known) + sum(1 for b in basis if b.get("resolved"))
     if any(t <= now for t in known):
         verdict = DUE
-    elif known and len(known) == len(basis):
+    elif basis and settled == len(basis):
         verdict = NOT_DUE
     else:
         verdict = UNKNOWN
@@ -130,7 +170,7 @@ def judge(post, entity: str, now: dt.datetime) -> dict:
 def evaluate(post, *, now: dt.datetime | None = None) -> list[dict]:
     now = now or dt.datetime.now(dt.timezone.utc)
     aged = set()
-    for prop in ("reviewAfter", "maxAge"):
+    for prop in ("reviewAfter", "maxAge", "idleLimit"):
         for row in select(post, f"SELECT ?s WHERE {{ {pattern('?s', prop, '?v')} }}"):
             aged.add(_local(row["s"]))
     return [judge(post, e, now) for e in sorted(aged)]

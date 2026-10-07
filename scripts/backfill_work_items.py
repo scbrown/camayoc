@@ -43,7 +43,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import planes  # noqa: E402
-from ingest_work_items import BASE_NS, WorkItemError, episode_for  # noqa: E402
+from ingest_work_items import BASE_NS, WorkItemError, episode_for, work_kind  # noqa: E402
 
 CLIENT = "camayoc-ingress"
 #: seeds' schema.org model (aegis-bqgdr3) writes schema:identifier, not the
@@ -254,12 +254,23 @@ def run(records, done: set[str], post, *, actor, source, rate, stop_after,
     missing = sorted((r for r in eligible if r.get("id") not in done), key=newest_first, reverse=True)
     stale = sorted((r for r in eligible if r.get("id") in done and r.get("blocked_on")
                     and projected.get(r["id"]) != deps_key(r)), key=newest_first, reverse=True)
-    queue = missing + stale
+    # Planned work (aegis-qx96wr) is re-projected ONCE to gain its kind and idle
+    # limit, so an unassigned open Design/Plan/Directive -- which the standing sync
+    # lane never follows -- is still findable and can lapse. Not closed ones: they
+    # carry no live obligation, and re-posting them would be a burst for nothing.
+    # Keyed "kind:<id>" in the same map; dependency keys are bare ids, so no clash.
+    stale_ids = {r["id"] for r in stale}
+    kinded = sorted((r for r in eligible if r.get("id") in done and r["id"] not in stale_ids
+                     and r.get("status") != "closed" and work_kind(r)
+                     and projected.get("kind:" + r["id"]) != work_kind(r)),
+                    key=newest_first, reverse=True)
+    queue = missing + stale + kinded
     if limit is not None:
         queue = queue[:limit]
     report = {"beads": len(records), "covered_before": len(done & {r["id"] for r in records}),
               "missing": len([r for r in records if r.get("id") not in done]),
               "reproject_pending": len(stale),
+              "kind_pending": len(kinded),
               "attempted": 0, "written": 0, "indeterminate": 0, "invalid": 0,
               "stopped": None, "dry_run": dry_run}
     gap = 1.0 / rate if rate > 0 else 0.0
@@ -282,6 +293,8 @@ def run(records, done: set[str], post, *, actor, source, rate, stop_after,
             report.setdefault("written_ids", []).append(record["id"])
             if record.get("blocked_on"):
                 projected[record["id"]] = deps_key(record)
+            if work_kind(record):
+                projected["kind:" + record["id"]] = work_kind(record)
         except (planes.PlaneError, TimeoutError, OSError) as error:
             # Lost response, 502, timeout: the write may have LANDED. Leave it
             # to the next run's coverage query; never re-post blind.
