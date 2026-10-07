@@ -287,12 +287,19 @@ class SplitTypeQuipu(FakeQuipu):
     """Answers each asserted-type query with only the items typed THAT way:
     `legacy` under the old class, `quechua` under its Quechua twin."""
 
-    def __init__(self, legacy, quechua):
-        super().__init__(covered=set(legacy) | set(quechua))
-        self.by_type = {bf.WORKITEM_TYPES[0]: set(legacy), bf.WORKITEM_TYPES[1]: set(quechua)}
+    def __init__(self, legacy, quechua, schema=()):
+        super().__init__(covered=set(legacy) | set(quechua) | set(schema))
+        self.by_type = {bf.WORKITEM_TYPES[0]: set(legacy), bf.WORKITEM_TYPES[1]: set(quechua),
+                        bf.WORKITEM_TYPES[2]: set(schema)}
+        self.schema = set(schema)
 
     def post(self, endpoint, body):
-        if endpoint == "/query" and "identifier" not in body["query"]:
+        if endpoint == "/query" and "identifier" in body["query"]:
+            # seeds' schema.org items carry ONLY schema:identifier (aegis-bqgdr3)
+            ids = self.schema if "schema.org/identifier" in body["query"] else self.covered - self.schema
+            return {"rows": [{"w": f"aegis:{i}", "id": f'"{i}"'} for i in sorted(ids)],
+                    "truncated": False}
+        if endpoint == "/query":
             iri = next(t for t in self.by_type if f"<{t}>" in body["query"])
             return {"rows": [{"w": f"{NS}{i}"} for i in sorted(self.by_type[iri])],
                     "truncated": False}
@@ -315,6 +322,29 @@ class QuechuaTypedItemsAreCovered(unittest.TestCase):
         looks missing. This is the double-typing the dual read prevents."""
         q = SplitTypeQuipu(legacy={"aegis-1"}, quechua={"aegis-2"})
         with mock.patch.object(bf, "WORKITEM_QUERIES", bf.WORKITEM_QUERIES[:1]):
+            go(q, [bead(1), bead(2), bead(3, "2026-09-03T00:00:00Z")])
+        self.assertIn("aegis-2", [b["nodes"][0]["name"] for b in q.writes])
+
+
+class SchemaActionItemsAreCovered(unittest.TestCase):
+    """aegis-bqgdr3: a seed in the schema.org model is typed schema:Action and
+    carries schema:identifier, not the legacy predicate. It is covered."""
+
+    def test_a_schema_action_item_is_not_rewritten(self):
+        q = SplitTypeQuipu(legacy={"aegis-1"}, quechua=set(), schema={"aegis-2"})
+        report = go(q, [bead(1), bead(2), bead(3, "2026-09-03T00:00:00Z")])
+        self.assertEqual([b["nodes"][0]["name"] for b in q.writes], ["aegis-3"])
+        self.assertEqual(report["covered_before"], 2)
+
+    def test_a_reader_of_only_the_legacy_identifier_would_rewrite_it(self):
+        q = SplitTypeQuipu(legacy={"aegis-1"}, quechua=set(), schema={"aegis-2"})
+        with mock.patch.object(bf, "IDENTIFIER_QUERIES", bf.IDENTIFIER_QUERIES[:1]):
+            go(q, [bead(1), bead(2), bead(3, "2026-09-03T00:00:00Z")])
+        self.assertIn("aegis-2", [b["nodes"][0]["name"] for b in q.writes])
+
+    def test_a_reader_of_only_the_older_types_would_rewrite_it(self):
+        q = SplitTypeQuipu(legacy={"aegis-1"}, quechua=set(), schema={"aegis-2"})
+        with mock.patch.object(bf, "WORKITEM_QUERIES", bf.WORKITEM_QUERIES[:2]):
             go(q, [bead(1), bead(2), bead(3, "2026-09-03T00:00:00Z")])
         self.assertIn("aegis-2", [b["nodes"][0]["name"] for b in q.writes])
 

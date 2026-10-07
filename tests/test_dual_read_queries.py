@@ -163,5 +163,89 @@ def union_branches(query: str) -> tuple[str, str]:
         end += 1
     return query[start + 1 : mid].strip(), query[mid + len("} UNION {") : end].strip()
 
+# seeds' schema.org model (aegis-bqgdr3): a WorkItem is a schema:Action. The
+# governance twins stay quechua; three seed predicates move to schema.org;
+# camayoc-only terms (trajectoryOf, stepOf, ...) stay legacy. rdfs:label stays
+# (seeds writes it beside schema:name for quipu's label floor).
+S = "https://schema.org/"
+SCHEMA_MOVES = {"closedAt": "endTime", "assignedTo": "agent", "identifier": "identifier"}
+SCHEMA_CASES = tuple(c for c in CASES if c[2] == "WorkItem")
+
+
+def to_schema(graph, which) -> "rdflib.Graph":
+    """Move the chosen WorkItems into seeds' schema.org model, record by record."""
+    records = sorted(graph.subjects(RDF.type, URIRef(A + "WorkItem")), key=str)
+    chosen = {r for i, r in enumerate(records) if which(i)}
+    out = rdflib.Graph()
+    for s, p, o in graph:
+        local = str(p)[len(A):] if str(p).startswith(A) else None
+        if s not in chosen:
+            out.add((s, p, o))
+        elif p == RDF.type and o == URIRef(A + "WorkItem"):
+            out.add((s, p, URIRef(S + "Action")))
+        elif local in SCHEMA_MOVES:
+            out.add((s, URIRef(S + SCHEMA_MOVES[local]), o))
+        elif local in SHAPES["WorkItem"]:
+            out.add((s, URIRef(Q + local), o))
+        else:
+            out.add((s, p, o))
+    return out
+
+
+def _rekey(term):
+    return URIRef(str(term) + "-sd") if isinstance(term, URIRef) and str(term).startswith(EX) else term
+
+
+def rekey(graph) -> "rdflib.Graph":
+    """The same records on a second board: every fixture IRI gets a suffix."""
+    out = rdflib.Graph()
+    for s, p, o in graph:
+        out.add((_rekey(s), p, _rekey(o)))
+    return out
+
+
+@requires_rdflib
+class SchemaActionBranchTests(unittest.TestCase):
+    def test_schema_and_mixed_arms_return_the_legacy_answer(self):
+        for name, fixture, _shape, params in SCHEMA_CASES:
+            with self.subTest(query=name):
+                legacy = rdflib.Graph().parse(FIXTURES / fixture)
+                query = template(name, params)
+                expected = rows(legacy, query)
+                self.assertTrue(expected, f"{name}: the legacy control returned nothing")
+                schema = to_schema(legacy, lambda i: True)
+                self.assertNotEqual(set(legacy), set(schema), f"{name}: moved nothing")
+                self.assertEqual(expected, rows(schema, query), f"{name}/schema")
+                # Two whole boards side by side, one per model: seeds cuts a
+                # board over at once and a dependency never crosses models, so
+                # this (not record-by-record mixing) is the mixed state.
+                # The reference is two LEGACY boards, so aggregates work too.
+                reference = rows(legacy + rekey(legacy), query)
+                self.assertNotEqual(reference, [], name)
+                self.assertEqual(reference, rows(legacy + rekey(schema), query),
+                                 f"{name}/legacy-board+schema-board")
+
+    def test_without_the_schema_branch_the_schema_arm_fails(self):
+        for name, fixture, _shape, params in SCHEMA_CASES:
+            with self.subTest(query=name):
+                schema = to_schema(rdflib.Graph().parse(FIXTURES / fixture), lambda i: True)
+                query = template(name, params)
+                mutant = query.replace("schema:Action", "schema:NotAnAction")
+                self.assertNotEqual(query, mutant)
+                self.assertNotEqual(rows(schema, query), rows(schema, mutant), name)
+
+    def test_schema_branch_is_the_quechua_branch_with_only_mapped_terms_moved(self):
+        for name, _fixture, _shape, _params in SCHEMA_CASES:
+            with self.subTest(query=name):
+                q = template(name, {})
+                _, quechua_branch = union_branches(q)
+                second = q.index(quechua_branch) + len(quechua_branch)
+                _, schema_branch = union_branches(q[second - len(quechua_branch) - 3:])
+                expected = quechua_branch.replace("quechua:WorkItem", "schema:Action")
+                for old, new in SCHEMA_MOVES.items():
+                    expected = re.sub(rf"\baegis:{old}\b", f"schema:{new}", expected)
+                self.assertEqual(expected, schema_branch, name)
+
+
 if __name__ == "__main__":
     unittest.main()
