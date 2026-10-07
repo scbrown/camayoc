@@ -140,6 +140,12 @@ class ShippedAuthorityTests(unittest.TestCase):
     """The SHIPPED grant set is pinned exactly. A grant is a human authority
     decision; widening it must fail here rather than pass silently."""
 
+    def setUp(self):
+        # Restore the module-global afterwards so later tests are not left
+        # reading the shipped file (sattler review nit on camayoc#77).
+        saved = promote_plane.AUTHORITY_PATH
+        self.addCleanup(setattr, promote_plane, "AUTHORITY_PATH", saved)
+
     def test_the_shipped_grants_are_exactly_the_decided_ones(self):
         promote_plane.AUTHORITY_PATH = ROOT / "config" / "plane-authority.json"
         self.assertEqual(
