@@ -126,8 +126,13 @@ class KnotWriteInventoryTests(unittest.TestCase):
         Should a knot write start carrying a PROV activity, this fails and the
         doc's "costs something" paragraph needs revisiting.
         """
+        # READERS of the PROV edge quipu's own /episode writes are not knot
+        # writers. Each exemption names why; it must never write the edge.
+        readers = {"directive_edges.py": "anchors a Directive's grace window on "
+                   "its capture episode (aegis-q9m5mp.47); writes only governedBy, "
+                   "trackedBy and inferredAt"}
         for path in sorted(SCRIPTS.rglob("*")):
-            if path.suffix in (".sh", ".py") and path.is_file():
+            if path.suffix in (".sh", ".py") and path.is_file() and path.name not in readers:
                 self.assertNotIn("wasGeneratedBy", path.read_text(), str(path))
 
 

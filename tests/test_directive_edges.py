@@ -1,0 +1,218 @@
+"""directive_edges (aegis-q9m5mp.47) against a graph-aware fake of quipu's
+/query and /knot, and a fake Jev transport. No network."""
+from __future__ import annotations
+
+import datetime as dt
+import re
+import sys
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+
+import blocked_by as bb
+import directive_edges as de
+import jev
+
+A = bb.A
+PROV = de.PROV
+NOW = dt.datetime(2026, 10, 7, 22, 0, tzinfo=dt.timezone.utc)
+POLICY = A + "policy_measurement-needs-a-control"
+OTHER = A + "policy_load-is-bounded"
+TRACKER = A + "aegis-q9m5mp.10"
+
+
+class FakeQuipu:
+    """Triples per graph (None = ROOT). Answers single bound patterns, the
+    FILTER(?t = <X>) type form, and /knot into a named graph."""
+
+    def __init__(self):
+        self.g = {None: set(), de.DECLARED: set(), de.INFERRED: set()}
+        self.knots = []
+        self.drop_writes = False
+
+    def add(self, s, p, o, graph=None):
+        self.g[graph].add((s, p, o))
+
+    def __call__(self, endpoint, body):
+        if endpoint == "/knot":
+            self.knots.append(body)
+            if not self.drop_writes:
+                for line in body["turtle"].strip().splitlines():
+                    s, p, o = re.match(r"<([^>]+)> <([^>]+)> (.+) \.$", line).groups()
+                    self.add(s, p, o[1:-1] if o.startswith("<") else o.split("^^")[0].strip('"'),
+                             body["graph"])
+            return {"tx_id": 1, "conforms": True}
+        q, graph = body["query"], body.get("graph")
+        triples = self.g.get(graph, set())
+        m = re.search(r"\?s a \?t \. FILTER\(\?t = <([^>]+)>\)", q)
+        if m:
+            return {"rows": [{"s": s} for s, p, o in triples if p == "a" and o == m.group(1)]}
+        m = re.search(r"\{ (\S+) <([^>]+)> (\S+) \}", q)
+        s, p, o = m.groups()
+        rows = []
+        for ts, tp, to in triples:
+            if tp != p or (not s.startswith("?") and s.strip("<>") != ts):
+                continue
+            row = {}
+            if s.startswith("?"):
+                row[s[1:]] = ts
+            if o.startswith("?"):
+                row[o[1:]] = to
+            rows.append(row)
+        return {"rows": rows}
+
+
+def jev_answering(choice, confidence):
+    calls = []
+
+    def transport(body, key):
+        calls.append(body)
+        return {"answers": {"q": {"choice": choice, "confidence": confidence, "probabilities": {}}}}
+    return jev.JevClient(api_key="", transport=transport), calls
+
+
+def board():
+    q = FakeQuipu()
+    q.add(POLICY, A + "claim", "A claim is evidence only after a positive control.")
+    q.add(OTHER, A + "claim", "Work bounds the load it puts on shared services.")
+    # a traced member of POLICY, in the declared plane: the tracker comes from it
+    q.add(A + "old", A + "governedBy", POLICY, de.DECLARED)
+    q.add(A + "old", A + "trackedBy", TRACKER, de.DECLARED)
+    # the new, untraced Directive and its capture episode
+    q.add(A + "new", "a", A + "Directive")
+    q.add(A + "new", "http://www.w3.org/2000/01/rdf-schema#label", "zero needs a control")
+    q.add(A + "new", PROV + "wasGeneratedBy", A + "episode_new")
+    q.add(A + "episode_new", PROV + "generatedAtTime", "2026-10-07T21:00:00Z")
+    return q
+
+
+class Judge(unittest.TestCase):
+    def test_three_verdicts_by_plane(self):
+        q = board()
+        self.assertEqual(de.judge(q, "old", NOW)["verdict"], de.TRACED)
+        self.assertEqual(de.judge(q, "new", NOW)["verdict"], de.UNTRACED)
+        q.add(A + "new", A + "governedBy", POLICY, de.INFERRED)
+        q.add(A + "new", A + "trackedBy", TRACKER, de.INFERRED)
+        self.assertEqual(de.judge(q, "new", NOW)["verdict"], de.PROPOSED,
+                         "inferred-only edges are a proposal, not traced")
+
+    def test_one_edge_is_not_traced(self):
+        q = board()
+        q.add(A + "new", A + "governedBy", POLICY, de.DECLARED)
+        self.assertEqual(de.judge(q, "new", NOW)["verdict"], de.UNTRACED)
+
+    def test_untraced_lapses_after_grace_from_capture(self):
+        q = board()
+        inside = de.judge(q, "new", NOW)
+        self.assertEqual((inside["lapse"], inside["due_at"]), (de.NOT_LAPSED, "2026-10-09T21:00:00+00:00"))
+        past = de.judge(q, "new", NOW + de.GRACE)
+        self.assertEqual(past["lapse"], de.LAPSED)
+        self.assertTrue(past["lapse_event_id"])
+
+    def test_proposed_lapses_from_inferredAt_not_capture(self):
+        q = board()
+        q.add(A + "new", A + "governedBy", POLICY, de.INFERRED)
+        q.add(A + "new", A + "trackedBy", TRACKER, de.INFERRED)
+        q.add(A + "new", A + "inferredAt", "2026-10-08T21:00:00Z", de.INFERRED)
+        self.assertEqual(de.judge(q, "new", NOW + de.GRACE)["lapse"], de.NOT_LAPSED)
+        self.assertEqual(de.judge(q, "new", NOW + de.GRACE + dt.timedelta(days=1))["lapse"], de.LAPSED)
+
+    def test_unanchored_never_lapses(self):
+        q = board()
+        q.g[None] = {t for t in q.g[None] if t[1] != PROV + "wasGeneratedBy"}
+        r = de.judge(q, "new", NOW + dt.timedelta(days=30))
+        self.assertEqual((r["lapse"], r["due_at"]), (de.NOT_LAPSED, None))
+
+    def test_discover_is_asserted_directives_only(self):
+        self.assertEqual(de.discover(board()), ["new"])
+
+
+class Propose(unittest.TestCase):
+    def event(self):
+        return {"item": "new", "event_id": de.event_id("new")}
+
+    def test_confident_pick_is_written_to_inferred_with_the_policys_tracker(self):
+        q = board()
+        client, calls = jev_answering("policy_measurement-needs-a-control", 0.91)
+        out = de.propose(q, q, client, self.event(), NOW)
+        self.assertEqual((out["outcome"], out["verdict"]), ("proposed", de.PROPOSED))
+        (knot,) = q.knots
+        self.assertEqual(knot["graph"], de.INFERRED)
+        self.assertIn(f"<{POLICY}>", knot["turtle"])
+        self.assertIn(f"<{TRACKER}>", knot["turtle"])
+        self.assertNotIn((A + "new", A + "governedBy", POLICY), q.g[de.DECLARED],
+                         "ingress never writes the declared plane")
+        self.assertIn("none-of-these", calls[0]["questions"]["q"]["criteria"])
+
+    def test_redelivery_is_a_noop(self):
+        q = board()
+        client, calls = jev_answering("policy_measurement-needs-a-control", 0.91)
+        de.propose(q, q, client, self.event(), NOW)
+        again = de.propose(q, q, client, self.event(), NOW)
+        self.assertEqual((again["outcome"], len(q.knots), len(calls)), ("noop", 1, 1))
+
+    def test_below_floor_none_or_trackerless_write_nothing(self):
+        for choice, conf, why in (("policy_measurement-needs-a-control", 0.74, "confidence"),
+                                  ("none-of-these", 0.99, "none"),
+                                  ("policy_load-is-bounded", 0.95, "no tracker")):
+            q = board()
+            client, _ = jev_answering(choice, conf)
+            out = de.propose(q, q, client, self.event(), NOW)
+            self.assertEqual((out["outcome"], q.knots), ("needs-ruling", []), choice)
+            self.assertIn(why, out["why"])
+
+    def test_a_write_that_does_not_read_back_raises_for_retry(self):
+        q = board()
+        q.drop_writes = True
+        client, _ = jev_answering("policy_measurement-needs-a-control", 0.91)
+        with self.assertRaises(ConnectionError):
+            de.propose(q, q, client, self.event(), NOW)
+
+    def test_traced_directive_never_calls_jev(self):
+        q = board()
+        client, calls = jev_answering("policy_measurement-needs-a-control", 0.91)
+        out = de.propose(q, q, client, {"item": "old", "event_id": "x"}, NOW)
+        self.assertEqual((out["outcome"], calls), ("noop", []))
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class AdapterProtocol(unittest.TestCase):
+    """The two views as chaski's change-driven emitter sees them."""
+
+    def setUp(self):
+        import change_adapter as ca
+        self.ca = ca
+        self.now = NOW.timestamp()
+
+    def test_subscription_covers_three_planes_and_the_directive_type(self):
+        d = self.ca.description("directive")
+        self.assertEqual(d["types"], [A + "Directive"])
+        self.assertEqual(set(d["graphs"]), {"ROOT", de.DECLARED, de.INFERRED})
+        self.assertIn(A + "governedBy", d["attributes"])
+
+    def test_a_new_directive_routes_to_itself(self):
+        out = self.ca.evaluate("directive", board(), {"now": self.now, "route": [
+            {"entity": A + "new", "attribute": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"}]})
+        self.assertEqual(out["items"], ["new"])
+
+    def test_untraced_view_carries_the_untraced_event(self):
+        out = self.ca.evaluate("directive", board(), {"now": self.now, "items": ["new", "old"]})
+        verdicts = {r["entity"]: (r["verdict"], r["event_id"]) for r in out["records"]}
+        self.assertEqual(verdicts["new"], (de.UNTRACED, de.event_id("new")))
+        self.assertEqual(verdicts["old"], (de.TRACED, None))
+
+    def test_lapse_view_stores_the_grace_deadline_then_lapses(self):
+        out = self.ca.evaluate("directive-lapse", board(), {"now": self.now, "items": ["new"]})
+        (r,) = out["records"]
+        self.assertEqual(r["verdict"], de.NOT_LAPSED)
+        due = dt.datetime(2026, 10, 9, 21, 0, tzinfo=dt.timezone.utc).timestamp()
+        self.assertEqual(out["next_checks"]["new"], due)
+        later = self.ca.evaluate("directive-lapse", board(), {"now": due + 1, "items": ["new"]})
+        (r,) = later["records"]
+        self.assertEqual(r["verdict"], de.LAPSED)
+        self.assertTrue(r["event_id"])
+        self.assertIsNone(later["next_checks"]["new"])
