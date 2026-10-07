@@ -459,7 +459,16 @@ class BoardGraphCoverage(unittest.TestCase):
 class CoverageReread(unittest.TestCase):
     """The after-coverage scan reads every graph; it runs only when a write was attempted."""
 
+    def fake_post(self, endpoint, body, **kw):
+        if endpoint == "/query":
+            self.queries.append(body["query"])
+            # Only the written bead is found by the targeted confirmation.
+            return {"rows": [{"w": "aegis:aegis-2", "id": '"aegis-2"'}]
+                    if "aegis-2" in body["query"] else [], "truncated": False}
+        return {"outcome": "created"}
+
     def run_main(self, records, covered_ids):
+        self.queries = []
         calls = []
 
         def fake_covered(post, board_graphs=bf.DEFAULT_BOARD_GRAPHS):
@@ -474,7 +483,7 @@ class CoverageReread(unittest.TestCase):
                  attach_deps=lambda *a: None)}), \
              mock.patch.object(bf, "load_deps_cache", lambda p: {}), \
              mock.patch.object(bf, "save_projected", lambda *a: None), \
-             mock.patch.object(bf.planes, "_post", lambda *a, **k: {"outcome": "created"}), \
+             mock.patch.object(bf.planes, "_post", self.fake_post), \
              mock.patch("builtins.print", lambda *a, **k: printed.append(a[0])), \
              tempfile.TemporaryDirectory() as d:
             bf.main(["--db", "x", "--actor", "a", "--source", "s", "--rate", "0",
@@ -487,12 +496,15 @@ class CoverageReread(unittest.TestCase):
         self.assertEqual(report["covered_after"], 1)
         self.assertEqual(report["covered_after_source"], "unchanged")
 
-    def test_an_attempted_write_rereads_coverage(self):
-        # MUTANT GUARD: skipping the re-read after a write would report stale coverage.
+    def test_an_attempted_write_confirms_only_what_it_wrote(self):
+        # aegis-67p0lj: no second full scan; a targeted READ of the written id.
         calls, report = self.run_main([bead(1), bead(2)], {"aegis-1"})
         self.assertEqual(report["attempted"], 1)
-        self.assertEqual(len(calls), 2)
-        self.assertEqual(report["covered_after_source"], "reread")
+        self.assertEqual(len(calls), 1, "one full scan, before writing")
+        self.assertEqual(report["covered_after_source"], "confirmed")
+        self.assertEqual(report["covered_after"], 2)
+        self.assertTrue(self.queries and all("aegis-2" in q and "FILTER" in q for q in self.queries))
+        self.assertNotIn("written_ids", report)
 
 
 class SharedCoverage(unittest.TestCase):
@@ -518,10 +530,19 @@ class SharedCoverage(unittest.TestCase):
                                      now=lambda: self.clock, refresh=refresh)
 
     def test_a_second_run_within_max_age_reuses_the_scan(self):
-        self.assertEqual(self.call(), ({"aegis-1", "aegis-2"}, "scan"))
+        self.assertEqual(self.call()[:2], ({"aegis-1", "aegis-2"}, "scan"))
         self.clock += 120
-        self.assertEqual(self.call(), ({"aegis-1", "aegis-2"}, "cache"))
+        self.assertEqual(self.call()[:2], ({"aegis-1", "aegis-2"}, "cache"))
         self.assertEqual(self.scans, 1)
+
+    def test_confirmation_does_not_reset_the_scan_age(self):
+        # malcolm, camayoc#82: if every run writes, re-stamping at write time means
+        # the max age never forces a rescan. The stamp is the FULL scan's time.
+        ids, _, scanned_at = self.call()
+        self.clock += 200
+        bf.remember_coverage(self.cache, (), ids | {"aegis-3"}, 300.0, scanned_at)
+        self.clock += 150  # 350s after the scan, 150s after the confirmation
+        self.assertEqual(self.call()[1], "scan")
 
     def test_a_stale_cache_is_rescanned(self):
         self.call()
@@ -572,6 +593,29 @@ class SharedCoverage(unittest.TestCase):
                          "--lock", str(Path(d) / f"lock-{store}.lock")])
         self.assertEqual(len(calls), 1)
         self.assertEqual(json.loads(printed[-1])["covered_before_source"], "cache")
+
+
+class Confirmed(unittest.TestCase):
+    def test_only_requested_ids_that_are_found_count(self):
+        def post(endpoint, body):
+            return {"rows": [{"w": "aegis:a", "id": '"a"'}, {"w": "aegis:z", "id": '"z"'}],
+                    "truncated": False}
+        self.assertEqual(bf.confirmed(post, ["a", "b"], ()), {"a"})
+
+    def test_a_truncated_answer_is_refused(self):
+        post = lambda endpoint, body: {"rows": [], "truncated": True}  # noqa: E731
+        with self.assertRaises(ValueError):
+            bf.confirmed(post, ["a"], ())
+
+    def test_ids_are_chunked(self):
+        seen = []
+
+        def post(endpoint, body):
+            seen.append(body["query"])
+            return {"rows": [], "truncated": False}
+        bf.confirmed(post, [f"id-{i}" for i in range(5)], (), chunk=2)
+        # 3 chunks x 2 identifier spellings x 2 graphs (default + records)
+        self.assertEqual(len(seen), 12)
 
 
 if __name__ == "__main__":
