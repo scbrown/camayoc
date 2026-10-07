@@ -241,7 +241,7 @@ contested, queryable as contested, and resolved explicitly — never silently
 overwritten by whoever wrote last.</li>
 </ul>
 <h2 id="where-it-ends-up"><a class="header" href="#where-it-ends-up">Where it ends up</a></h2>
-<p>A shelf of packs: <code>core.qpack.db</code> (the bootstrap vocabulary), <code>crew.qpack.db</code> (the
+<p>A shelf of packs: <code>core.pendant.db</code> (the bootstrap vocabulary), <code>crew.pendant.db</code> (the
 agentic-coding domain), and eventually others — each versioned, hash-cited,
 carrying its own competency queries and recommended trust posture. An agent
 team anywhere in the stack attaches the packs it needs and inherits not just
@@ -414,7 +414,7 @@ knowledge quarantined into low-trust planes.
 The declarative structured-source lane is specified as a governed RML/R2RML
 subset in <a href="design/rml-executor.html">docs/design/rml-executor.md</a>.</li>
 <li><strong>Domain ontologies as certified knowledge packs</strong> — each domain ships as
-Quipu's <code>.qpack.db</code> (quipu #81): graph + shapes + competency queries +
+Quipu's <code>.pendant.db</code> (quipu #81): graph + shapes + competency queries +
 labels + manifest, one attachable file. A Camayoc pack is the
 <code>CertifiedShareBundle</code>, not a second format; publisher and certifier claims
 bind independently to the manifest content hash.
@@ -569,7 +569,7 @@ like one.</li>
 (<code>bobbin:Chunk</code>, <code>nextChunk</code>, <code>chunkOrder</code>) in <code>shapes/code-entities.ttl</code>,
 value constraints only until the emitter ships and is measured.</li>
 <li><strong>Certified-pack producer boundary</strong> (<code>scripts/certify_pack.py</code>) — invokes
-Quipu's <code>.qpack.db</code> pack and verify path, reads the manifest content hash, and
+Quipu's <code>.pendant.db</code> pack and verify path, reads the manifest content hash, and
 renders distinct publisher/certifier claims plus the governed source mapping.
 It verifies two distinct Ed25519 keys, derives the hash from a conforming
 machine-readable SHACL report, and scans the complete pack artifact before
@@ -1194,9 +1194,9 @@ status-now are queries, not stored fields.</li>
 pair, queryable as such; resolution is an explicit, provenance-carrying act.</li>
 </ul>
 <h2 id="4-packaging"><a class="header" href="#4-packaging">4. Packaging</a></h2>
-<p>The bootstrap vocabulary ships as <strong><code>core.qpack.db</code></strong> (quipu #81): the upper
+<p>The bootstrap vocabulary ships as <strong><code>core.pendant.db</code></strong> (quipu #81): the upper
 terms, their SHACL, and the generic competency queries (e.g. "what decisions
-touch entity X"). Domain packs (<code>crew.qpack.db</code> first) declare it in their
+touch entity X"). Domain packs (<code>crew.pendant.db</code> first) declare it in their
 manifest's default dataset. Until packs land in quipu, the same content lives
 here as Turtle + shape files loadable via <code>POST /shapes</code> — the pack is the
 distribution format, not a prerequisite.</p>
@@ -1485,7 +1485,7 @@ slice actually needs (and no more).</li>
 already; the slice proves it — a skill-guided agent bootstraps a bare
 store, records a real session's decisions/work/outcomes, and the
 competency questions answer from what it recorded.</li>
-<li>The competency queries as stored queries, shipped for <code>crew.qpack.db</code> when
+<li>The competency queries as stored queries, shipped for <code>crew.pendant.db</code> when
 quipu #79/#81 land; runnable as raw SPARQL until then (the skill carries
 the patterns).</li>
 <li>An eval gate: <code>just check</code> runs the questions against a fixture graph —
@@ -1771,7 +1771,7 @@ verdicts; until then the ladder honestly stops at L4.</li>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="design-certified-knowledge-packs"><a class="header" href="#design-certified-knowledge-packs">Design: certified knowledge packs</a></h1>
 <blockquote>
 <p><strong>Implementation status (2026-08-29):</strong> 🟩 <strong>Producer certification and
-digest-addressed distribution built.</strong> Quipu implements <code>.qpack.db</code>
+digest-addressed distribution built.</strong> Quipu implements <code>.pendant.db</code>
 creation, deterministic content hashing, verification, attach/import, and the
 <code>CertifiedShareBundle</code> SHACL envelope. Camayoc's <code>certify_pack.py</code> invokes
 pack+verify, reads the authoritative manifest hash, and emits the separate
@@ -1782,11 +1782,18 @@ remains a separate acceptance gate.</p>
 </blockquote>
 <p>Camayoc has one distribution artifact, not a Camayoc pack beside a Quipu share
 bundle. A Camayoc knowledge pack <strong>is</strong> a Quipu <code>CertifiedShareBundle</code>; its
-physical archive encoding is <code>.qpack.db</code>.</p>
+physical archive encoding is <code>.pendant.db</code>.</p>
+<p><strong>Naming.</strong> Quipu calls its share artifact a <strong>pendant</strong> (formerly "qpack").
+On a khipu, pendant cords hang from the primary cord and each carries a
+self-contained record: the primary cord is a store, a pendant is a shareable
+graph with its shapes and stored queries, subsidiary cords are delta shares,
+and relationships are knots between cords. For one release, a durable root's
+existing <code>sha256/&lt;digest&gt;.qpack.db</code> objects are still read; new publications
+are written only as <code>.pendant.db</code>.</p>
 <h2 id="1-normative-artifact-contract"><a class="header" href="#1-normative-artifact-contract">1. Normative artifact contract</a></h2>
 <p>Quipu owns the bytes and their identity:</p>
 <ul>
-<li><code>quipu pack</code> writes the <code>.qpack.db</code> SQLite artifact.</li>
+<li><code>quipu pack</code> writes the <code>.pendant.db</code> SQLite artifact.</li>
 <li><code>pack_manifest.content_hash</code> is the canonical graph hash: SHA-256 over the
 lexically sorted, deduplicated N-Triples of graph, shapes, stored queries,
 and labels.</li>
@@ -1837,7 +1844,7 @@ registered signatures prove publisher and certifier claims. Retention, bucket
 policy, and credential custody are deployment inputs and MUST be audited before
 the first production upload.</p>
 <p>The implemented producer boundary is:</p>
-<pre><code class="language-bash">scripts/certify_pack.py &lt;graph-iri&gt; --db &lt;source.db&gt; --out &lt;name.qpack.db&gt; \
+<pre><code class="language-bash">scripts/certify_pack.py &lt;graph-iri&gt; --db &lt;source.db&gt; --out &lt;name.pendant.db&gt; \
   --name &lt;name&gt; --version &lt;version&gt; --shape &lt;shape-set&gt; --query &lt;query-name&gt; \
   --shacl-report &lt;conforming-report.json&gt; --publish-dir &lt;durable-root&gt; \
   # plus two distinct public-key/key-IRI/signature inputs and mapping fields
@@ -1849,13 +1856,13 @@ convention and cover domain-separated canonical claim messages. The producer
 refuses a bad signature, reused key identity, non-conforming report, mismatched
 report hash, or artifact scrub finding; callers do not supply the scrub boolean
 or SHACL hash. Publication is atomic at
-<code>&lt;durable-root&gt;/sha256/&lt;manifest-digest&gt;.qpack.db</code>; <code>source_uri</code> must identify
+<code>&lt;durable-root&gt;/sha256/&lt;manifest-digest&gt;.pendant.db</code>; <code>source_uri</code> must identify
 that exact content-addressed copy.</p>
 <h2 id="3-relationship-to-the-quipu-v1-share-interface"><a class="header" href="#3-relationship-to-the-quipu-v1-share-interface">3. Relationship to the Quipu v1 share interface</a></h2>
-<p>The <code>aegis-33cgl</code> v1 share directory and a Camayoc <code>.qpack.db</code> are two physical
+<p>The <code>aegis-33cgl</code> v1 share directory and a Camayoc <code>.pendant.db</code> are two physical
 projections of one governed semantic object, not competing knowledge formats:</p>
 <ul>
-<li><code>.qpack.db</code> is the single-file, directly attachable Camayoc distribution
+<li><code>.pendant.db</code> is the single-file, directly attachable Camayoc distribution
 artifact. Its <code>pack_manifest.content_hash</code> is the bundle's
 <code>canonicalGraphHash</code>.</li>
 <li><code>{manifest.json, export.nt, shapes.ttl}</code> is Quipu's git-native projection for
@@ -1879,7 +1886,7 @@ path. Both name the same bounded source and named shapes version.</p>
 They are not trust roots, do not mint new bundle identities, and do not change
 the signed claims. The producer implements both an atomic filesystem adapter
 and an S3-compatible adapter. Both preserve the exact
-<code>sha256/&lt;digest&gt;.qpack.db</code> key contract; the S3 path verifies retained size and
+<code>sha256/&lt;digest&gt;.pendant.db</code> key contract; the S3 path verifies retained size and
 canonical-hash metadata with a separate HEAD before recording its URI.</p>
 <h2 id="4-declarative-ingress-the-camayoc-rml-subset"><a class="header" href="#4-declarative-ingress-the-camayoc-rml-subset">4. Declarative ingress: the Camayoc RML subset</a></h2>
 <p>Camayoc also owns the executor for declarative source-to-graph mappings because
@@ -1916,7 +1923,7 @@ produce one logical result, and name the mapping IRI in provenance. Subsequent
 fixtures cover <code>services.json</code> and Prometheus scrape targets.</p>
 <h2 id="5-interfaces-and-ownership"><a class="header" href="#5-interfaces-and-ownership">5. Interfaces and ownership</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Concern</th><th>Owner</th><th>Interface</th></tr></thead><tbody>
-<tr><td>Pack bytes, manifest hash, attach/import</td><td>Quipu</td><td><code>.qpack.db</code>, <code>pack_manifest</code>, pack CLI</td></tr>
+<tr><td>Pack bytes, manifest hash, attach/import</td><td>Quipu</td><td><code>.pendant.db</code>, <code>pack_manifest</code>, pack CLI</td></tr>
 <tr><td>Meaning, mapping vocabulary, ingress policy</td><td>Camayoc</td><td>RDF mappings + governed shapes</td></tr>
 <tr><td>Publisher signature</td><td>Producing principal</td><td><code>PublisherAttestation</code></td></tr>
 <tr><td>Knowledge certification</td><td>Independent certifier</td><td><code>KnowledgeCertificationSeal</code></td></tr>
@@ -1933,7 +1940,7 @@ not the finished bounded artifact.</p>
 <li>A static pack and a Shuttle-window pack both conform to the loaded Quipu
 certification shapes; removing either signature or setting scrub pass false
 is refused.</li>
-<li>One source graph produces one <code>.qpack.db</code>; its manifest hash is unchanged by
+<li>One source graph produces one <code>.pendant.db</code>; its manifest hash is unchanged by
 relocation through git, OCI, and Garage.</li>
 <li>An independent consumer fetches from only the graph mapping, verifies hash
 and both claims, then imports into quarantine.</li>
@@ -2218,7 +2225,7 @@ and one accepted plus one refused mapping write.</li>
 governed mapping end to end against the live interface.</li>
 </ol>
 <p>Pack production is downstream of successful materialization: mappings and
-their shapes may be carried in the same certified <code>.qpack.db</code>, but packaging
+their shapes may be carried in the same certified <code>.pendant.db</code>, but packaging
 does not weaken or bypass this executor's validation and source-policy gates.</p>
 <h2 id="references"><a class="header" href="#references">References</a></h2>
 <ul>

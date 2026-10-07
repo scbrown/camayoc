@@ -222,7 +222,7 @@ knowledge quarantined into low-trust planes.
 The declarative structured-source lane is specified as a governed RML/R2RML
 subset in <a href="design/rml-executor.html">docs/design/rml-executor.md</a>.</li>
 <li><strong>Domain ontologies as certified knowledge packs</strong> — each domain ships as
-Quipu's <code>.qpack.db</code> (quipu #81): graph + shapes + competency queries +
+Quipu's <code>.pendant.db</code> (quipu #81): graph + shapes + competency queries +
 labels + manifest, one attachable file. A Camayoc pack is the
 <code>CertifiedShareBundle</code>, not a second format; publisher and certifier claims
 bind independently to the manifest content hash.
@@ -377,7 +377,7 @@ like one.</li>
 (<code>bobbin:Chunk</code>, <code>nextChunk</code>, <code>chunkOrder</code>) in <code>shapes/code-entities.ttl</code>,
 value constraints only until the emitter ships and is measured.</li>
 <li><strong>Certified-pack producer boundary</strong> (<code>scripts/certify_pack.py</code>) — invokes
-Quipu's <code>.qpack.db</code> pack and verify path, reads the manifest content hash, and
+Quipu's <code>.pendant.db</code> pack and verify path, reads the manifest content hash, and
 renders distinct publisher/certifier claims plus the governed source mapping.
 It verifies two distinct Ed25519 keys, derives the hash from a conforming
 machine-readable SHACL report, and scans the complete pack artifact before
