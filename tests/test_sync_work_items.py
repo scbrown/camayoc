@@ -569,3 +569,25 @@ class Transitions(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TrackerReadBound(unittest.TestCase):
+    """aegis-ky3zpa: a tracker read under a crew write burst took 64.5 s, and a
+    15 s bound turned every minute of the burst into UNKNOWN."""
+
+    MEASURED_TAIL_S = 64.5
+
+    def reads(self):
+        seen = []
+
+        def run(argv, **kw):
+            seen.append(kw.get('timeout'))
+            return type('R', (), {'stdout': json.dumps([])})()
+        sync.collect(Path('x.db'), tracked=['proj-gone'], run=run, deps_cache={})
+        return seen
+
+    def test_every_tracker_read_outlasts_the_measured_tail(self):
+        timeouts = self.reads()
+        self.assertEqual(len(timeouts), 2, 'current-work read and tracked-id lookup')
+        for timeout in timeouts:
+            self.assertGreater(timeout, self.MEASURED_TAIL_S)
