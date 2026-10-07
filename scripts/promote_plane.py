@@ -52,17 +52,20 @@ interval on the record beats a close that silently never happened.
 
 Usage:
     python3 scripts/promote_plane.py \\
-        --subject http://ex/fact/1 --to crew:records \\
+        --triples-file edges.nt --to crew:records \\
         --by alice --authored-by claude --reason "corroborated by the deploy log"
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
+import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -150,8 +153,47 @@ def check_outranks(target_plane: str) -> None:
         )
 
 
-def promotion_episode(
-    subject: str,
+#: One N-Triples term: an IRI, or a literal (with optional datatype/language).
+_TERM = r'(<[^<>\s]+>|"(?:[^"\\]|\\.)*"(?:\^\^<[^<>\s]+>|@[A-Za-z0-9-]+)?)'
+_TRIPLE = re.compile(rf"^\s*(<[^<>\s]+>)\s+(<[^<>\s]+>)\s+{_TERM}\s*\.\s*$")
+
+Triple = tuple[str, str, str]
+
+
+def parse_ntriples(text: str) -> list[Triple]:
+    """Exact edges to promote, one N-Triples statement per line.
+
+    The fact is an EDGE, not a subject (aegis-is257g): a subject can carry
+    several inferred edges, and promotion must be able to move exactly the ones
+    that earned it. Blank lines and `#` comments are skipped; anything else that
+    is not one triple is refused rather than guessed at.
+    """
+    triples: list[Triple] = []
+    for n, line in enumerate(text.splitlines(), 1):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        m = _TRIPLE.match(line)
+        if not m:
+            raise PromotionRefused(f"line {n} is not one N-Triples statement: {line[:120]!r}")
+        triples.append((m.group(1), m.group(2), m.group(3)))
+    return triples
+
+
+def promotion_digest(triples: list[Triple], target_plane: str) -> str:
+    """Stable id of WHAT is promoted WHERE, so a record names its edge set and
+    re-running the same promotion cannot mint a second record."""
+    h = hashlib.sha256(target_plane.encode())
+    for t in sorted(set(triples)):
+        h.update(("\n" + " ".join(t)).encode())
+    return h.hexdigest()[:16]
+
+
+def _literal(text: str) -> str:
+    return json.dumps(text)  # a valid Turtle string literal, escapes included
+
+
+def promotion_write(
+    triples: list[Triple],
     target_plane: str,
     promoted_by: str,
     authored_by: str,
@@ -159,43 +201,67 @@ def promotion_episode(
     timestamp: str,
     source_left_open: bool = True,
 ) -> dict:
-    """The episode asserting the promoted fact into its new plane.
+    """The `/knot` body that ASSERTS the promoted triples in the target plane,
+    with the promotion record beside them in the same transaction.
 
-    Carries the promotion's own provenance — who moved it, from where, when and
-    why — as `observed` facts, because the promotion IS an observed event even
-    though the fact it moves was inferred. A reader must be able to see that
-    this fact arrived by promotion rather than by direct observation.
+    The record is provenance, never a stand-in for the fact: the previous
+    version wrote only the record, so a promotion moved zero edges while the
+    record made it look done (aegis-is257g). The record carries the promotion's
+    own provenance as `observed`, because the move IS an observed event even
+    though the facts it moves were inferred.
     """
-    turtle = f"""@prefix camayoc: <https://camayoc.local/ontology/> .
-@prefix aegis:   <http://aegis.gastown.local/ontology/> .
-@prefix prov:    <http://www.w3.org/ns/prov#> .
-
-<{subject}> camayoc:planePromotion [
+    digest = promotion_digest(triples, target_plane)
+    record_iri = f"<urn:camayoc:plane-promotion:{digest}>"
+    facts = "\n".join(f"{s} {p} {o} ." for s, p, o in sorted(set(triples)))
+    subjects = sorted({t[0] for t in triples})
+    # Each promoted subject points at the record (the stored Q13 query reads
+    # `<fact> camayoc:planePromotion ?record`), and the record derives from it.
+    links = "\n".join(f"{s} camayoc:planePromotion {record_iri} ." for s in subjects)
+    derived = " , ".join(subjects)
+    record = f"""{record_iri}
     camayoc:promotedFrom  <{planes.plane_for("inferred")}> ;
     camayoc:promotedInto  <{planes.PLANES[target_plane]["iri"]}> ;
-    camayoc:promotedBy    "{promoted_by}" ;
-    camayoc:authoredBy    "{authored_by}" ;
-    camayoc:promotedAt    "{timestamp}" ;
+    camayoc:promotedBy    {_literal(promoted_by)} ;
+    camayoc:authoredBy    {_literal(authored_by)} ;
+    camayoc:promotedAt    {_literal(timestamp)} ;
+    camayoc:promotedTripleCount {len(set(triples))} ;
+    camayoc:promotionDigest {_literal(digest)} ;
     aegis:sourceKind      "observed" ;
-    aegis:falsifier       "the subject is absent from the target plane after this transaction" ;
-    prov:wasDerivedFrom   <{subject}> ;
+    aegis:falsifier       {_literal(f"any of the {len(set(triples))} promoted triples is absent from the target plane after this transaction")} ;
     camayoc:sourceLeftOpen {"true" if source_left_open else "false"} ;
-    camayoc:reason        "{reason}"
-] .
+    prov:wasDerivedFrom   {derived} ;
+    camayoc:reason        {_literal(reason)} .
 """
+    turtle = (
+        "@prefix camayoc: <https://camayoc.local/ontology/> .\n"
+        "@prefix aegis:   <http://aegis.gastown.local/ontology/> .\n"
+        "@prefix prov:    <http://www.w3.org/ns/prov#> .\n\n"
+        f"{facts}\n\n{links}\n\n{record}"
+    )
     return {
-        "name": f"plane-promotion-{subject.rsplit('/', 1)[-1]}-{timestamp}",
+        "turtle": turtle,
         "graph": planes.PLANES[target_plane]["iri"],
-        "episode_body": turtle,
-        "source": "camayoc plane promotion",
         "actor": promoted_by,
-        "nodes": [],
-        "edges": [],
+        "source": f"camayoc plane promotion {digest}",
+        "digest": digest,
     }
 
 
+def ask_in_graph(graph_iri: str, triple: Triple) -> bool:
+    """Is this exact triple in this graph? Raises on "could not look"."""
+    s, p, o = triple
+    result = planes._post(
+        "/query",
+        {"query": f"ASK {{ GRAPH <{graph_iri}> {{ {s} {p} {o} }} }}"},
+        client="camayoc-planes",
+    )
+    if not isinstance(result.get("result"), bool):
+        raise planes.PlaneError(f"ASK returned no boolean: {str(result)[:200]}")
+    return result["result"]
+
+
 def promote(
-    subject: str,
+    triples: list[Triple],
     target_plane: str,
     promoted_by: str,
     authored_by: str,
@@ -203,30 +269,41 @@ def promote(
     timestamp: str,
     grants: dict[str, list[str]] | None = None,
     source_episode: str | None = None,
+    source_has=None,
 ) -> tuple[dict, dict | None]:
-    """Run every gate, then produce the promotion episode and the source close.
+    """Run every gate, then produce the promotion write and the source close.
 
-    Gates run BEFORE anything is written, and in the order that fails cheapest
-    first. Returns `(promotion_episode, close_request)`; the close is a
-    `POST /episode/retract` body for `source_episode` (the bitemporal close of
-    the source interval — the move rule), or None when the caller could not
-    name the source episode, in which case the promotion record carries
-    `camayoc:sourceLeftOpen true`. Returned rather than posted so the caller
-    decides when to commit — and so the gates are testable without a live
-    store. Commit order is assert-then-close: a failed close leaves the fact
-    readable in two planes at different trust (recoverable, visible), while
-    close-then-failed-assert would lose the promoted fact entirely.
+    Gates run BEFORE anything is written, cheapest first. `source_has(triple)`
+    answers whether a triple is in the source plane (prod: an ASK on
+    crew:inferred); every promoted triple must be, or the record would assert a
+    move that never happened. Returns `(write, close)`: `write` is a `/knot`
+    body asserting the triples + record in the target plane; `close` is a
+    `POST /episode/retract` body for `source_episode`, or None (the record then
+    says `camayoc:sourceLeftOpen true`). The caller commits in the order
+    assert -> verify every triple in the target -> close, so a failed assert or
+    verify never closes the source (aegis-is257g: closing before the edges
+    exist in the target loses them from the current view).
     """
     if not reason.strip():
         raise PromotionRefused(
             "a promotion must state its reason; an unexplained trust upgrade is "
             "exactly the record a later reader cannot assess"
         )
+    if not triples:
+        raise PromotionRefused("nothing to promote: the edge set is empty")
     check_outranks(target_plane)
     check_not_self_promotion(promoted_by, authored_by)
     check_authority(promoted_by, target_plane, grants if grants is not None else load_authority())
-    episode = promotion_episode(
-        subject, target_plane, promoted_by, authored_by, reason, timestamp,
+    if source_has is not None:
+        missing = [t for t in sorted(set(triples)) if not source_has(t)]
+        if missing:
+            shown = "; ".join(" ".join(t) for t in missing[:5])
+            raise PromotionRefused(
+                f"{len(missing)} triple(s) are not in {SOURCE_PLANE}, so promoting them "
+                f"would record a move that never happened: {shown}"
+            )
+    write = promotion_write(
+        triples, target_plane, promoted_by, authored_by, reason, timestamp,
         source_left_open=source_episode is None,
     )
     close = None
@@ -235,67 +312,98 @@ def promote(
             "episode": source_episode,
             "timestamp": timestamp,
             "actor": promoted_by,
-            # Entities the promoted fact still references must survive the
+            # Entities the promoted facts still reference must survive the
             # close: retraction of the carrier episode is an interval close,
             # not an identity purge.
             "on_orphan": "preserve",
         }
-    return episode, close
+    return write, close
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--subject", required=True, help="IRI of the fact to promote")
+    ap.add_argument("--triples-file", required=True,
+                    help="N-Triples file: the EXACT edges to promote (all must be in crew:inferred)")
     ap.add_argument("--to", required=True, dest="target", help="target plane key")
     ap.add_argument("--by", required=True, help="principal performing the promotion")
-    ap.add_argument("--authored-by", required=True, help="principal that wrote the fact")
-    ap.add_argument("--reason", required=True, help="why this has earned promotion")
-    ap.add_argument("--timestamp", default="2026-01-01T00:00:00Z")
+    ap.add_argument("--authored-by", required=True, help="principal that wrote the facts")
+    ap.add_argument("--reason", required=True, help="why these have earned promotion")
+    ap.add_argument("--timestamp", default=None, help="ISO-8601 UTC; default: now")
     ap.add_argument(
         "--source-episode",
-        help="name of the episode that carried the fact into crew:inferred; "
-        "when given, its interval is CLOSED after the assert (the move rule)",
+        help="episode that carried the facts into crew:inferred. Its interval is CLOSED "
+        "only after every promoted triple reads back in the target. The close retracts "
+        "EVERYTHING that episode carried, so pass it only when the triples file is that "
+        "episode's complete edge set",
     )
-    ap.add_argument("--emit", action="store_true", help="print the episode instead of posting")
+    ap.add_argument("--emit", action="store_true",
+                    help="run every gate (including the read-only source check), print the "
+                    "write and the close, and write nothing")
     args = ap.parse_args()
+    timestamp = args.timestamp or _now()
+    source_iri = planes.PLANES[SOURCE_PLANE]["iri"]
 
     try:
-        episode, close = promote(
-            args.subject, args.target, args.by, args.authored_by, args.reason, args.timestamp,
+        triples = parse_ntriples(Path(args.triples_file).read_text())
+        write, close = promote(
+            triples, args.target, args.by, args.authored_by, args.reason, timestamp,
             source_episode=args.source_episode,
+            source_has=lambda t: ask_in_graph(source_iri, t),
         )
-    except (PromotionRefused, planes.PlaneError) as exc:
+    except (PromotionRefused, planes.PlaneError, OSError) as exc:
         print(f"PROMOTION REFUSED: {exc}", file=sys.stderr)
         return 2
 
     if args.emit:
-        print(json.dumps({"promotion": episode, "close": close}, indent=2))
+        print(json.dumps({"promotion": write, "close": close}, indent=2))
         return 0
 
+    body = {k: v for k, v in write.items() if k != "digest"}
     try:
-        planes._post("/episode", episode, client="camayoc-planes")
+        result = planes._post("/knot", body, client="camayoc-planes")
     except planes.PlaneError as exc:
-        print(f"PROMOTION FAILED: {exc}", file=sys.stderr)
+        print(f"PROMOTION FAILED (indeterminate: verify before retrying): {exc}", file=sys.stderr)
         return 3
+    if result.get("conforms") is not True or not isinstance(result.get("tx_id"), int):
+        print(f"PROMOTION REFUSED by the store: {str(result)[:300]}", file=sys.stderr)
+        return 3
+
+    target_iri = write["graph"]
+    try:
+        absent = [t for t in sorted(set(triples)) if not ask_in_graph(target_iri, t)]
+    except planes.PlaneError as exc:
+        print(f"PROMOTED (tx {result['tx_id']}) but the read-back could not run: {exc}. "
+              "Source NOT closed.", file=sys.stderr)
+        return 5
+    if absent:
+        print(f"PROMOTED (tx {result['tx_id']}) but {len(absent)} triple(s) do not read back "
+              f"in {args.target}; source NOT closed: "
+              + "; ".join(" ".join(t) for t in absent[:5]), file=sys.stderr)
+        return 5
+
+    n = len(set(triples))
     if close is not None:
         try:
             planes._post("/episode/retract", close, client="camayoc-planes")
         except planes.PlaneError as exc:
-            # Assert landed, close did not: readable in two planes, at
-            # different trust — visible and recoverable, and said out loud.
+            # Assert landed and read back, close did not: readable in two planes,
+            # at different trust - visible and recoverable, and said out loud.
             print(
-                f"PROMOTED but source close FAILED: {exc}. The fact is now "
-                "readable in both planes; re-run the close with "
+                f"PROMOTED {n} triples (tx {result['tx_id']}) but source close FAILED: {exc}. "
+                "They are readable in both planes; re-run the close with "
                 f"POST /episode/retract {json.dumps(close)}",
                 file=sys.stderr,
             )
             return 4
-        print(f"promoted {args.subject} into {args.target} by {args.by}; source episode closed")
+        print(f"promoted {n} triples into {args.target} by {args.by} (tx {result['tx_id']}, "
+              f"digest {write['digest']}); all read back; source episode closed")
     else:
-        print(
-            f"promoted {args.subject} into {args.target} by {args.by}; "
-            "source interval LEFT OPEN (no --source-episode)"
-        )
+        print(f"promoted {n} triples into {args.target} by {args.by} (tx {result['tx_id']}, "
+              f"digest {write['digest']}); all read back; source interval LEFT OPEN")
     return 0
 
 

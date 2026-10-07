@@ -21,7 +21,9 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -107,7 +109,7 @@ class MoveRuleTests(unittest.TestCase):
 
     def _promote(self, **over):
         args = dict(
-            subject="http://ex/fact/1",
+            triples=[("<http://ex/fact/1>", "<http://ex/p>", "<http://ex/o>")],
             target_plane="crew:records",
             promoted_by="alice",
             authored_by="claude",
@@ -122,16 +124,16 @@ class MoveRuleTests(unittest.TestCase):
         episode, close = self._promote(source_episode="crew-briefing-2026-07")
         self.assertEqual("crew-briefing-2026-07", close["episode"])
         self.assertEqual("preserve", close["on_orphan"])
-        self.assertIn("camayoc:sourceLeftOpen false", episode["episode_body"])
+        self.assertIn("camayoc:sourceLeftOpen false", episode["turtle"])
 
     def test_without_a_source_episode_the_record_says_left_open(self):
         episode, close = self._promote()
         self.assertIsNone(close)
-        self.assertIn("camayoc:sourceLeftOpen true", episode["episode_body"])
+        self.assertIn("camayoc:sourceLeftOpen true", episode["turtle"])
 
     def test_the_record_derives_from_the_promoted_subject(self):
         episode, _ = self._promote(source_episode="ep")
-        self.assertIn("prov:wasDerivedFrom", episode["episode_body"])
+        self.assertIn("prov:wasDerivedFrom", episode["turtle"])
 
 
 class MoveRuleCommitOrderTests(unittest.TestCase):
@@ -147,15 +149,23 @@ class MoveRuleCommitOrderTests(unittest.TestCase):
 
     ARGV = [
         "promote_plane.py",
-        "--subject", "http://ex/fact/1",
+        "--triples-file", "PLACEHOLDER",
         "--to", "crew:records",
         "--by", "alice",
         "--authored-by", "claude",
         "--reason", "corroborated by the deploy log",
         "--source-episode", "crew-briefing-2026-07",
+        "--timestamp", "2026-01-01T00:00:00Z",
     ]
 
-    def _run(self, retract_fails: bool, argv=None):
+    def setUp(self):
+        tmp = tempfile.NamedTemporaryFile("w", suffix=".nt", delete=False)
+        tmp.write("<http://ex/fact/1> <http://ex/p> <http://ex/o> .\n")
+        tmp.close()
+        self.addCleanup(os.unlink, tmp.name)
+        self.argv = [tmp.name if a == "PLACEHOLDER" else a for a in self.ARGV]
+
+    def _run(self, retract_fails: bool, argv=None, read_back=True):
         """Run `main` with the network replaced by a recorder.
 
         Returns (exit code, posted paths, stderr text).
@@ -169,12 +179,18 @@ class MoveRuleCommitOrderTests(unittest.TestCase):
                 # promote_plane loads its OWN planes instance, so the error
                 # `main` catches is that module's class, not this file's.
                 raise promote_plane.planes.PlaneError("HTTP 503 store unavailable")
+            if path == "/knot":
+                return {"conforms": True, "tx_id": 7}
+            if path == "/query":
+                # The source gate (crew:inferred) always holds here; the target
+                # read-back answers `read_back`.
+                return {"result": True if "crew/inferred" in body["query"] else read_back}
             return {}
 
         err = io.StringIO()
         with mock.patch.object(promote_plane.planes, "_post", fake_post), \
              mock.patch.object(promote_plane, "load_authority", lambda: self.GRANTS), \
-             mock.patch.object(sys, "argv", argv or self.ARGV), \
+             mock.patch.object(sys, "argv", argv or self.argv), \
              contextlib.redirect_stderr(err):
             code = promote_plane.main()
         return code, posted, err.getvalue()
@@ -184,18 +200,19 @@ class MoveRuleCommitOrderTests(unittest.TestCase):
         lose the promoted fact outright, which is the unrecoverable direction."""
         code, posted, _ = self._run(retract_fails=False)
         self.assertEqual(0, code)
-        self.assertEqual(["/episode", "/episode/retract"], posted)
+        # source gate, assert, read-back, then (only then) the close
+        self.assertEqual(["/query", "/knot", "/query", "/episode/retract"], posted)
 
     def test_a_failed_close_exits_4_rather_than_reporting_success(self):
         code, posted, _ = self._run(retract_fails=True)
         self.assertEqual(4, code)
-        self.assertEqual(["/episode", "/episode/retract"], posted)
+        self.assertEqual(["/query", "/knot", "/query", "/episode/retract"], posted)
 
     def test_a_failed_close_says_the_fact_is_now_in_two_planes(self):
         """The operator has to learn the state from the failure itself; an
         exit code alone leaves a half-applied move looking like a lost one."""
         _, _, err = self._run(retract_fails=True)
-        self.assertIn("PROMOTED but source close FAILED", err)
+        self.assertIn("but source close FAILED", err)
         self.assertIn("readable in both planes", err)
 
     def test_the_failure_hands_back_the_exact_retry_body(self):
@@ -217,10 +234,19 @@ class MoveRuleCommitOrderTests(unittest.TestCase):
     def test_without_a_source_episode_no_close_is_attempted_at_all(self):
         """The left-open path must not post an empty retraction: a retract with
         no episode named is exactly the close that silently never happened."""
-        argv = [a for a in self.ARGV if a not in ("--source-episode", "crew-briefing-2026-07")]
+        argv = [a for a in self.argv if a not in ("--source-episode", "crew-briefing-2026-07")]
         code, posted, _ = self._run(retract_fails=True, argv=argv)
         self.assertEqual(0, code)
-        self.assertEqual(["/episode"], posted)
+        self.assertEqual(["/query", "/knot", "/query"], posted)
+
+    def test_a_triple_that_does_not_read_back_never_closes_the_source(self):
+        """aegis-is257g: closing the carrier episode before the edges exist in
+        the target drops them from the current view. A failed read-back must
+        stop before the close and say so (exit 5)."""
+        code, posted, err = self._run(retract_fails=False, read_back=False)
+        self.assertEqual(5, code)
+        self.assertNotIn("/episode/retract", posted)
+        self.assertIn("source NOT closed", err)
 
 
 if __name__ == "__main__":
