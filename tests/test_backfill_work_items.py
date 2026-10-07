@@ -437,5 +437,44 @@ class BoardGraphCoverage(unittest.TestCase):
                      "--board-graph", "g", "--no-board-graphs"])
 
 
+class CoverageReread(unittest.TestCase):
+    """The after-coverage scan reads every graph; it runs only when a write was attempted."""
+
+    def run_main(self, records, covered_ids):
+        calls = []
+
+        def fake_covered(post, board_graphs=bf.DEFAULT_BOARD_GRAPHS):
+            calls.append(board_graphs)
+            return set(covered_ids)
+
+        printed = []
+        import tempfile
+        with mock.patch.object(bf, "covered", fake_covered), \
+             mock.patch.object(bf, "all_beads", lambda db: records), \
+             mock.patch.dict(sys.modules, {"sync_work_items": types.SimpleNamespace(
+                 attach_deps=lambda *a: None)}), \
+             mock.patch.object(bf, "load_deps_cache", lambda p: {}), \
+             mock.patch.object(bf, "save_projected", lambda *a: None), \
+             mock.patch.object(bf.planes, "_post", lambda *a, **k: {"outcome": "created"}), \
+             mock.patch("builtins.print", lambda *a, **k: printed.append(a[0])), \
+             tempfile.TemporaryDirectory() as d:
+            bf.main(["--db", "x", "--actor", "a", "--source", "s", "--rate", "0",
+                     "--lock", str(Path(d) / "l")])
+        return calls, json.loads(printed[-1])
+
+    def test_nothing_attempted_reads_coverage_once(self):
+        calls, report = self.run_main([bead(1)], {"aegis-1"})
+        self.assertEqual(len(calls), 1, "no write, so no second full coverage scan")
+        self.assertEqual(report["covered_after"], 1)
+        self.assertEqual(report["covered_after_source"], "unchanged")
+
+    def test_an_attempted_write_rereads_coverage(self):
+        # MUTANT GUARD: skipping the re-read after a write would report stale coverage.
+        calls, report = self.run_main([bead(1), bead(2)], {"aegis-1"})
+        self.assertEqual(report["attempted"], 1)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(report["covered_after_source"], "reread")
+
+
 if __name__ == "__main__":
     unittest.main()

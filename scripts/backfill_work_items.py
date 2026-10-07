@@ -323,7 +323,17 @@ def main(argv=None) -> int:
             report["dep_unknown"] = len(dep_unknown)
             report["dep_unknown_ids"] = dep_unknown[:20]
         if not args.dry_run:
-            after = covered(post, board_graphs)
+            # Re-read coverage only if this run attempted a write. With nothing
+            # attempted it cannot have changed, and the re-read is a full
+            # coverage scan of every graph: one per store per tick, the larger
+            # half of the backfill's request budget (aegis-wmeqa6). An attempted
+            # write, landed or indeterminate, always re-reads.
+            if report["attempted"]:
+                after = covered(post, board_graphs)
+                report["covered_after_source"] = "reread"
+            else:
+                after = done
+                report["covered_after_source"] = "unchanged"
             report["covered_after"] = len(after & {r["id"] for r in records})
             report["coverage_after"] = round(report["covered_after"] / max(1, len(records)), 4)
         print(json.dumps(report, sort_keys=True))
