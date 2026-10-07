@@ -349,5 +349,93 @@ class SchemaActionItemsAreCovered(unittest.TestCase):
         self.assertIn("aegis-2", [b["nodes"][0]["name"] for b in q.writes])
 
 
+class GraphScopedQuipu:
+    """Answers each /query from the graph it is scoped to, as quipu does: the
+    `graph` param REPLACES the default graph, so a seed in a board graph is
+    visible only to a read that names that graph (measured on prod, aegis-wmeqa6)."""
+
+    def __init__(self, by_graph):
+        self.by_graph = by_graph  # graph or None -> [(subject IRI, type IRI, identifier)]
+        self.scopes = []
+
+    def post(self, endpoint, body):
+        graph = body.get("graph")
+        self.scopes.append(graph)
+        rows = self.by_graph.get(graph, [])
+        if "identifier" in body["query"]:
+            pred = body["query"].split("<", 1)[1].split(">", 1)[0]
+            want = "https://schema.org/identifier" if pred.startswith("https://schema.org/") \
+                else f"{NS}identifier"
+            return {"rows": [{"w": w, "id": f'"{i}"'} for w, t, i in rows
+                             if (t == "https://schema.org/Action") == (want != f"{NS}identifier")],
+                    "truncated": False}
+        typ = body["query"].split("FILTER(?t = <", 1)[1].split(">", 1)[0]
+        return {"rows": [{"w": w} for w, t, _ in rows if t == typ], "truncated": False}
+
+
+BOARD = "https://seeds.local/project/aegis"
+#: seeds' real subject form: percent-encoded id under /item/ (wu's N2).
+SEED = ("https://seeds.local/item/aegis-s%2E1", "https://schema.org/Action", "aegis-s.1")
+LEGACY = (f"{NS}aegis-1", f"{NS}WorkItem", "aegis-1")
+
+
+class BoardGraphCoverage(unittest.TestCase):
+    """aegis-wmeqa6 N1: a seed lives in its board graph and nowhere else."""
+
+    def test_a_seed_in_the_board_graph_is_covered_by_default(self):
+        q = GraphScopedQuipu({None: [LEGACY], BOARD: [SEED]})
+        self.assertEqual(bf.covered(q.post), {"aegis-1", "aegis-s.1"})
+        self.assertIn(BOARD, q.scopes, "the board graph was read by name")
+
+    def test_without_the_board_graph_the_seed_would_be_reposted(self):
+        # MUTANT: the pre-N1 reader. The seed is called uncovered, so run() would
+        # write it again through /episode as a legacy WorkItem.
+        q = GraphScopedQuipu({None: [LEGACY], BOARD: [SEED]})
+        self.assertEqual(bf.covered(q.post, board_graphs=()), {"aegis-1"})
+        self.assertNotIn(BOARD, q.scopes)
+
+    def test_the_board_list_is_configurable_and_replaces_the_default(self):
+        other = "https://seeds.local/project/other"
+        q = GraphScopedQuipu({None: [LEGACY], other: [SEED]})
+        self.assertEqual(bf.covered(q.post, board_graphs=(other,)), {"aegis-1", "aegis-s.1"})
+        self.assertNotIn(BOARD, q.scopes)
+
+    def test_the_default_graph_and_records_stay_in_scope(self):
+        gs = bf.graphs()
+        self.assertEqual(gs[:2], [None, planes.plane_for("observed")])
+        self.assertIn(BOARD, gs)
+        self.assertNotIn(planes.plane_for("inferred"), gs)
+
+    def test_the_inferred_plane_is_refused_as_a_board_graph(self):
+        with self.assertRaises(ValueError):
+            bf.graphs((planes.plane_for("inferred"),))
+
+    def test_cli_flags(self):
+        seen = {}
+
+        def fake_covered(post, board_graphs=bf.DEFAULT_BOARD_GRAPHS):
+            seen.setdefault("calls", []).append(board_graphs)
+            raise SystemExit(0)
+
+        for argv, want in ((["--board-graph", "g1", "--board-graph", "g2"], ("g1", "g2")),
+                           (["--no-board-graphs"], ()),
+                           ([], bf.DEFAULT_BOARD_GRAPHS)):
+            seen.clear()
+            with mock.patch.object(bf, "covered", fake_covered), \
+                 mock.patch.object(bf, "all_beads", lambda db: []), \
+                 mock.patch.dict(sys.modules, {"sync_work_items": types.SimpleNamespace(
+                     attach_deps=lambda *a: None)}), \
+                 mock.patch.object(bf, "load_deps_cache", lambda p: {}), \
+                 mock.patch.object(bf, "save_projected", lambda *a: None):
+                import tempfile
+                with tempfile.TemporaryDirectory() as d, self.assertRaises(SystemExit):
+                    bf.main(["--db", "x", "--actor", "a", "--source", "s", "--dry-run",
+                             "--lock", str(Path(d) / "l")] + argv)
+            self.assertEqual(seen["calls"], [want], argv)
+        with self.assertRaises(SystemExit):
+            bf.main(["--db", "x", "--actor", "a", "--source", "s",
+                     "--board-graph", "g", "--no-board-graphs"])
+
+
 if __name__ == "__main__":
     unittest.main()

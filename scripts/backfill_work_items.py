@@ -101,21 +101,37 @@ def _local(term: str) -> str:
     return term
 
 
-#: Where a WorkItem can live: the default graph (older ingests) and the plane
-#: camayoc routes observed tracker records into. A WorkItem in `crew:records`
-#: is invisible to a default-graph-only query, and that is exactly why
-#: tonight's beads looked absent while the standing sync was delivering them.
-def graphs() -> list[str | None]:
-    return [None, planes.plane_for("observed")]
+#: The seeds board graph(s) the tracker writes once a board is cut over to
+#: seeds (aegis-wmeqa6 N1). seeds keeps each board in its OWN named graph, so a
+#: seed is invisible to the default graph and to crew:records; without this the
+#: backfill would call every seed uncovered and re-post it as a legacy WorkItem.
+#: Read explicitly by name, never by widening the default graph: that would pull
+#: the quarantined crew:inferred plane into every read.
+DEFAULT_BOARD_GRAPHS = ("https://seeds.local/project/aegis",)
 
 
-def covered(post) -> set[str]:
+#: Where a WorkItem can live: the default graph (older ingests), the plane
+#: camayoc routes observed tracker records into, and the seeds board graph(s).
+#: A WorkItem in `crew:records` is invisible to a default-graph-only query, and
+#: that is exactly why tonight's beads looked absent while the standing sync was
+#: delivering them. A board graph is the same shape of blindness one plane over.
+def graphs(board_graphs=DEFAULT_BOARD_GRAPHS) -> list[str | None]:
+    inferred = planes.plane_for("inferred")
+    if inferred in board_graphs:
+        # Quarantined guesswork must never count as coverage: a bead "covered"
+        # only by an inference would never be written as the record it is.
+        raise ValueError(f"{inferred} is the inferred plane, not a board graph; refusing")
+    out: list[str | None] = [None, planes.plane_for("observed")]
+    return out + [g for g in board_graphs if g and g not in out]
+
+
+def covered(post, board_graphs=DEFAULT_BOARD_GRAPHS) -> set[str]:
     """Identifiers that are WorkItems NOW, in any graph they are routed to,
     behind a control."""
     wi: set[str] = set()
     ids: dict[str, set[str]] = {}
     any_rows = False
-    for graph in graphs():
+    for graph in graphs(board_graphs):
         scope = {"graph": graph} if graph else {}
         workitems = [row for query in WORKITEM_QUERIES
                      for row in paged(post, query, scope, "WorkItem", graph)]
@@ -262,8 +278,17 @@ def main(argv=None) -> int:
     parser.add_argument("--lock", type=Path, default=Path("/tmp/camayoc-workitem-backfill.lock"))
     parser.add_argument("--state", type=Path,
                         help="dependency sets last written per bead (default: beside --lock)")
+    parser.add_argument("--board-graph", action="append", dest="board_graphs", metavar="IRI",
+                        help="seeds board graph to read coverage from; repeatable, replaces "
+                             f"the default ({', '.join(DEFAULT_BOARD_GRAPHS)})")
+    parser.add_argument("--no-board-graphs", action="store_true",
+                        help="read no board graph (default graph and crew:records only)")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
+    if args.no_board_graphs and args.board_graphs:
+        parser.error("--board-graph and --no-board-graphs are mutually exclusive")
+    board_graphs = (() if args.no_board_graphs
+                    else tuple(args.board_graphs) if args.board_graphs else DEFAULT_BOARD_GRAPHS)
     state = args.state or args.lock.with_suffix(".projected.json")
 
     with args.lock.open("a") as lock:
@@ -287,7 +312,7 @@ def main(argv=None) -> int:
         if not args.dry_run:
             live = {r["id"] for r in records}
             save_projected(deps_path, {k: v for k, v in deps_cache.items() if k in live})
-        done = covered(post)
+        done = covered(post, board_graphs)
         projected = load_projected(state)
         report = run(records, done, post, actor=args.actor, source=args.source, rate=args.rate,
                      stop_after=args.stop_after, limit=args.max, dry_run=args.dry_run,
@@ -298,7 +323,7 @@ def main(argv=None) -> int:
             report["dep_unknown"] = len(dep_unknown)
             report["dep_unknown_ids"] = dep_unknown[:20]
         if not args.dry_run:
-            after = covered(post)
+            after = covered(post, board_graphs)
             report["covered_after"] = len(after & {r["id"] for r in records})
             report["coverage_after"] = round(report["covered_after"] / max(1, len(records)), 4)
         print(json.dumps(report, sort_keys=True))
