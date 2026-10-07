@@ -112,6 +112,14 @@ def _post(path: str, body: dict, *, client: str) -> dict:
         # Distinguished from a refusal on purpose: "could not look" is not
         # "the plane is absent".
         raise PlaneError(f"{path} unreachable: {e.reason} — this is not evidence about the plane") from e
+    except (TimeoutError, OSError) as e:
+        # A timeout while READING the response is not a URLError, and used to
+        # escape uncaught. For a write it is INDETERMINATE: the store may have
+        # committed (aegis-4c3ppi chunk 02: client timeout, all 100 triples landed).
+        raise PlaneError(
+            f"{path} gave no answer ({type(e).__name__}: {e}); the request may have been "
+            "applied — verify by reading back before retrying"
+        ) from e
 
 
 def ensure_planes(timestamp: str) -> list[dict]:
