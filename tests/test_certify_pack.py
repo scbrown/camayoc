@@ -31,7 +31,7 @@ def signed_claim(manifest, report_hash, **changes):
         publisher_public_key=public_hex(publisher), certifier_public_key=public_hex(certifier),
         publisher_signature="", certifier_signature="", shapes_version="camayoc-rml@1",
         shacl_report_hash=report_hash, provenance_manifest_iri="https://example.invalid/provenance",
-        source_uri="https://example.invalid/packs/crew.qpack.db", access_via="rest",
+        source_uri="https://example.invalid/packs/crew.pendant.db", access_via="rest",
         freshness="snapshot(v1)", verified_by=HASH,
     )
     values.update(changes)
@@ -58,7 +58,7 @@ class CertificationEvidenceTests(unittest.TestCase):
     def test_real_static_and_window_e2e_survive_relocation(self):
         for window in (False, True):
             with self.subTest(window=window), tempfile.TemporaryDirectory() as directory:
-                root, pack = Path(directory), Path(directory) / "crew.qpack.db"
+                root, pack = Path(directory), Path(directory) / "crew.pendant.db"
                 report = root / "report.json"
                 make_pack(pack); report.write_bytes(self.report_bytes)
                 changes = ({"freshness": "frozen(window-42)", "shuttle_derived": True,
@@ -71,6 +71,28 @@ class CertificationEvidenceTests(unittest.TestCase):
                 self.assertIn("aegis:scrubCheckPass true", turtle)
                 self.assertEqual(window, "aegis:frozenWindow" in turtle)
 
+    def test_publication_writes_pendant_and_still_reads_a_legacy_qpack(self):
+        # aegis-fxpbys.3: new publications are .pendant.db only; a durable root
+        # published before the rename keeps its .qpack.db, which is still read
+        # for the content-addressed collision check.
+        with tempfile.TemporaryDirectory() as directory:
+            root, pack = Path(directory), Path(directory) / "crew.pendant.db"
+            make_pack(pack)
+            manifest = certify_pack.read_manifest(pack)
+            digest = manifest.content_hash.removeprefix("sha256:")
+            published = root / "published" / "sha256"
+            published.mkdir(parents=True)
+            legacy = published / f"{digest}.qpack.db"
+            legacy.write_bytes(pack.read_bytes())
+            written = certify_pack.publish_pack(pack, manifest, root / "published")
+            self.assertEqual(written.name, f"{digest}.pendant.db")
+            self.assertEqual(written.read_bytes(), pack.read_bytes())
+            written.unlink()
+            legacy.write_bytes(b"different bytes under the same digest")
+            with self.assertRaisesRegex(certify_pack.PackCertificationError, "collision"):
+                certify_pack.publish_pack(pack, manifest, root / "published")
+            self.assertFalse(written.exists())
+
     def test_tampered_and_same_key_claims_are_refused(self):
         claim = signed_claim(self.manifest, self.report_hash)
         with self.assertRaisesRegex(certify_pack.PackCertificationError, "invalid publisher"):
@@ -80,7 +102,7 @@ class CertificationEvidenceTests(unittest.TestCase):
 
     def test_scrub_refuses_private_artifact_bytes(self):
         with tempfile.TemporaryDirectory() as directory:
-            pack = Path(directory) / "bad.qpack.db"; make_pack(pack, "database.example.lan")
+            pack = Path(directory) / "bad.pendant.db"; make_pack(pack, "database.example.lan")
             with self.assertRaisesRegex(certify_pack.PackCertificationError, "private hostname"):
                 certify_pack.scrub_pack(pack)
 
@@ -133,7 +155,7 @@ class QuipuInvocationTests(unittest.TestCase):
     def test_pack_then_verify_are_argument_arrays(self):
         calls = []
         with tempfile.TemporaryDirectory() as directory:
-            out = Path(directory) / "crew.qpack.db"
+            out = Path(directory) / "crew.pendant.db"
             def runner(command, **_kwargs):
                 calls.append(command)
                 if "--verify" not in command: make_pack(out)
@@ -156,12 +178,12 @@ class QuipuInvocationTests(unittest.TestCase):
                 }
 
         with tempfile.TemporaryDirectory() as directory:
-            pack = Path(directory) / "crew.qpack.db"; make_pack(pack)
+            pack = Path(directory) / "crew.pendant.db"; make_pack(pack)
             manifest = certify_pack.read_manifest(pack)
             client = S3()
             uri = certify_pack.publish_pack_s3(pack, manifest, "knowledge", client=client)
         self.assertEqual(
-            f"s3://knowledge/sha256/{HASH.removeprefix('sha256:')}.qpack.db", uri
+            f"s3://knowledge/sha256/{HASH.removeprefix('sha256:')}.pendant.db", uri
         )
         self.assertEqual(HASH, client.request["Metadata"]["canonical-graph-hash"])
 

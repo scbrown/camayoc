@@ -264,7 +264,7 @@ registered fixture graph rather than a production plane.
    governed mapping end to end against the live interface.
 
 Pack production is downstream of successful materialization: mappings and
-their shapes may be carried in the same certified `.qpack.db`, but packaging
+their shapes may be carried in the same certified `.pendant.db`, but packaging
 does not weaken or bypass this executor's validation and source-policy gates.
 
 ## References
