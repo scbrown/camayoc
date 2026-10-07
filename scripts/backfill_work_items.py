@@ -183,12 +183,43 @@ def shared_covered(post, board_graphs, cache: Path | None, max_age: float,
         except (OSError, ValueError, KeyError, TypeError):
             pass  # unreadable or foreign cache: scan, never trust it
     found = covered(post, board_graphs)
-    if cache is not None and max_age > 0:
-        # Per-process temp name: two stores refreshing at once must not share one.
-        tmp = cache.with_name(f"{cache.name}.{os.getpid()}.tmp")
-        tmp.write_text(json.dumps({"at": now(), "scope": scope, "ids": sorted(found)}))
-        tmp.replace(cache)
+    remember_coverage(cache, board_graphs, found, max_age, now=now)
     return found, "scan"
+
+
+def remember_coverage(cache: Path | None, board_graphs, ids: set[str], max_age: float,
+                      now=time.time) -> None:
+    if cache is None or max_age <= 0:
+        return
+    # Per-process temp name: two stores refreshing at once must not share one.
+    tmp = cache.with_name(f"{cache.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps({"at": now(), "scope": sorted(board_graphs), "ids": sorted(ids)}))
+    tmp.replace(cache)
+
+
+def confirmed(post, ids, board_graphs, chunk: int = 200) -> set[str]:
+    """Of `ids`, those that now have an identifier in any coverage graph.
+
+    After a write, re-scanning all ~30k identifiers to learn about the few this
+    run wrote held the quipu store for most of a tick (aegis-67p0lj, 19:03Z: 26
+    written, then a full re-read). Ask only about those ids: one bounded
+    FILTER(... IN ...) per graph and spelling, still a READ, never the write
+    response taken on trust.
+    """
+    found: set[str] = set()
+    wanted = sorted(set(ids))
+    for graph in graphs(board_graphs):
+        scope = {"graph": graph} if graph else {}
+        for start in range(0, len(wanted), chunk):
+            batch = wanted[start:start + chunk]
+            values = ", ".join(json.dumps(i) for i in batch)
+            for query in IDENTIFIER_QUERIES:
+                result = post("/query", {"query": f"{query[:-2]} . FILTER(?id IN ({values})) }}",
+                                         **scope})
+                if not isinstance(result.get("rows"), list) or result.get("truncated"):
+                    raise ValueError(f"confirmation query unproven in {graph or 'default'}")
+                found |= {r["id"].strip('"') for r in result["rows"]}
+    return found & set(wanted)
 
 
 def deps_key(record: dict) -> str:
@@ -241,6 +272,7 @@ def run(records, done: set[str], post, *, actor, source, rate, stop_after,
         try:
             post("/episode", body)
             report["written"] += 1
+            report.setdefault("written_ids", []).append(record["id"])
             if record.get("blocked_on"):
                 projected[record["id"]] = deps_key(record)
         except (planes.PlaneError, TimeoutError, OSError) as error:
@@ -380,15 +412,17 @@ def main(argv=None) -> int:
             # half of the backfill's request budget (aegis-wmeqa6). An attempted
             # write, landed or indeterminate, always re-reads.
             if report["attempted"]:
-                after, _ = shared_covered(post, board_graphs, cache, args.coverage_max_age,
-                                          refresh=True)
-                report["covered_after_source"] = "reread"
+                touched = report.get("written_ids", []) + report.get("indeterminate_ids", [])
+                after = done | confirmed(post, touched, board_graphs)
+                report["covered_after_source"] = "confirmed"
+                remember_coverage(cache, board_graphs, after, args.coverage_max_age)
             else:
                 after = done
                 report["covered_after_source"] = "unchanged"
             report["covered_after"] = len(after & {r["id"] for r in records})
             report["coverage_after"] = round(report["covered_after"] / max(1, len(records)), 4)
         report["covered_before_source"] = done_source
+        report.pop("written_ids", None)  # an internal hand-off, not a report field
         print(json.dumps(report, sort_keys=True))
         return 3 if report["stopped"] else 0
 
