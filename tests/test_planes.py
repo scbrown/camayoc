@@ -31,6 +31,33 @@ def load(name: str):
 planes = load("planes")
 
 
+class PostFailureTests(unittest.TestCase):
+    """A response that never arrives is INDETERMINATE, never a crash and never
+    an absence (aegis-4c3ppi chunk 02: a /knot read timed out at the client
+    while all 100 triples landed)."""
+
+    def _post_raising(self, exc):
+        from unittest import mock
+        with mock.patch.object(planes.urllib.request, "urlopen", side_effect=exc):
+            return planes._post("/knot", {"turtle": ""}, client="test")
+
+    def test_a_read_timeout_is_a_plane_error_saying_it_may_have_applied(self):
+        with self.assertRaises(planes.PlaneError) as c:
+            self._post_raising(TimeoutError("The read operation timed out"))
+        self.assertIn("may have been applied", str(c.exception))
+        self.assertIn("verify by reading back", str(c.exception))
+
+    def test_a_connection_reset_is_a_plane_error_too(self):
+        with self.assertRaises(planes.PlaneError):
+            self._post_raising(ConnectionResetError(104, "Connection reset by peer"))
+
+    def test_an_unreachable_store_keeps_its_own_message(self):
+        import urllib.error
+        with self.assertRaises(planes.PlaneError) as c:
+            self._post_raising(urllib.error.URLError("Name or service not known"))
+        self.assertIn("unreachable", str(c.exception))
+
+
 class RoutingTests(unittest.TestCase):
     """The routing table, which is pure and is where a mistake would be silent."""
 
