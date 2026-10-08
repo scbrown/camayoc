@@ -64,7 +64,7 @@ convention promotes them. Start with (a) — declared/observed beats inferred.
 ## 3. Competency questions = acceptance tests
 
 The slice's question set lives in
-[competency/crew-task-lifecycle.md](../../competency/crew-task-lifecycle.md)
+[competency/crew-task-lifecycle.md](https://github.com/scbrown/camayoc/blob/main/competency/crew-task-lifecycle.md)
 and doubles as the test suite: the slice is **done** when each question runs
 as a named stored query (quipu #79) against a graph built from *real*
 shantytown records, and an agent (or Stiwi) accepts the answers as faithful.
