@@ -23,4 +23,4 @@ __pycache__/
 book-out/
 
 # Runtime signing identities are private per-installation state.
-.quipu/*.pk8
+**/.quipu/*.pk8

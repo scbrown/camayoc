@@ -56,8 +56,14 @@ class PrivateKeyTests(unittest.TestCase):
 
     def test_ignore_rule_covers_regenerated_runtime_key(self):
         root = Path(__file__).resolve().parents[1]
-        result = subprocess.run(['git', '-C', str(root), 'check-ignore', '--no-index', '.quipu/regenerated.pk8'], capture_output=True)
-        self.assertEqual(result.returncode, 0)
+        for path in ['.quipu/regenerated.pk8', 'tests/.quipu/verifier.pk8',
+                     'nested/project/.quipu/new.pk8']:
+            with self.subTest(path=path):
+                result = subprocess.run(['git', '-C', str(root), 'check-ignore', '--no-index', path], capture_output=True)
+                self.assertEqual(result.returncode, 0)
+        visible = subprocess.run(['git', '-C', str(root), 'check-ignore', '--no-index',
+                                  'tests/.quipu/public.ttl'], capture_output=True)
+        self.assertEqual(visible.returncode, 1)
 
 
 if __name__ == '__main__':
