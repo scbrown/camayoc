@@ -46,9 +46,10 @@ class FakeQuipu:
             return {"tx_id": 1, "conforms": True}
         q, graph = body["query"], body.get("graph")
         triples = self.g.get(graph, set())
-        m = re.search(r"\?s a \?t \. FILTER\(\?t = <([^>]+)>\)", q)
+        m = re.search(r"\?(\w+) a \?t \. FILTER\(\?t = <([^>]+)>\)", q)
         if m:
-            return {"rows": [{"s": s} for s, p, o in triples if p == "a" and o == m.group(1)]}
+            var, cls = m.groups()
+            return {"rows": [{var: s} for s, p, o in triples if p == "a" and o == cls]}
         m = re.search(r"\{ (\S+) <([^>]+)> (\S+) \}", q)
         s, p, o = m.groups()
         rows = []
@@ -77,6 +78,12 @@ def board():
     q = FakeQuipu()
     q.add(POLICY, A + "claim", "A claim is evidence only after a positive control.")
     q.add(OTHER, A + "claim", "Work bounds the load it puts on shared services.")
+    q.add(POLICY, "a", A + "Policy")
+    q.add(OTHER, "a", A + "Policy")
+    # aegis:claim is NOT Policy-specific (615 Artifacts carry it live): an
+    # Artifact's claim must never become a Jev option.
+    q.add(A + "artifact-x", A + "claim", "A paper claims something.")
+    q.add(A + "artifact-x", "a", A + "Artifact")
     # a traced member of POLICY, in the declared plane: the tracker comes from it
     q.add(A + "old", A + "governedBy", POLICY, de.DECLARED)
     q.add(A + "old", A + "trackedBy", TRACKER, de.DECLARED)
@@ -135,6 +142,21 @@ class Judge(unittest.TestCase):
 
     def test_discover_is_asserted_directives_only(self):
         self.assertEqual(de.discover(board()), ["new"])
+
+
+class Policies(unittest.TestCase):
+    def test_only_directly_typed_policies_are_options(self):
+        self.assertEqual(set(de.policies(board())), {POLICY, OTHER})
+
+    def test_too_many_options_refuse_before_sending(self):
+        q = board()
+        for i in range(300):
+            q.add(A + f"p{i}", A + "claim", "c")
+            q.add(A + f"p{i}", "a", A + "Policy")
+        client, calls = jev_answering("policy_measurement-needs-a-control", 0.9)
+        with self.assertRaises(ValueError):
+            de.plan(q, client, "new", NOW)
+        self.assertEqual(calls, [], "nothing sent")
 
 
 class Propose(unittest.TestCase):

@@ -153,9 +153,18 @@ def discover(post) -> list[str]:
 
 
 def policies(post) -> dict[str, str]:
-    """Policy IRI -> its claim, as the fleet reads it (aegis:claim)."""
-    q = f"SELECT ?p ?c WHERE {{ ?p <{bb.A}claim> ?c }}"
-    return {_iri(r["p"]): str(r["c"]) for r in _rows(post, q)}
+    """Policy IRI -> its claim, for DIRECTLY typed Policies only.
+
+    aegis:claim is not Policy-specific: measured 2026-10-08, 615 Artifacts, 8
+    SecurityFindings and 2 Observations carry it beside 50 Policies, so reading
+    the predicate alone offered Jev 676 options and failed its 255 limit before
+    any request was sent. Two single patterns, intersected here (a join exceeds
+    quipu's budget live)."""
+    typed = {_iri(r["p"]) for r in _rows(
+        post, f"SELECT ?p WHERE {{ ?p a ?t . FILTER(?t = <{bb.A}Policy>) }}")}
+    claims = {_iri(r["p"]): str(r["c"]) for r in _rows(
+        post, f"SELECT ?p ?c WHERE {{ ?p <{bb.A}claim> ?c }}")}
+    return {p: c for p, c in claims.items() if p in typed}
 
 
 def trackers(post) -> dict[str, str]:
@@ -182,6 +191,11 @@ def _state(post, entity: str) -> str:
     return f"DIRECTIVE {entity}\n" + "\n".join(texts)
 
 
+def jev_limit() -> int:
+    import jev
+    return jev.MAX_CHOICE_OPTIONS
+
+
 def _option(iri: str) -> str:
     return iri.rstrip("/#").rsplit("/", 1)[-1].rsplit("#", 1)[-1]
 
@@ -193,6 +207,10 @@ def plan(post, client, entity: str, now: dt.datetime) -> dict:
         return {"entity": entity, "outcome": "noop", "verdict": verdict}
     claims, tracked = policies(post), trackers(post)
     by_option = {_option(p): p for p in claims}
+    # One option is reserved for "none of these"; refuse loudly before sending.
+    if not 0 < len(by_option) < jev_limit():
+        raise ValueError(f"{len(by_option)} candidate policies; Jev takes 1..{jev_limit() - 1} "
+                         "plus none-of-these. Nothing was sent.")
     answer = client.choice(_state(post, entity), INSTRUCTIONS,
                            {k: claims[p][:280] for k, p in by_option.items()}, NONE_TEXT)
     choice, confidence = answer.get("choice"), answer.get("confidence") or 0.0
