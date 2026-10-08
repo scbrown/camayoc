@@ -108,13 +108,27 @@ def _call(path: str, payload: dict | None = None) -> dict:
         headers={"Content-Type": "application/json"},
         method="GET" if payload is None else "POST",
     )
-    token = planes.auth_token()
-    if token:
-        req.add_header("Authorization", f"Bearer {token}")
+    is_write = path == "/knot"
+    if is_write:
+        try:
+            headers = planes.quipu_auth.write_headers(planes.SERVER, planes.AUTH)
+        except planes.quipu_auth.CredentialRefused as exc:
+            raise ExtractError(str(exc)) from None
+        req.add_header("Authorization", headers["Authorization"])
+    else:
+        try:
+            token = planes.auth_token()
+        except planes.PlaneError:
+            token = None
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
     try:
         with urllib.request.urlopen(req, timeout=15) as response:
             return json.loads(response.read() or b"{}")
     except urllib.error.HTTPError as exc:
+        if exc.code == 401 and is_write:
+            exc.close()
+            raise ExtractError(str(planes.quipu_auth.refuse(planes.SERVER, "rejected (HTTP 401)"))) from None
         if exc.code == 404:
             raise ExtractError(
                 f"{path} returned 404 — this quipu predates the surface this "

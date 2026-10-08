@@ -84,7 +84,7 @@ class RmlExecutorTests(unittest.TestCase):
 
         result = self.module.governed_write(
             "https://example.invalid", plan, self.module.materialize(plan, records),
-            "malcolm", "sha256:" + "b" * 64, opener=opener,
+            "malcolm", "sha256:" + "b" * 64, bearer="isolated-test-fixture", opener=opener,
         )
         self.assertEqual(42, result["tx_id"])
         self.assertEqual(str(plan.target_graph), captured["graph"])

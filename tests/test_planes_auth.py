@@ -79,7 +79,7 @@ class AuthTransport(unittest.TestCase):
     def test_refusal_is_not_retried_and_explains_provisioning(self):
         with self.assertRaisesRegex(planes.PlaneError, "QUIPU_AUTH_TOKEN_FILE"):
             planes._post("/knot", {}, client="camayoc-planes")
-        self.assertEqual(self.calls, [None])
+        self.assertEqual(self.calls, [])
 
     def test_invalid_credential_is_refused_without_sending_or_echoing_it(self):
         secret = "private-fixture\ninjected-header"

@@ -3,6 +3,11 @@
 
 from __future__ import annotations
 
+try:
+    import quipu_auth
+except ModuleNotFoundError:
+    from scripts import quipu_auth
+
 import argparse
 import csv
 import hashlib
@@ -480,12 +485,18 @@ def governed_write(
         headers={"Content-Type": "application/json", "X-Quipu-Client": "agent-adhoc"},
         method="POST",
     )
-    if bearer:
-        req.add_header("Authorization", f"Bearer {bearer}")
+    try:
+        headers = quipu_auth.write_headers(server, bearer)
+    except quipu_auth.CredentialRefused as exc:
+        raise RmlExecutionError(str(exc)) from None
+    req.add_header("Authorization", headers["Authorization"])
     try:
         with opener(req, timeout=30) as response:
             result = json.load(response)
     except error.HTTPError as exc:
+        if exc.code == 401:
+            exc.close()
+            raise RmlExecutionError(str(quipu_auth.refuse(server, "rejected (HTTP 401)"))) from None
         detail = exc.read().decode("utf-8", "replace")[:500]
         raise RmlExecutionError(f"write_refused: HTTP {exc.code} {detail}") from exc
     except (error.URLError, TimeoutError, json.JSONDecodeError) as exc:
@@ -567,14 +578,11 @@ def freshness_verdict(plan: Plan, current_hash: str, materialization: dict | Non
 
 
 def auth_token() -> str | None:
-    """Resolve Quipu write auth without placing credentials in mapping data."""
-    if os.environ.get("QUIPU_AUTH_TOKEN"):
-        return os.environ["QUIPU_AUTH_TOKEN"]
-    path = Path.home() / ".config/aegis/quipu_token"
+    """Resolve environment, explicit file and canonical credentials without legacy fallback."""
     try:
-        return path.read_text().strip() or None
-    except OSError:
-        return None
+        return quipu_auth.token() or None
+    except (OSError, UnicodeError, ValueError):
+        raise RmlExecutionError("Unreadable or invalid bearer credential; " + quipu_auth.HELP) from None
 
 
 def parser() -> argparse.ArgumentParser:

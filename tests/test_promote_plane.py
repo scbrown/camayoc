@@ -313,7 +313,7 @@ class PromotionAgainstARealStoreTests(unittest.TestCase):
 
     def run_script(self, script):
         env = dict(os.environ, QUIPU_SERVER=self.base, CAMAYOC_AUTHORITY=str(self.auth))
-        env.pop("QUIPU_AUTH_TOKEN", None)
+        env["QUIPU_AUTH_TOKEN"] = "isolated-test-fixture"
         return subprocess.run(
             [sys.executable, str(script), "--triples-file", str(self.edges), "--to", "crew:declared",
              "--by", "bob", "--authored-by", "claude", "--reason", "integration test"],
@@ -328,6 +328,7 @@ class PromotionAgainstARealStoreTests(unittest.TestCase):
         mutant_dir = Path(self.temp.name) / "mutant"
         mutant_dir.mkdir()
         (mutant_dir / "planes.py").write_text((ROOT / "scripts" / "planes.py").read_text())
+        (mutant_dir / "quipu_auth.py").write_text((ROOT / "scripts" / "quipu_auth.py").read_text())
         source = (ROOT / "scripts" / "promote_plane.py").read_text()
         old = 'f"{facts}\\n\\n{links}\\n\\n{record}"'
         self.assertIn(old, source, "mutation site moved; update this test")

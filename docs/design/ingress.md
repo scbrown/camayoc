@@ -416,3 +416,19 @@ Recovery receives priority on alternating ticks; the other ticks retain
 least-recently-attempted fairness. This prevents both a fresh backlog delaying
 all recovery reads and a broken control starving fresh work. Retry writes still
 require two separately scheduled controlled absent reads and the original body.
+
+### Quipu client credentials
+
+Plane registration and governed RML writes share the credential order
+`QUIPU_AUTH_TOKEN` (trimmed), `QUIPU_AUTH_TOKEN_FILE`, then
+`~/.config/quipu/token`. An explicit in-process credential remains the caller's
+override. An explicit missing file does not fall back to another credential;
+the former legacy location must be selected explicitly.
+
+Missing, invalid, unreadable or rejected credentials produce one diagnostic and
+disable later writes for that server/session. A private marker under the Camayoc
+state directory carries this state across hook processes when a harness session
+ID is available. The diagnostic names process-only suppression when no session
+ID exists or persistence fails. Public reads remain available. Obtain an accepted
+credential from the service administrator, verify it with `caboodle doctor`, and
+start a new session after repairing a refused credential.
