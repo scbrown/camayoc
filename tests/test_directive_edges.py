@@ -46,10 +46,13 @@ class FakeQuipu:
             return {"tx_id": 1, "conforms": True}
         q, graph = body["query"], body.get("graph")
         triples = self.g.get(graph, set())
-        m = re.search(r"\?(\w+) a \?t \. FILTER\(\?t = <([^>]+)>\)", q)
+        m = re.search(r"(\?\w+|<[^>]+>) a \?t \. FILTER\(\?t = <([^>]+)>\)", q)
         if m:
-            var, cls = m.groups()
-            return {"rows": [{var: s} for s, p, o in triples if p == "a" and o == cls]}
+            subj, cls = m.groups()
+            if subj.startswith("?"):
+                return {"rows": [{subj[1:]: s} for s, p, o in triples if p == "a" and o == cls]}
+            return {"rows": [{"t": o} for s, p, o in triples
+                             if s == subj.strip("<>") and p == "a" and o == cls]}
         m = re.search(r"\{ (\S+) <([^>]+)> (\S+) \}", q)
         s, p, o = m.groups()
         rows = []
@@ -85,6 +88,7 @@ def board():
     q.add(A + "artifact-x", A + "claim", "A paper claims something.")
     q.add(A + "artifact-x", "a", A + "Artifact")
     # a traced member of POLICY, in the declared plane: the tracker comes from it
+    q.add(A + "old", "a", A + "Directive")
     q.add(A + "old", A + "governedBy", POLICY, de.DECLARED)
     q.add(A + "old", A + "trackedBy", TRACKER, de.DECLARED)
     # the new, untraced Directive and its capture episode
@@ -141,7 +145,7 @@ class Judge(unittest.TestCase):
         self.assertEqual(de.judge(q, "old", NOW)["lapse"], de.NOT_LAPSED)
 
     def test_discover_is_asserted_directives_only(self):
-        self.assertEqual(de.discover(board()), ["new"])
+        self.assertEqual(de.discover(board()), ["new", "old"])
 
 
 class Policies(unittest.TestCase):
@@ -220,6 +224,13 @@ class Propose(unittest.TestCase):
         with self.assertRaises(ConnectionError):
             de.propose(q, q, client, self.event(), NOW)
 
+    def test_a_non_directive_event_is_a_noop_and_never_calls_jev(self):
+        q = board()
+        client, calls = jev_answering("policy_measurement-needs-a-control", 0.95)
+        out = de.propose(q, q, client, {"item": "policy_measurement-needs-a-control", "event_id": "x"}, NOW)
+        self.assertEqual((out["outcome"], out["verdict"], calls), ("noop", "NOT_A_DIRECTIVE", []))
+        self.assertEqual(q.knots, [])
+
     def test_traced_directive_never_calls_jev(self):
         q = board()
         client, calls = jev_answering("policy_measurement-needs-a-control", 0.91)
@@ -249,6 +260,17 @@ class AdapterProtocol(unittest.TestCase):
         out = self.ca.evaluate("directive", board(), {"now": self.now, "route": [
             {"entity": A + "new", "attribute": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"}]})
         self.assertEqual(out["items"], ["new"])
+
+    def test_a_routed_policy_is_not_judged(self):
+        # 2026-10-08: a new Policy's trackedBy change routed it here, it was
+        # judged UNTRACED and paged DirectiveUntraced. Only Directives are judged.
+        q = board()
+        pol = "policy_design-prefers-queryable-sources"
+        q.add(A + pol, "a", A + "Policy", de.INFERRED)
+        q.add(A + pol, A + "trackedBy", A + "aegis-q9m5mp.48", de.INFERRED)
+        for kind in ("directive", "directive-lapse"):
+            out = self.ca.evaluate(kind, q, {"now": self.now, "items": [pol]})
+            self.assertEqual(out["records"], [], kind)
 
     def test_untraced_view_carries_the_untraced_event(self):
         out = self.ca.evaluate("directive", board(), {"now": self.now, "items": ["new", "old"]})
