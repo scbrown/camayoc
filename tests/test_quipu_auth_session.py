@@ -103,3 +103,48 @@ class SessionTransportTests(unittest.TestCase):
             os.environ['QUIPU_AUTH_TOKEN_FILE'] = str(Path(home) / 'absent')
             self.assertIsNone(planes.auth_token())
             self.assertIsNone(rml_executor.auth_token())
+
+    def test_rml_cli_latches_unreadable_and_invalid_credentials(self):
+        import tempfile
+        seen=[]
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):
+                self.rfile.read(int(self.headers['Content-Length']))
+                seen.append(self.path)
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(b'{"conforms":true,"tx_id":42,"count":4}')
+            def log_message(self,*args): pass
+        server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        root=Path(__file__).resolve().parents[1]
+        args=[sys.executable,str(root/'scripts/rml_executor.py'),'execute',
+              'https://example.invalid/rml/map','--mapping-file',str(root/'tests/fixtures/rml/valid.ttl'),
+              '--source-file',str(root/'tests/fixtures/rml/records.json'),
+              '--server',f'http://127.0.0.1:{server.server_port}','--actor','fixture']
+        try:
+            for kind in ['unreadable','invalid']:
+                with self.subTest(kind=kind),tempfile.TemporaryDirectory() as home:
+                    env=dict(os.environ,HOME=home,XDG_STATE_HOME=home+'/state',
+                             QUIPU_SESSION='rml-'+kind,QUIPU_AUTH_TOKEN='')
+                    unreadable=Path(home)/'directory-token';unreadable.mkdir()
+                    env['QUIPU_AUTH_TOKEN_FILE']=str(unreadable)
+                    if kind=='invalid':env['QUIPU_AUTH_TOKEN']='private-fixture\ninjected-header'
+                    before=len(seen)
+                    first=subprocess.run(args,env=env,capture_output=True,text=True,timeout=10)
+                    self.assertEqual(first.returncode,2,first.stdout+first.stderr)
+                    self.assertEqual(len(seen),before)
+                    self.assertEqual(first.stderr.count('camayoc: Quipu credential'),1)
+                    self.assertNotIn('private-fixture',first.stdout+first.stderr)
+                    self.assertEqual(len(list((Path(home)/'state/camayoc/quipu-auth').glob('*.disabled'))),1)
+                    env['QUIPU_AUTH_TOKEN']='isolated-test-fixture'
+                    same=subprocess.run(args,env=env,capture_output=True,text=True,timeout=10)
+                    self.assertEqual(same.returncode,2,same.stdout+same.stderr)
+                    self.assertEqual(len(seen),before)
+                    self.assertNotIn('camayoc: Quipu credential',same.stderr)
+                    env['QUIPU_SESSION']='new-rml-'+kind
+                    fresh=subprocess.run(args,env=env,capture_output=True,text=True,timeout=10)
+                    self.assertEqual(fresh.returncode,0,fresh.stdout+fresh.stderr)
+                    self.assertEqual(len(seen),before+1)
+        finally:
+            server.shutdown();server.server_close();thread.join()

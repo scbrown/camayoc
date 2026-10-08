@@ -244,8 +244,13 @@ class ScorerSelectionTests(unittest.TestCase):
     describes the scorer that actually ran.
     """
 
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.missing = Path(directory.name) / "absent-model"
+
     def test_without_weights_the_scorer_is_lexical_and_says_so(self):
-        s = competency.Scorer(model_dir=Path("/nonexistent/model"))
+        s = competency.Scorer(model_dir=self.missing / "model")
         self.assertFalse(s.semantic)
         self.assertEqual(competency.LEXICAL_METHOD, s.method)
 
@@ -253,7 +258,7 @@ class ScorerSelectionTests(unittest.TestCase):
         """Both derive from the same decision that picks the scoring function.
         Keeping them as independent constants is exactly how a verdict ends up
         claiming `semantic: true` over a word-overlap number."""
-        for path in ("/nonexistent/a", "/nonexistent/b"):
+        for path in (self.missing / "a", self.missing / "b"):
             s = competency.Scorer(model_dir=Path(path))
             self.assertEqual(s.semantic, s.method == competency.EMBEDDING_METHOD)
             self.assertEqual(not s.semantic, s.method == competency.LEXICAL_METHOD)
@@ -269,7 +274,7 @@ class ScorerSelectionTests(unittest.TestCase):
 
     def test_the_verdict_reports_the_scorer_that_actually_ran(self):
         suite = competency.parse_suite(SUITE_DIR)
-        scorer = competency.Scorer(model_dir=Path("/nonexistent/model"))
+        scorer = competency.Scorer(model_dir=self.missing / "model")
         verdict = competency.assess("who owns this metric", suite, scorer=scorer)
         self.assertEqual(scorer.method, verdict["method"])
         self.assertIs(scorer.semantic, verdict["semantic"])

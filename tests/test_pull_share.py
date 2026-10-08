@@ -281,8 +281,9 @@ esac
             self.assertIn("manifest.json", str(cm.exception))
 
     def test_a_missing_source_is_refused(self):
-        with self.assertRaises(pull_share.PullError):
-            pull_share.classify("/nonexistent/share/path")
+        with tempfile.TemporaryDirectory() as home:
+            with self.assertRaises(pull_share.PullError):
+                pull_share.classify(str(Path(home) / "absent-share"))
 
 
 class AdoptShapesIsExplicit(unittest.TestCase):

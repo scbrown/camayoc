@@ -664,7 +664,7 @@ def main(argv=None) -> int:
                 if not args.actor:
                     raise RmlExecutionError("source_policy_refused: --actor is required for writes")
                 output.update(phase="committed", write=governed_write(
-                    args.server, plan, nquads, args.actor, source.source_hash, auth_token()
+                    args.server, plan, nquads, args.actor, source.source_hash
                 ))
     except (OSError, json.JSONDecodeError, RmlExecutionError) as exc:
         print(json.dumps({"phase": "refused", "error": str(exc)}, sort_keys=True))
