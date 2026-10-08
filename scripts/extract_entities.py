@@ -98,7 +98,7 @@ class ExtractError(RuntimeError):
 def _call(path: str, payload: dict | None = None) -> dict:
     """GET (no payload) or POST against the quipu the planes route to.
 
-    `planes.SERVER` / `planes.AUTH` are read at call time so the tests (and a
+    `planes.SERVER` / `planes.auth_token()` are read at call time so the tests (and a
     caller) can point everything at one place; splitting the config would let
     the gazetteer and the write disagree about which store is in play.
     """
@@ -108,8 +108,9 @@ def _call(path: str, payload: dict | None = None) -> dict:
         headers={"Content-Type": "application/json"},
         method="GET" if payload is None else "POST",
     )
-    if planes.AUTH:
-        req.add_header("Authorization", f"Bearer {planes.AUTH}")
+    token = planes.auth_token()
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
     try:
         with urllib.request.urlopen(req, timeout=15) as response:
             return json.loads(response.read() or b"{}")

@@ -34,9 +34,38 @@ import socket
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 SERVER = os.environ.get("QUIPU_SERVER", "http://localhost:3030").rstrip("/")
-AUTH = os.environ.get("QUIPU_AUTH_TOKEN")
+# Explicit in-process override used by callers that load a selected token file.
+# Ambient credentials are resolved for each request, including file rotation.
+AUTH = None
+
+
+def auth_token() -> str | None:
+    """Override, current environment, then the canonical credential file.
+
+    An explicitly selected file never falls back to another credential if it is
+    missing. Authentication refusal is not retried with a different identity.
+    """
+    def normalize(value):
+        token = (value or "").strip()
+        if token and not re.fullmatch(r"[A-Za-z0-9._~+/=-]+", token):
+            # urllib otherwise includes the invalid header VALUE in its error.
+            raise PlaneError("Invalid bearer credential format; expected a single-line token")
+        return token or None
+
+    for value in (AUTH, os.environ.get("QUIPU_AUTH_TOKEN")):
+        token = normalize(value)
+        if token:
+            return token
+    selected = os.environ.get("QUIPU_AUTH_TOKEN_FILE", "").strip()
+    config = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    path = Path(selected) if selected else config / "quipu" / "token"
+    try:
+        return normalize(path.read_text())
+    except OSError:
+        return None
 
 #: The namespace planes live under. A parameter, never a hardcoded hostname —
 #: camayoc's own convention (CLAUDE.md).
@@ -136,12 +165,23 @@ def _post(path: str, body: dict, *, client: str) -> dict:
                  **provenance_headers(client)},
         method="POST",
     )
-    if AUTH:
-        req.add_header("Authorization", f"Bearer {AUTH}")
+    token = auth_token()
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             return json.loads(r.read() or b"{}")
     except urllib.error.HTTPError as e:
+        if e.code == 401:
+            e.close()
+            raise PlaneError(
+                f"{path} failed: HTTP 401 (authentication refused). Configure "
+                "QUIPU_AUTH_TOKEN or QUIPU_AUTH_TOKEN_FILE (default: "
+                "the quipu/token file under the user config directory), and "
+                "verify the credential matches the server. Signed clients "
+                "require a registered, unexpired identity with write scope. "
+                "No retry or fallback to a different identity was attempted."
+            ) from e
         if e.code == 404:
             raise PlaneError(
                 f"{path} returned 404 — this quipu has no plane routing. "
