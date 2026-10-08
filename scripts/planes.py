@@ -29,6 +29,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import socket
 import sys
 import urllib.error
 import urllib.request
@@ -88,11 +90,46 @@ class PlaneError(RuntimeError):
     """A plane operation failed. Never swallowed into a silent ROOT write."""
 
 
+_UNSAFE_HEADER = re.compile(r"[^\x21-\x7e ]")
+
+
+def provenance_headers(client: str, env=None) -> dict[str, str]:
+    """Structured write provenance (aegis-7zp4rc): X-Quipu-Agent, -Harness,
+    -Model, -Session, -Host, filled from facts the environment holds, never
+    typed by an agent. The same header contract as the stack's other writers:
+
+    1. explicit QUIPU_AGENT / QUIPU_HARNESS / QUIPU_MODEL / QUIPU_SESSION / QUIPU_HOST;
+    2. an agent session when one is running this script (SHANTY_AGENT,
+       CLAUDECODE / CODEX_HOME, CLAUDE_CODE_SESSION_ID, SHANTY_MODEL);
+    3. otherwise the producer names itself: agent = its client label, harness = cron.
+
+    A field that cannot be filled is omitted, never guessed. Values are
+    single-line printable ASCII, at most 128 characters: no header injection."""
+    env = os.environ if env is None else env
+    in_session = env.get("CLAUDECODE") == "1" or bool(env.get("CODEX_HOME"))
+    harness = env.get("QUIPU_HARNESS") or (
+        "claude" if env.get("CLAUDECODE") == "1" else "codex" if env.get("CODEX_HOME") else "cron")
+    raw = {
+        "Agent": env.get("QUIPU_AGENT") or (env.get("SHANTY_AGENT") if in_session else None) or client,
+        "Harness": harness,
+        "Model": env.get("QUIPU_MODEL") or env.get("SHANTY_MODEL"),
+        "Session": env.get("QUIPU_SESSION") or env.get("CLAUDE_CODE_SESSION_ID"),
+        "Host": env.get("QUIPU_HOST") or socket.gethostname(),
+    }
+    out = {}
+    for field, value in raw.items():
+        text = _UNSAFE_HEADER.sub("", str(value or "")).strip()[:128]
+        if text:
+            out[f"X-Quipu-{field}"] = text
+    return out
+
+
 def _post(path: str, body: dict, *, client: str) -> dict:
     req = urllib.request.Request(
         f"{SERVER}{path}",
         data=json.dumps(body, sort_keys=True).encode(),
-        headers={"Content-Type": "application/json", "X-Quipu-Client": client},
+        headers={"Content-Type": "application/json", "X-Quipu-Client": client,
+                 **provenance_headers(client)},
         method="POST",
     )
     if AUTH:
