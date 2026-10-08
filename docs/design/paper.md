@@ -53,7 +53,7 @@ could not have failed** and were reported as verification by careful people.
 
 Worded identically here and in yupana's plan:
 
-- **quipu** compiles SARC into the **store** — submitted, `arXiv:submit/7961151`.
+- **quipu** compiles SARC into the **store** — submitted to arXiv (no public identifier yet).
 - **yupana** compiles it into the **action**.
 - **camayoc** governs **admission** — what may enter at all.
 
