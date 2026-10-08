@@ -152,18 +152,28 @@ def discover(post) -> list[str]:
     return sorted({bb._local(r["s"]) for r in _rows(post, q)})
 
 
+def _policy_iris(post) -> set[str]:
+    """Directly typed Policies, in ROOT (the original set) and crew/declared
+    (every policy minted since through ingress + non-author promotion)."""
+    out = set()
+    for graph in (None, DECLARED):
+        out |= {_iri(r["p"]) for r in _rows(
+            post, f"SELECT ?p WHERE {{ ?p a ?t . FILTER(?t = <{bb.A}Policy>) }}", graph)}
+    return out
+
+
 def policies(post) -> dict[str, str]:
     """Policy IRI -> its claim, for DIRECTLY typed Policies only.
 
     aegis:claim is not Policy-specific: measured 2026-10-08, 615 Artifacts, 8
     SecurityFindings and 2 Observations carry it beside 50 Policies, so reading
     the predicate alone offered Jev 676 options and failed its 255 limit before
-    any request was sent. Two single patterns, intersected here (a join exceeds
+    any request was sent. Single patterns, intersected here (a join exceeds
     quipu's budget live)."""
-    typed = {_iri(r["p"]) for r in _rows(
-        post, f"SELECT ?p WHERE {{ ?p a ?t . FILTER(?t = <{bb.A}Policy>) }}")}
-    claims = {_iri(r["p"]): str(r["c"]) for r in _rows(
-        post, f"SELECT ?p ?c WHERE {{ ?p <{bb.A}claim> ?c }}")}
+    typed, claims = _policy_iris(post), {}
+    for graph in (None, DECLARED):
+        claims.update({_iri(r["p"]): str(r["c"]) for r in _rows(
+            post, f"SELECT ?p ?c WHERE {{ ?p <{bb.A}claim> ?c }}", graph)})
     return {p: c for p, c in claims.items() if p in typed}
 
 
@@ -180,7 +190,14 @@ def trackers(post) -> dict[str, str]:
     for s, governed in pairs["governedBy"].items():
         for policy in governed:
             votes[policy].update(pairs["trackedBy"].get(s, ()))
-    return {p: c.most_common(1)[0][0] for p, c in votes.items() if c}
+    derived = {p: c.most_common(1)[0][0] for p, c in votes.items() if c}
+    # A Policy that DECLARES its tracker (aegis:trackedBy on the Policy itself)
+    # wins: a declared fact beats a vote, and a NEW policy has no members to
+    # vote yet (q9m5mp.47, design-prefers-queryable-sources).
+    typed = _policy_iris(post)
+    declared = {_iri(p): min(ws) for p, ws in pairs["trackedBy"].items()
+                if _iri(p) in typed and ws}
+    return {**derived, **declared}
 
 
 def _state(post, entity: str) -> str:
