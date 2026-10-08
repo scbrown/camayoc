@@ -100,20 +100,24 @@ def provenance_headers(client: str, env=None) -> dict[str, str]:
 
     1. explicit QUIPU_AGENT / QUIPU_HARNESS / QUIPU_MODEL / QUIPU_SESSION / QUIPU_HOST;
     2. an agent session when one is running this script (SHANTY_AGENT,
-       CLAUDECODE / CODEX_HOME, CLAUDE_CODE_SESSION_ID, SHANTY_MODEL);
+       CLAUDECODE / CODEX_HOME, selected harness session ID, SHANTY_MODEL);
     3. otherwise the producer names itself: agent = its client label, harness = cron.
 
-    A field that cannot be filled is omitted, never guessed. Values are
+    Codex uses CODEX_SESSION_ID then CODEX_THREAD_ID; Claude uses
+    CLAUDE_CODE_SESSION_ID. A field that cannot be filled is omitted, never guessed. Values are
     single-line printable ASCII, at most 128 characters: no header injection."""
     env = os.environ if env is None else env
     in_session = env.get("CLAUDECODE") == "1" or bool(env.get("CODEX_HOME"))
     harness = env.get("QUIPU_HARNESS") or (
         "claude" if env.get("CLAUDECODE") == "1" else "codex" if env.get("CODEX_HOME") else "cron")
+    session = env.get("QUIPU_SESSION") or (
+        (env.get("CODEX_SESSION_ID") or env.get("CODEX_THREAD_ID"))
+        if harness == "codex" else env.get("CLAUDE_CODE_SESSION_ID"))
     raw = {
         "Agent": env.get("QUIPU_AGENT") or (env.get("SHANTY_AGENT") if in_session else None) or client,
         "Harness": harness,
         "Model": env.get("QUIPU_MODEL") or env.get("SHANTY_MODEL"),
-        "Session": env.get("QUIPU_SESSION") or env.get("CLAUDE_CODE_SESSION_ID"),
+        "Session": session,
         "Host": env.get("QUIPU_HOST") or socket.gethostname(),
     }
     out = {}

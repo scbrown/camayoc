@@ -32,6 +32,25 @@ class Provenance(unittest.TestCase):
         self.assertEqual((h["X-Quipu-Agent"], h["X-Quipu-Harness"]), ("aX-Evil: 1", "service"))
         self.assertNotIn("\n", "".join(h.values()))
 
+    def test_codex_session_fallback_does_not_borrow_claude_identity(self):
+        env = {"CODEX_HOME": "/tmp/codex", "CODEX_THREAD_ID": "thread",
+               "CLAUDE_CODE_SESSION_ID": "stale-claude"}
+        self.assertEqual(planes.provenance_headers("c", env)["X-Quipu-Session"], "thread")
+        env["CODEX_SESSION_ID"] = "session"
+        self.assertEqual(planes.provenance_headers("c", env)["X-Quipu-Session"], "session")
+        env.pop("CODEX_SESSION_ID")
+        env.pop("CODEX_THREAD_ID")
+        self.assertNotIn("X-Quipu-Session", planes.provenance_headers("c", env))
+
+    def test_selected_harness_and_explicit_session_win(self):
+        env = {"CLAUDECODE": "1", "CODEX_HOME": "/tmp/codex",
+               "CLAUDE_CODE_SESSION_ID": "claude", "CODEX_SESSION_ID": "codex"}
+        self.assertEqual(planes.provenance_headers("c", env)["X-Quipu-Session"], "claude")
+        env["QUIPU_HARNESS"] = "codex"
+        self.assertEqual(planes.provenance_headers("c", env)["X-Quipu-Session"], "codex")
+        env["QUIPU_SESSION"] = "explicit"
+        self.assertEqual(planes.provenance_headers("c", env)["X-Quipu-Session"], "explicit")
+
     def test_post_sends_them_with_the_client_label(self):
         seen = {}
 
