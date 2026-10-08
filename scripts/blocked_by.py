@@ -20,7 +20,7 @@ Items whose own current status is closed are left out.
 
 Reads only, with SINGLE-PATTERN queries (any join, even a bound-subject one,
 exceeded quipu's 10 s budget live), across
-the default graph and the observed-records plane.
+the default, observed-records, declared, and configured seeds board graphs.
 Each evaluation resolves a WorkItem's latest observation once, including an
 absent history. The cache belongs to that evaluation; the next scheduled run
 reads the graph again. Verdict reads use the chaski-adapter client label,
@@ -28,6 +28,12 @@ separate from tracker ingestion.
 
     python3 scripts/blocked_by.py            # JSON: one verdict per blocked item
     python3 scripts/blocked_by.py --item aegis-bgk9ho
+    python3 scripts/blocked_by.py --item https://seeds.local/item/sd-example
+
+CAMAYOC_BOARD_GRAPHS is a comma-separated board graph list, defaulting to
+https://seeds.local/project/aegis. An empty value disables board reads. Seed
+keys are their stored full IRIs, preserving percent encoding; their native
+seeds:status wins over close metadata so reopening takes effect immediately.
 
 Each verdict is the adapter record an emitter consumes (aegis-2qo001): item,
 verdict (BLOCKED / UNBLOCKED / UNKNOWN), evidence (a stable digest of the
@@ -41,8 +47,10 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
+from urllib.parse import unquote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -51,6 +59,9 @@ from ingest_work_items import BASE_NS  # noqa: E402
 
 CLIENT = "chaski-adapter"
 A = BASE_NS
+SEED_ITEM = "https://seeds.local/item/"
+SEED_STATUS = "https://seeds.local/ontology/status"
+SCHEMA = "https://schema.org/"
 TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
 
 # The quechua transition (aegis-9dpcta). The served quipu does NOT honour
@@ -102,16 +113,36 @@ class _EvaluationReads:
 
 def graphs() -> list[str | None]:
     """Where blocking facts live: the default graph, the observed records (the
-    tracker projection) and the DECLARED plane (condition blockers someone
-    declared). Not the inferred plane: an inferred blocker is quarantined
+    tracker projection), seeds boards, and the DECLARED plane (conditions
+    someone declared). Not the inferred plane: an inferred blocker is quarantined
     guesswork and must not hold work up."""
-    return [None, planes.plane_for("observed"), planes.plane_for("declared")]
+    boards = [g.strip() for g in os.environ.get(
+        "CAMAYOC_BOARD_GRAPHS", "https://seeds.local/project/aegis").split(",") if g.strip()]
+    if planes.plane_for("inferred") in boards:
+        raise ValueError("the inferred plane is not a board graph; refusing")
+    return list(dict.fromkeys([None, planes.plane_for("observed"),
+                               planes.plane_for("declared"), *boards]))
 
 
 def _iri(term: str) -> str:
     if term.startswith("aegis:"):
         return A + term[len("aegis:"):]
     return term
+
+
+def item_iri(item: str) -> str:
+    """Preserve stored seed IRIs; legacy adapter keys remain local names."""
+    iri = _iri(item) if item.startswith(("https://", "http://", "aegis:")) else A + item
+    if any(c in iri for c in '<>"{}\\\n\r\t '):
+        raise ValueError("unsafe entity IRI")
+    return iri
+
+
+def seed_value(post, item: str, predicate: str) -> str | None:
+    rows = select(post, f"SELECT ?v WHERE {{ <{item_iri(item)}> <{predicate}> ?v }}")
+    if len(rows) != 1:
+        return None
+    return str(rows[0]["v"]).split("^^")[0].strip('"')
 
 
 def _local(term: str) -> str:
@@ -136,6 +167,8 @@ def select(post, query: str) -> list[dict]:
 def current_status(post, item: str) -> str | None:
     """The tracker status of a WorkItem from its LATEST Observation; "closed"
     also when the WorkItem carries aegis:closedAt; None when nothing says."""
+    if item.startswith(SEED_ITEM):
+        return seed_value(post, item, SEED_STATUS)
     if select(post, f"SELECT ?c WHERE {{ {pattern(f'<{A}{item}>', 'closedAt', '?c')} }}"):
         return "closed"
     obs = latest_observation(post, item)
@@ -162,6 +195,10 @@ def snapshot(post, obs: str) -> dict:
 
 def current_assignee(post, item: str) -> str | None:
     """Who the tracker says holds the item now (latest Observation), or None."""
+    if item.startswith(SEED_ITEM):
+        agent = seed_value(post, item, SCHEMA + "agent")
+        prefix = "https://seeds.local/principal/"
+        return unquote(agent[len(prefix):]) if agent and agent.startswith(prefix) else agent
     obs = latest_observation(post, item)
     return (snapshot(post, obs).get("assignee") or None) if obs else None
 
@@ -186,6 +223,7 @@ def event_id(post, item: str, names: list[str], judged: list[tuple[str, str]]) -
     re-emit after a send-then-crash must carry the same id or the receiver's
     dedupe is vacuous in exactly the case it exists for.
 
+    Seeds use their native schema:dateModified instant for the closing version.
     The causing transition is each blocker's RESOLVING FACT. For a WorkItem
     blocker that is its latest Observation, which is content-addressed and so
     differs for a close, a reopen and a second close: a genuine later
@@ -197,12 +235,12 @@ def event_id(post, item: str, names: list[str], judged: list[tuple[str, str]]) -
     for target, (state, why) in zip(names, judged):
         fact = latest_observation(post, target) if why == f"{target}: closed" else None
         facts.append([target, fact or why])
-    basis = json.dumps([A + item, sorted(facts)], separators=(",", ":"))
+    basis = json.dumps([item_iri(item), sorted(facts)], separators=(",", ":"))
     return "sha256:" + hashlib.sha256(basis.encode()).hexdigest()
 
 
 def latest_observation(post, item: str) -> str | None:
-    """The WorkItem's Observation with the latest observedAt, or None."""
+    """Latest tracker Observation, or a seed's native modification instant."""
     if isinstance(post, _EvaluationReads):
         if item not in post.latest:
             post.latest[item] = _read_latest_observation(post, item)
@@ -211,6 +249,8 @@ def latest_observation(post, item: str) -> str | None:
 
 
 def _read_latest_observation(post, item: str) -> str | None:
+    if item.startswith(SEED_ITEM):
+        return seed_value(post, item, SCHEMA + "dateModified")
     # Two BOUND single-pattern queries, never a join: quipu plans even a
     # bound-subject two-pattern query from its unbound side and 408s it live.
     observations = [_local(row["obs"]) for row in select(post,
@@ -318,12 +358,12 @@ def _prop(post, target: str, name: str) -> str | None:
 
 def blocker_state(post, target: str, today: dt.date, probes=None) -> tuple[str, str]:
     """(state, why) for one blockedOn target."""
-    types = {_iri(r["t"]) for r in select(post, f"SELECT ?t WHERE {{ <{A}{target}> a ?t }}")}
-    if types & set(term_iris("WorkItem")):
+    types = {_iri(r["t"]) for r in select(post, f"SELECT ?t WHERE {{ <{item_iri(target)}> a ?t }}")}
+    if types & (set(term_iris("WorkItem")) | {SCHEMA + "Action"}):
         status = current_status(post, target)
         if status is None:
             return UNKNOWN, f"{target}: no tracker status in the graph"
-        return (RESOLVED if status == "closed" else UNRESOLVED), f"{target}: {status}"
+        return (RESOLVED if status in ("closed", "tombstone") else UNRESOLVED), f"{target}: {status}"
     if types & set(term_iris("Blocker")):
         probes = PROBES if probes is None else probes
         kind = _prop(post, target, "blockerKind")
@@ -374,7 +414,7 @@ def evaluate(post, *, item: str | None = None, today: dt.date | None = None,
     # resolution, so each history is walked once, not once per historical row.
     post = _EvaluationReads(post, batch_history=batch_history)
     today = today or dt.date.today()
-    scope = f"<{A}{item}>" if item else "?w"
+    scope = f"<{item_iri(item)}>" if item else "?w"
     # Declared by an agent on the WorkItem ...
     edges = select(post, f"SELECT {'?w ' if not item else ''}?t WHERE {{ {pattern(scope, 'blockedOn', '?t')} }}")
     by_item: dict[str, list[str]] = {}
@@ -385,12 +425,12 @@ def evaluate(post, *, item: str | None = None, today: dt.date | None = None,
     # removed dependency (absent from the newest Observation) no longer blocks.
     # Single-pattern or bound-subject queries only: the two-pattern join over
     # the whole store exceeded quipu's 10 s budget live (HTTP 408).
-    if item:
+    if item and not item.startswith(SEED_ITEM):
         latest = latest_observation(post, item)
         if latest:
             for row in select(post, f"SELECT ?t WHERE {{ {pattern(f'<{A}{latest}>', 'observedBlockedOn', '?t')} }}"):
                 by_item.setdefault(item, []).append(_local(row["t"]))
-    else:
+    elif not item:
         owner: dict[str, str | None] = {}
         for row in select(post, f"SELECT ?obs ?t WHERE {{ {pattern('?obs', 'observedBlockedOn', '?t')} }}"):
             obs = _local(row["obs"])
@@ -402,7 +442,7 @@ def evaluate(post, *, item: str | None = None, today: dt.date | None = None,
                 by_item.setdefault(w, []).append(_local(row["t"]))
     out = []
     for w, targets in sorted(by_item.items()):
-        if current_status(post, w) == "closed":
+        if current_status(post, w) in ("closed", "tombstone"):
             continue
         names = sorted(set(targets))
         judged = [blocker_state(post, t, today, probes) for t in names]
