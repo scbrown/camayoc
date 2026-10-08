@@ -145,6 +145,15 @@ def judge(post, entity: str, now: dt.datetime | None = None) -> dict:
             "evidence": verdict, "owner": None}
 
 
+def is_directive(post, entity: str) -> bool:
+    """Only a DIRECTLY typed Directive is judged. The change feed also routes
+    other subjects that gain a subscribed attribute: a new Policy declaring its
+    own trackedBy was routed, judged UNTRACED and paged DirectiveUntraced
+    (2026-10-08 02:02Z, q9m5mp.47). Bound subject, single pattern."""
+    return bool(_rows(post, f"SELECT ?t WHERE {{ <{bb.A}{entity}> a ?t . "
+                            f"FILTER(?t = <{bb.A}Directive>) }}"))
+
+
 def discover(post) -> list[str]:
     """Every DIRECTLY typed Directive: the asserted-only form the conformance
     instrument uses, so a subclass instance is not judged as a Directive."""
@@ -219,6 +228,8 @@ def _option(iri: str) -> str:
 
 def plan(post, client, entity: str, now: dt.datetime) -> dict:
     """What `propose` would write for one Directive. Reads, plus one Jev call."""
+    if not is_directive(post, entity):
+        return {"entity": entity, "outcome": "noop", "verdict": "NOT_A_DIRECTIVE"}
     verdict = judge(post, entity)["verdict"]
     if verdict != UNTRACED:
         return {"entity": entity, "outcome": "noop", "verdict": verdict}

@@ -187,8 +187,9 @@ def _directive(kind, post, request, instant, now):
     if "route" in request:
         return {"version": 1, "items": targets(post, kind, request["route"], [])}
     full = request.get("full", False)
-    scope = de.discover(post) if full else targets(post, kind, request.get("changes", []),
-                                                   request.get("items", []))
+    scope = de.discover(post) if full else [
+        n for n in targets(post, kind, request.get("changes", []), request.get("items", []))
+        if de.is_directive(post, n)]
     records = []
     for name in scope:
         r = de.judge(post, name, instant)
