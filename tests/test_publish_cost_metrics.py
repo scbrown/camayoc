@@ -1,5 +1,6 @@
 """Source rotation must not overwrite another session's cost observations."""
 import json
+import os
 from pathlib import Path
 import sys
 import unittest
@@ -77,3 +78,28 @@ class PartitionedPublication(unittest.TestCase):
     def test_status_failure_is_not_reported_as_success(self):
         self.push.side_effect = [(True, 'pushed'), (False, 'status failed')]
         self.assertEqual(m.publish(body('one'), 'project'), (False, 'status failed'))
+
+
+class RealTransportGrouping(unittest.TestCase):
+    def test_source_identity_partitions_the_actual_request_urls(self):
+        import camayoc_metrics as transport
+        requests = []
+        class Response:
+            status = 200
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+        def send(request, timeout=None):
+            requests.append(request)
+            return Response()
+        with mock.patch.dict(os.environ, {transport.ENV:'http://gateway.example'}, clear=True), \
+                mock.patch.object(transport.urllib.request, 'urlopen', side_effect=send):
+            self.assertTrue(m.publish(body('one'), 'project')[0])
+            self.assertTrue(m.publish(body('two'), 'project')[0])
+        self.assertEqual([r.full_url for r in requests], [
+            'http://gateway.example/metrics/job/st_bead_cost/rig/project/agent/worker/harness/codex/session/one',
+            'http://gateway.example/metrics/job/st_bead_cost/rig/project',
+            'http://gateway.example/metrics/job/st_bead_cost/rig/project/agent/worker/harness/codex/session/two',
+            'http://gateway.example/metrics/job/st_bead_cost/rig/project'])
+        self.assertTrue(all(r.get_method() == 'PUT' for r in requests))
