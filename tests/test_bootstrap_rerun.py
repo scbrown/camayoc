@@ -133,6 +133,9 @@ class OntologyPresenceDiscriminatesTest(unittest.TestCase):
             port = free_port()
             proc = subprocess.Popen(
                 [QUIPU_SERVER_BIN, "--db", str(Path(tmp) / "s.db"), "--bind", f"127.0.0.1:{port}"],
+                # The server's signing key follows cwd, not its database path.
+                # Keep that runtime state with the disposable database.
+                cwd=tmp,
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
             try:
@@ -149,6 +152,8 @@ class OntologyPresenceDiscriminatesTest(unittest.TestCase):
                 )
                 self.assertEqual(out.returncode, 1, out.stdout + out.stderr)
                 self.assertRegex(out.stdout, r"^0/\d+")
+                self.assertTrue((Path(tmp) / ".quipu" / "verifier.pk8").is_file(),
+                                "control: the server identity belongs in its temporary cwd")
             finally:
                 proc.terminate()
                 proc.wait(timeout=10)
