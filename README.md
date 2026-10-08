@@ -107,6 +107,46 @@ plugin, `bash camayoc/scripts/bootstrap.sh --with-claude-hooks` adds the same
 status hook to `.claude/settings.json`. The plugin also declares a `jev` MCP
 server for typed decisions. Details: [Using it with agents](https://scbrown.github.io/camayoc/agents.html).
 
+### Typed decisions with jev-mcp
+
+The plugin registers the stdio server in
+[scripts/jev_mcp.py](scripts/jev_mcp.py). It exposes these tools:
+
+| Tool | Input and result |
+| --- | --- |
+| `jev_noul` | `state`, `instructions`; returns a yes/no probability. Optional `true` and `false` describe the criteria. |
+| `jev_choice` | `state`, `instructions`, `criteria` (option ID to text); returns a choice and probabilities. |
+| `jev_score` | `state`, `instructions`, `levels` (2–10 ordered strings); returns an ordered-level score. |
+| `map_question` | `question`; reports a competency-question match and its stored-query coverage, or `abstained` / `human_reads`. |
+| `jev_dry_run` | `kind` (`noul`, `choice` or `score`) and that tool's inputs; returns the request without sending it. |
+
+For an agent that reads `.mcp.json`, register the server directly:
+
+```json
+{
+  "mcpServers": {
+    "jev": {
+      "command": "python3",
+      "args": ["/path/to/camayoc/scripts/jev_mcp.py"]
+    }
+  }
+}
+```
+
+Live calls use `TYPESAFE_API_KEY`, then the file named by
+`TYPESAFE_API_KEY_FILE`, then the default in
+[`jev.resolve_key`](scripts/jev.py). Keep a key file private (`0600`);
+do not put a key in the registration file. Dry runs need no key. A missing
+or malformed key produces a readable tool error, with no lexical fallback.
+
+Choice adds a none-of-these option by default and reports `chose_none`;
+setting `none_text` to `""` deliberately removes that escape hatch.
+Treat decisions as **inferred**, retain their request, usage and model, and
+check confidence before acting. The server does not retry failed calls.
+Usage is logged to `JEV_USAGE_LOG`, otherwise
+`SHANTY_ROOT/jev-usage.jsonl`, otherwise the local state path declared in
+`scripts/jev_mcp.py`. Logging failure does not retry a decision.
+
 ## Before you start
 
 **Platforms.** Bootstrap downloads a quipu release on Linux x86_64. On other
