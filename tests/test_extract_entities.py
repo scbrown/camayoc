@@ -266,6 +266,15 @@ class PatternConfigTests(StubbedCase):
 
 
 class WritePathTests(StubbedCase):
+    def setUp(self):
+        from unittest import mock
+        credential = mock.patch.object(extract.planes, "AUTH", "isolated-test-fixture")
+        credential.start()
+        self.addCleanup(credential.stop)
+        state = mock.patch.object(extract.planes.quipu_auth, "_disabled", set())
+        state.start()
+        self.addCleanup(state.stop)
+
     def test_the_write_targets_the_inferred_plane_and_nothing_else(self):
         handler = self.serve()
         path = self.fixture()

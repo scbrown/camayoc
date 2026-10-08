@@ -68,7 +68,7 @@ class Provenance(unittest.TestCase):
             seen.update({k.lower(): v for k, v in req.header_items()})
             return Resp()
 
-        with mock.patch("urllib.request.urlopen", fake), mock.patch.dict("os.environ", {}, clear=True):
+        with mock.patch("urllib.request.urlopen", fake), mock.patch.dict("os.environ", {}, clear=True), mock.patch.object(planes, "AUTH", "isolated-test-fixture"), mock.patch.object(planes.quipu_auth, "_disabled", set()):
             planes._post("/episode", {}, client="camayoc-ingress")
         self.assertEqual((seen["x-quipu-client"], seen["x-quipu-agent"], seen["x-quipu-harness"]),
                          ("camayoc-ingress", "camayoc-ingress", "cron"))

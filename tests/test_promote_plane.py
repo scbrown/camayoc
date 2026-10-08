@@ -282,11 +282,14 @@ class PromotionAgainstARealStoreTests(unittest.TestCase):
         else:
             raise RuntimeError("ephemeral quipu-server did not start")
         saved = promote_plane.planes.SERVER
+        saved_auth = promote_plane.planes.AUTH
+        promote_plane.planes.AUTH = "isolated-test-fixture"
         promote_plane.planes.SERVER = cls.base
         try:
             promote_plane.planes.ensure_planes("2026-10-07T00:00:00Z")
         finally:
             promote_plane.planes.SERVER = saved
+            promote_plane.planes.AUTH = saved_auth
         inferred = promote_plane.planes.PLANES["crew:inferred"]["iri"]
         cls.call("/knot", {"turtle": f"{cls.S} {cls.P} {cls.O} .", "graph": inferred, "actor": "test"})
         cls.auth = Path(cls.temp.name) / "auth.json"
@@ -313,7 +316,7 @@ class PromotionAgainstARealStoreTests(unittest.TestCase):
 
     def run_script(self, script):
         env = dict(os.environ, QUIPU_SERVER=self.base, CAMAYOC_AUTHORITY=str(self.auth))
-        env.pop("QUIPU_AUTH_TOKEN", None)
+        env["QUIPU_AUTH_TOKEN"] = "isolated-test-fixture"
         return subprocess.run(
             [sys.executable, str(script), "--triples-file", str(self.edges), "--to", "crew:declared",
              "--by", "bob", "--authored-by", "claude", "--reason", "integration test"],
@@ -328,6 +331,7 @@ class PromotionAgainstARealStoreTests(unittest.TestCase):
         mutant_dir = Path(self.temp.name) / "mutant"
         mutant_dir.mkdir()
         (mutant_dir / "planes.py").write_text((ROOT / "scripts" / "planes.py").read_text())
+        (mutant_dir / "quipu_auth.py").write_text((ROOT / "scripts" / "quipu_auth.py").read_text())
         source = (ROOT / "scripts" / "promote_plane.py").read_text()
         old = 'f"{facts}\\n\\n{links}\\n\\n{record}"'
         self.assertIn(old, source, "mutation site moved; update this test")

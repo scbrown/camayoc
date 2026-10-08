@@ -26,6 +26,11 @@ Usage:
 
 from __future__ import annotations
 
+try:
+    import quipu_auth
+except ModuleNotFoundError:
+    from scripts import quipu_auth
+
 import argparse
 import json
 import os
@@ -34,9 +39,20 @@ import socket
 import sys
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 SERVER = os.environ.get("QUIPU_SERVER", "http://localhost:3030").rstrip("/")
-AUTH = os.environ.get("QUIPU_AUTH_TOKEN")
+# Explicit in-process override used by callers that load a selected token file.
+# Ambient credentials are resolved for each request, including file rotation.
+AUTH = None
+
+
+def auth_token() -> str | None:
+    """Resolve environment, explicit file and canonical credentials without legacy fallback."""
+    try:
+        return quipu_auth.token(AUTH) or None
+    except (OSError, UnicodeError, ValueError):
+        raise PlaneError("Unreadable or invalid bearer credential; " + quipu_auth.HELP) from None
 
 #: The namespace planes live under. A parameter, never a hardcoded hostname —
 #: camayoc's own convention (CLAUDE.md).
@@ -136,12 +152,27 @@ def _post(path: str, body: dict, *, client: str) -> dict:
                  **provenance_headers(client)},
         method="POST",
     )
-    if AUTH:
-        req.add_header("Authorization", f"Bearer {AUTH}")
+    is_write = path not in ("/query", "/search", "/search/nodes", "/search_nodes")
+    if is_write:
+        try:
+            headers = quipu_auth.write_headers(SERVER, AUTH)
+        except quipu_auth.CredentialRefused as exc:
+            raise PlaneError(str(exc)) from None
+        req.add_header("Authorization", headers["Authorization"])
+    else:
+        try:
+            token = auth_token()
+        except PlaneError:
+            token = None  # Public reads stay available with a broken write credential.
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
     try:
         with urllib.request.urlopen(req, timeout=15) as r:
             return json.loads(r.read() or b"{}")
     except urllib.error.HTTPError as e:
+        if e.code == 401 and is_write:
+            e.close()
+            raise PlaneError(str(quipu_auth.refuse(SERVER, "rejected (HTTP 401)"))) from None
         if e.code == 404:
             raise PlaneError(
                 f"{path} returned 404 — this quipu has no plane routing. "
