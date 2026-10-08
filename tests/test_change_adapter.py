@@ -95,7 +95,7 @@ class Incremental(unittest.TestCase):
             return store.post(endpoint, body)
         result = ca.evaluate("blocked", post, {"discover": True, "now": NOW})
         self.assertEqual(result["items"], ["w"])
-        self.assertEqual(len(calls), 6)
+        self.assertEqual(len(calls), 2 * len(bb.graphs()))
         self.assertFalse(any("observedStatus" in q for q in calls))
 
     def test_catalogue_bounds_reverse_reads_instead_of_scanning_all_history(self):
@@ -112,7 +112,7 @@ class Incremental(unittest.TestCase):
             return store.post(endpoint, body)
         result = ca.evaluate("blocked", post, {"now": NOW, "discover": True})
         self.assertEqual(result["items"], ["w"])
-        self.assertEqual(len(queries), 15)
+        self.assertEqual(len(queries), 5 * len(bb.graphs()))
         self.assertFalse(any("?w32" in q for q in queries))
 
     def test_recorded_day_parity_close_reopen_remove_and_add(self):

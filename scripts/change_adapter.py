@@ -34,13 +34,16 @@ def description(kind):
                 "graphs": ["ROOT", de.DECLARED, de.INFERRED],
                 "types": [bb.A + "Directive"]}
     props = WORK | OBS | BLOCKER if kind == "blocked" else REVIEW | REVIEW_ACTIVITY
-    return {"version": 1, "attributes": sorted({iri for p in props for iri in bb.term_iris(p)}),
+    seed_props = {bb.SEED_STATUS, bb.SCHEMA + "dateModified", bb.SCHEMA + "agent"} if kind == "blocked" else set()
+    return {"version": 1, "attributes": sorted({iri for p in props for iri in bb.term_iris(p)} | seed_props),
             "graphs": [g or "ROOT" for g in bb.graphs()],
-            "types": bb.term_iris("WorkItem") + bb.term_iris("Blocker") if kind == "blocked" else []}
+            "types": bb.term_iris("WorkItem") + bb.term_iris("Blocker") + [bb.SCHEMA + "Action"] if kind == "blocked" else []}
 
 
 def local(iri):
     """Only instance IRIs in the configured namespace are adapter keys."""
+    if isinstance(iri, str) and iri.startswith(bb.SEED_ITEM):
+        return bb.item_iri(iri) if "/" not in iri[len(bb.SEED_ITEM):] and iri != bb.SEED_ITEM else None
     if not isinstance(iri, str) or not iri.startswith(bb.A):
         return None
     name = iri[len(bb.A):]
@@ -50,7 +53,7 @@ def local(iri):
 
 
 def values(post, subject, prop, reverse=False):
-    p = bb.pattern("?v", prop, f"<{bb.A}{subject}>") if reverse else bb.pattern(f"<{bb.A}{subject}>", prop, "?v")
+    p = bb.pattern("?v", prop, f"<{bb.item_iri(subject)}>") if reverse else bb.pattern(f"<{bb.item_iri(subject)}>", prop, "?v")
     return [bb._local(str(r["v"])) for r in bb.select(post, f"SELECT ?v WHERE {{ {p} }}")]
 
 
