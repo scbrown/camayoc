@@ -30,6 +30,31 @@ not estimated without a governed applicable price record.
 Rollback disables the scheduled projection and retains evidence. It does not
 rewrite tracker close reasons or silently delete prior cost observations.
 
+## Cost metric source groups
+
+Status: source-aware publisher implemented; coordinated rollout proof pending.
+
+Active-source exposition can carry a `# st-bead-cost-source` JSON comment with
+the parser's agent, harness and session identity. `publish_cost_metrics.py`
+validates that identity before pushing anything. It sends token and coverage
+samples to a Pushgateway group keyed by rig/agent/harness/session, and scheduler
+status to the existing rig-only group. Rotation preserves earlier sessions;
+corrected attribution replaces only the affected session's allocations.
+
+Identity and counts travel in one atomically replaced exposition file, avoiding
+a crash mismatch between separate count and identity files. Cached review and
+cooldown refreshes retain the source identity and original observation time.
+`st_bead_cost_source_last_success_timestamp_seconds` reports that source's
+observation age; the rig heartbeat does not establish fresh cost observations.
+Unmarked payloads retain the legacy rig-only publication contract.
+
+Install this publisher before enabling source markers. Each marked metric
+publication makes two gateway PUTs, one sample group and one status group;
+this does not change graph requests, snapshot limits, or token arithmetic.
+Both PUTs must succeed for the caller to report success. The separate groups
+are not a gateway transaction; a partial failure is reported for reconciliation.
+Totals remain scoped to observed supplied sessions, not unmeasured lifetime cost.
+
 ## First-rollout load budget
 
 Each invocation permits at most one changed session snapshot, eight distinct
