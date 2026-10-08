@@ -148,6 +148,26 @@ class Policies(unittest.TestCase):
     def test_only_directly_typed_policies_are_options(self):
         self.assertEqual(set(de.policies(board())), {POLICY, OTHER})
 
+    def test_a_promoted_policy_with_its_own_tracker_is_an_option_from_day_one(self):
+        # q9m5mp.47: a NEW policy lives in crew/declared after promotion and has
+        # no traced members yet; it declares its tracker on itself.
+        q = board()
+        new = A + "policy_design-prefers-queryable-sources"
+        tracker = A + "aegis-q9m5mp.48"
+        q.add(new, "a", A + "Policy", de.DECLARED)
+        q.add(new, A + "claim", "Prefer a queryable entity pointing at its source.", de.DECLARED)
+        q.add(new, A + "trackedBy", tracker, de.DECLARED)
+        self.assertIn(new, de.policies(q))
+        self.assertEqual(de.trackers(q)[new], tracker)
+        client, _ = jev_answering("policy_design-prefers-queryable-sources", 0.9)
+        out = de.propose(q, q, client, {"item": "new", "event_id": "e"}, NOW)
+        self.assertEqual((out["outcome"], out["policy"], out["tracker"]), ("proposed", new, tracker))
+
+    def test_a_declared_policy_tracker_beats_member_votes(self):
+        q = board()
+        q.add(POLICY, A + "trackedBy", A + "aegis-declared", de.DECLARED)
+        self.assertEqual(de.trackers(q)[POLICY], A + "aegis-declared")
+
     def test_too_many_options_refuse_before_sending(self):
         q = board()
         for i in range(300):
