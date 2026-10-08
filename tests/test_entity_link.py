@@ -46,6 +46,32 @@ SEARCH = search_of({
 
 
 class EntityLinkTest(unittest.TestCase):
+    def test_actual_request_keeps_auth_body_and_shared_provenance(self):
+        import io
+        import json
+        seen = {}
+
+        class Response(io.BytesIO):
+            pass
+
+        def fake(req, timeout=None):
+            seen.update(headers={k.lower(): v for k, v in req.header_items()},
+                        body=json.loads(req.data), timeout=timeout)
+            return Response(b'{"conforms":true}')
+
+        env = {"CODEX_HOME": "/tmp/codex", "SHANTY_AGENT": "reviewer",
+               "CODEX_SESSION_ID": "session", "QUIPU_HOST": "test-host"}
+        with mock.patch.dict("os.environ", env, clear=True), \
+                mock.patch("urllib.request.urlopen", fake):
+            self.assertTrue(el._post("/knot", {"turtle": "unchanged"}, "token")["conforms"])
+        headers = seen["headers"]
+        self.assertEqual(headers["x-quipu-client"], "camayoc-entity-link")
+        self.assertEqual(headers["authorization"], "Bearer token")
+        self.assertEqual([headers[f"x-quipu-{k}"] for k in ("agent", "harness", "session", "host")],
+                         ["reviewer", "codex", "session", "test-host"])
+        self.assertNotIn("x-quipu-model", headers)
+        self.assertEqual((seen["body"], seen["timeout"]), ({"turtle": "unchanged"}, 60))
+
     def test_provenance_lifecycle_and_passages_are_never_offered(self):
         offered = [c["entity"] for c in el.candidates("t", "d", SEARCH)]
         self.assertEqual(offered, ["aegis:svc-a", "aegis:svc-b"])

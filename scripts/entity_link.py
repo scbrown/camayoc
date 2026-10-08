@@ -69,7 +69,10 @@ NONE_TEXT = "None of these is the subject of this work item"
 
 
 def _post(path: str, body: dict, token: str = "") -> dict:
-    headers = {"Content-Type": "application/json", "X-Quipu-Client": CLIENT}
+    from planes import provenance_headers
+
+    headers = {"Content-Type": "application/json", "X-Quipu-Client": CLIENT,
+               **provenance_headers(CLIENT)}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request(SERVER + path, json.dumps(body).encode(), headers)
