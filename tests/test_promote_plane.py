@@ -282,11 +282,14 @@ class PromotionAgainstARealStoreTests(unittest.TestCase):
         else:
             raise RuntimeError("ephemeral quipu-server did not start")
         saved = promote_plane.planes.SERVER
+        saved_auth = promote_plane.planes.AUTH
+        promote_plane.planes.AUTH = "isolated-test-fixture"
         promote_plane.planes.SERVER = cls.base
         try:
             promote_plane.planes.ensure_planes("2026-10-07T00:00:00Z")
         finally:
             promote_plane.planes.SERVER = saved
+            promote_plane.planes.AUTH = saved_auth
         inferred = promote_plane.planes.PLANES["crew:inferred"]["iri"]
         cls.call("/knot", {"turtle": f"{cls.S} {cls.P} {cls.O} .", "graph": inferred, "actor": "test"})
         cls.auth = Path(cls.temp.name) / "auth.json"

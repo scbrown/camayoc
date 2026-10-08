@@ -52,7 +52,7 @@ class BootstrapRerunTest(unittest.TestCase):
             CLAUDE_PLUGIN_ROOT=str(ROOT),
             HOME=str(self.project),
         )
-        self.env.pop("QUIPU_AUTH_TOKEN", None)
+        self.env["QUIPU_AUTH_TOKEN"] = "isolated-test-fixture"
 
     def tearDown(self):
         pid = self.project / ".quipu" / "server.pid"

@@ -38,7 +38,7 @@ class PostFailureTests(unittest.TestCase):
 
     def _post_raising(self, exc):
         from unittest import mock
-        with mock.patch.object(planes.urllib.request, "urlopen", side_effect=exc):
+        with mock.patch.object(planes, "AUTH", "isolated-test-fixture"), mock.patch.object(planes.quipu_auth, "_disabled", set()), mock.patch.object(planes.urllib.request, "urlopen", side_effect=exc):
             return planes._post("/knot", {"turtle": ""}, client="test")
 
     def test_a_read_timeout_is_a_plane_error_saying_it_may_have_applied(self):
@@ -158,6 +158,15 @@ class StubQuipu(BaseHTTPRequestHandler):
 
 
 class EnsurePlanesTests(unittest.TestCase):
+    def setUp(self):
+        from unittest import mock
+        self.credential = mock.patch.object(planes, "AUTH", "isolated-test-fixture")
+        self.credential.start()
+        self.addCleanup(self.credential.stop)
+        self.state = mock.patch.object(planes.quipu_auth, "_disabled", set())
+        self.state.start()
+        self.addCleanup(self.state.stop)
+
     def serve(self, **behaviour):
         handler = type("H", (StubQuipu,), {"seen": [], **behaviour})
         server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
