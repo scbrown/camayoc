@@ -90,12 +90,11 @@ def event_id(entity: str) -> str:
 
 
 def _instant(raw) -> dt.datetime | None:
+    """One instant parser for the stack: review_due's, which also accepts
+    nanosecond fractions on Python 3.10 (the chaski host)."""
+    from review_due import parse_instant
     raw = raw.get("value") if isinstance(raw, dict) else raw
-    try:
-        when = dt.datetime.fromisoformat(str(raw).strip('"').replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    return when if when.tzinfo else when.replace(tzinfo=dt.timezone.utc)
+    return parse_instant(str(raw))
 
 
 def anchor(post, entity: str, verdict: str) -> dt.datetime | None:

@@ -40,6 +40,24 @@ jobs:
         uses: ./.github/actions/install-just
       - run: just test
 
+  # aegis-qx96wr: the chaski verdict adapters run on the automation host's
+  # Python 3.10, and 3.11+ hides 3.10-only failures. Measured: tracker
+  # observedAt carries nanoseconds, which 3.10's fromisoformat rejects, so every
+  # idleLimit lapse read UNKNOWN in production while CI (3.11) passed. These
+  # are the files chaski executes; run them on the production interpreter.
+  adapters-production-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Chaski adapter tests on Python 3.10
+        run: |
+          for t in test_instant_parsing test_review_due test_change_adapter test_directive_edges test_blocked_by; do
+            python3 -m unittest discover -s tests -p "$t.py" || exit 1
+          done
+
   # The gate proofs are only as good as the shapes they probe, and the stub
   # store cannot check those. This arm builds a real quipu and lets the
   # integration tests in test_metrics_slice.py — which skip themselves without a
