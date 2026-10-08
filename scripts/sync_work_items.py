@@ -163,6 +163,14 @@ def attach_deps(records, db, cache=None):
             cache[record['id']] = [record.get('updated_at'), record.get('blocked_on') or []]
 
 
+def http_status(exc):
+    """The HTTP status behind a failed quipu call, or None. Only the code is
+    kept: response bodies and URLs are never recorded."""
+    cause = getattr(exc, '__cause__', None)
+    code = getattr(cause, 'code', None) or getattr(exc, 'code', None)
+    return code if isinstance(code, int) and 100 <= code <= 599 else None
+
+
 def readback(body, post):
     """A control plus exact direct assertions, always scoped to observed records."""
     graph = body['graph']
@@ -337,10 +345,19 @@ def tick(records, state, path, *, actor, source, now, post, max_items=1):
             if entry.get('trailing') and entry.get('closed'):
                 entry['final'] = True  # its last transition is in the graph
             entry.pop('error', None)
+            entry.pop('error_status', None)
             entry.pop('not_before', None)
         except Exception as exc:
             # Do not print transport response bodies or credential-bearing URLs.
             entry['error'] = type(exc).__name__
+            # The HTTP status alone is safe and separates a refusal (4xx: a
+            # byte-identical retry cannot succeed) from a transient failure.
+            status = http_status(exc)
+            if status:
+                entry['error_status'] = status
+                receipt['error_status'] = status
+            else:
+                entry.pop('error_status', None)
             entry.setdefault('due_since', now)  # owed from now (see the candidate loop)
             entry['not_before'] = now + (900 if entry.get('pending', {}).get('attempts', 0) >= MAX_ATTEMPTS else INTERVAL)
             receipt.update(status='UNKNOWN', error=type(exc).__name__)

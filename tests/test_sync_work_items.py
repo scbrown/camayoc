@@ -43,6 +43,32 @@ class Delivery(unittest.TestCase):
                          actor='tracker', source='br:authoritative', now=now, post=self.post,
                          max_items=max_items)
 
+    def test_a_refused_write_records_its_http_status_and_never_the_body(self):
+        import io
+        import urllib.error
+        import planes
+
+        def refusing(endpoint, body):
+            if endpoint == '/episode':
+                try:
+                    raise urllib.error.HTTPError('http://q/episode', 400, 'Bad', {},
+                                                 io.BytesIO(b'secret-ish body'))
+                except urllib.error.HTTPError as e:
+                    raise planes.PlaneError('/episode failed: HTTP 400 body') from e
+            return self.post(endpoint, body)
+
+        self.present = False
+        receipt = sync.tick([RECORD], self.state, self.path, actor='tracker',
+                            source='br:authoritative', now=1000, post=refusing)
+        entry = self.state['items']['proj-a']
+        self.assertEqual((entry['error'], entry['error_status']), ('PlaneError', 400))
+        self.assertEqual(receipt['error_status'], 400)
+        self.assertNotIn('secret-ish', json.dumps(receipt) + self.path.read_text())
+
+    def test_a_status_less_failure_records_no_status(self):
+        self.assertIsNone(sync.http_status(TimeoutError('lost')))
+        self.assertIsNone(sync.http_status(ValueError('absent')))
+
     def test_explicit_batch_caps_distinct_items_requests_and_backoff(self):
         records = [{**RECORD, 'id': f'proj-{i}'} for i in range(7)]
         result = self.tick(records, max_items=4)
