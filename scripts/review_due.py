@@ -56,6 +56,21 @@ DUE, NOT_DUE, UNKNOWN = "DUE", "NOT_DUE", "UNKNOWN"
 _DURATION = re.compile(r"^P(?:(\d+)W|(\d+)D|(?:(\d+)D)?T(?:(\d+)H(?:(\d+)M)?|(\d+)M))$")
 
 
+_FRACTION = re.compile(r"\.(\d+)")
+
+
+def _iso_text(text: str) -> str:
+    """ISO-8601 text that Python 3.10's fromisoformat accepts: Z as +00:00 and
+    the fractional seconds as exactly six digits (truncated or padded).
+
+    The tracker writes observedAt with NANOSECONDS (2026-10-01T13:10:47.150614617Z).
+    Python 3.11+ parses that; 3.10 (the chaski host, measured 2026-10-08) does
+    not, so every idleLimit anchor read as None, every planned WorkItem was
+    UNKNOWN, and no lapse ever fired (aegis-qx96wr)."""
+    text = text.replace("Z", "+00:00")
+    return _FRACTION.sub(lambda m: "." + (m.group(1) + "000000")[:6], text, count=1)
+
+
 def parse_instant(raw: str) -> dt.datetime | None:
     """An ISO-8601 date or offset instant as an aware UTC datetime, else None.
     A bare date means the start of that day, UTC."""
@@ -63,7 +78,7 @@ def parse_instant(raw: str) -> dt.datetime | None:
     try:
         if len(text) == 10:
             return dt.datetime.fromisoformat(text).replace(tzinfo=dt.timezone.utc)
-        value = dt.datetime.fromisoformat(text.replace("Z", "+00:00"))
+        value = dt.datetime.fromisoformat(_iso_text(text))
     except ValueError:
         return None
     return value.astimezone(dt.timezone.utc) if value.tzinfo else None
