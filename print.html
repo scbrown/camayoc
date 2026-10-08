@@ -2257,6 +2257,26 @@ UsageRecord; no new entity class is needed. Reads store no metric sample. USD is
 not estimated without a governed applicable price record.</p>
 <p>Rollback disables the scheduled projection and retains evidence. It does not
 rewrite tracker close reasons or silently delete prior cost observations.</p>
+<h2 id="cost-metric-source-groups"><a class="header" href="#cost-metric-source-groups">Cost metric source groups</a></h2>
+<p>Status: source-aware publisher implemented; coordinated rollout proof pending.</p>
+<p>Active-source exposition can carry a <code># st-bead-cost-source</code> JSON comment with
+the parser's agent, harness and session identity. <code>publish_cost_metrics.py</code>
+validates that identity before pushing anything. It sends token and coverage
+samples to a Pushgateway group keyed by rig/agent/harness/session, and scheduler
+status to the existing rig-only group. Rotation preserves earlier sessions;
+corrected attribution replaces only the affected session's allocations.</p>
+<p>Identity and counts travel in one atomically replaced exposition file, avoiding
+a crash mismatch between separate count and identity files. Cached review and
+cooldown refreshes retain the source identity and original observation time.
+<code>st_bead_cost_source_last_success_timestamp_seconds</code> reports that source's
+observation age; the rig heartbeat does not establish fresh cost observations.
+Unmarked payloads retain the legacy rig-only publication contract.</p>
+<p>Install this publisher before enabling source markers. Each marked metric
+publication makes two gateway PUTs, one sample group and one status group;
+this does not change graph requests, snapshot limits, or token arithmetic.
+Both PUTs must succeed for the caller to report success. The separate groups
+are not a gateway transaction; a partial failure is reported for reconciliation.
+Totals remain scoped to observed supplied sessions, not unmeasured lifetime cost.</p>
 <h2 id="first-rollout-load-budget"><a class="header" href="#first-rollout-load-budget">First-rollout load budget</a></h2>
 <p>Each invocation permits at most one changed session snapshot, eight distinct
 attributed WorkItems, 1,000 requests and 4 MiB of serialized snapshot body.
