@@ -39,6 +39,27 @@ def run(triples):
 
 
 class ReviewAfter(unittest.TestCase):
+    def test_lane_creation_clock_is_monotonic_with_out_of_order_ingress(self):
+        triples = [("lane", "idleLimit", '"PT12H"'), ("lane", "workKind", '"DreamLane"'),
+                   ("lane", "observes", "new"), ("new", "observedAt", '"2026-09-24T06:00:00Z"'),
+                   ("new", "observedStatus", '"open"'), ("lane", "observes", "old"),
+                   ("old", "observedAt", '"2026-09-23T00:00:00Z"'),
+                   ("old", "observedStatus", '"open"')]
+        lane = run(triples)["lane"]
+        self.assertEqual(lane["verdict"], "NOT_DUE")
+        self.assertEqual(lane["due_at"], "2026-09-24T18:00:00+00:00")
+        self.assertEqual(lane["work_kind"], "DreamLane")
+
+    def test_unique_work_kind_reaches_the_verdict_without_changing_event_identity(self):
+        base = [("f", "reviewAfter", '"2026-09-20T00:00:00Z"')]
+        plain = run(base)["f"]
+        dream = run(base + [("f", "workKind", '"DreamCycle"')])["f"]
+        self.assertEqual(dream["work_kind"], "DreamCycle")
+        self.assertEqual(dream["event_id"], plain["event_id"])
+        ambiguous = run(base + [("f", "workKind", '"DreamCycle"'),
+                                ("f", "workKind", '"Directive"')])["f"]
+        self.assertNotIn("work_kind", ambiguous)
+
     def test_a_passed_instant_is_due_and_names_its_owner(self):
         r = run([("f", "reviewAfter", '"2026-09-20T00:00:00Z"'), ("f", "ownedBy", "aegis:dearing")])["f"]
         self.assertEqual((r["verdict"], r["owner"]), ("DUE", "dearing"))

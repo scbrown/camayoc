@@ -80,8 +80,8 @@ aegis:CamayocReviewAgeShape a sh:NodeShape ;
     sh:property [
         sh:path aegis:workKind ;
         sh:datatype xsd:string ;
-        sh:in ("Directive" "Design" "Plan" "DreamCycle") ;
-        sh:message "camayoc: workKind is one of Directive|Design|Plan|DreamCycle" ;
+        sh:in ("Directive" "Design" "Plan" "DreamCycle" "DreamLane") ;
+        sh:message "camayoc: workKind is one of Directive|Design|Plan|DreamCycle|DreamLane" ;
     ] .
 
 aegis:CamayocDecisionShape a sh:NodeShape ;

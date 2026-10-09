@@ -166,6 +166,10 @@ def judge(post, entity: str, now: dt.datetime) -> dict:
     else:
         verdict = UNKNOWN
     owners = [_local(r["v"]) for r in select(post, f"SELECT ?v WHERE {{ {pattern(f'<{A}{entity}>', 'ownedBy', '?v')} }}")]
+    # Classification is context for the receiver's configured policy, never
+    # adapter-supplied severity. Ambiguous kinds keep the ordinary policy.
+    kinds = {raw.strip('"') for raw in _values(post, entity, "workKind")}
+    work_kind = next(iter(kinds)) if len(kinds) == 1 else None
     ident = json.dumps([entity, sorted((b["age"], b["value"], b["due_at"] or "") for b in basis)],
                        separators=(",", ":"))
     passed = [t for t in known if t <= now]
@@ -176,6 +180,7 @@ def judge(post, entity: str, now: dt.datetime) -> dict:
     event = (json.dumps([A + entity, min(passed).isoformat()], separators=(",", ":"))
              if verdict == DUE else None)
     return {"entity": entity, "verdict": verdict,
+            **({"work_kind": work_kind} if work_kind else {}),
             **({"event_id": "sha256:" + hashlib.sha256(event.encode()).hexdigest()} if event else {}),
             "due_at": min(known).isoformat() if known else None,
             "evidence": "sha256:" + hashlib.sha256(ident.encode()).hexdigest(),

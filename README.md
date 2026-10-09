@@ -211,3 +211,22 @@ because their dependencies cannot be enumerated from graph changes. Missing
 facts and unanchored ages remain UNKNOWN and await a relevant change; they do
 not cause a repeated population scan. Transport failures fail the invocation,
 so the consumer retains pending work. This protocol performs no graph writes.
+
+### Reflection cycle and lane expiry
+
+Tracker ingress classifies a `dream-cycle` label as `DreamCycle`. Its ordinary
+idle limit follows tracker activity. The same creation event records an immutable
+observation of the reflection lane, typed `Service`, with kind `DreamLane` and a
+12-hour idle limit. The lane clock uses cycle creation time; later comments,
+completion, retries and out-of-order ingress cannot postpone or rewind it.
+
+The existing change adapter subscribes to kind changes, observations and age
+attributes. Persisted deadlines drive lapses without adding a periodic scanner.
+Review verdicts carry a unique kind as receiver context; ambiguous kinds omit it
+and retain the receiver's ordinary policy. Routing severity belongs to reviewed
+receiver configuration. Load the expanded core shape set before enabling ingress
+that writes `DreamLane`; this feature adds a kind value, not a new RDF class.
+
+Lane signals measure absence of cycle creation, not successful completion or
+available capacity. Shantytown retains its capacity gates and rotates past stale
+queued cycles; this projection never closes a claimed item or starts a crew pane.

@@ -16,7 +16,7 @@ import planes
 BLOCKER = {"blockerKind", "prRef", "tool", "minVersion", "repoRef", "resolvesOn", "resolutionQuery"}
 OBS = {"observedAt", "observedStatus", "observedValue", "observedBlockedOn"}
 WORK = {"blockedOn", "observes", "closedAt"}
-REVIEW = {"reviewAfter", "maxAge", "idleLimit", "ownedBy", "verifies", "verifiedAt"}
+REVIEW = {"reviewAfter", "maxAge", "idleLimit", "ownedBy", "verifies", "verifiedAt", "workKind"}
 # A tracker Observation is the ACTIVITY an idleLimit is anchored on (aegis-qx96wr):
 # its arrival routes the WorkItem that observes it, which pushes the deadline on.
 REVIEW_ACTIVITY = {"observedAt", "observedStatus"}

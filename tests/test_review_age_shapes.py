@@ -49,6 +49,7 @@ class ReviewAgeShape(unittest.TestCase):
         self.assertTrue(self.valid('aegis:w1 rdfs:label "w" ; aegis:idleLimit "P3D" ; aegis:workKind "Directive" .'))
         self.assertTrue(self.valid('aegis:w1 rdfs:label "w" ; aegis:idleLimit "P3D", "P7D" .'))
         self.assertTrue(self.valid('aegis:w1 rdfs:label "w" ; aegis:idleLimit "PT12H" ; aegis:workKind "DreamCycle" .'))
+        self.assertTrue(self.valid('aegis:lane a aegis:Service ; rdfs:label "lane" ; aegis:idleLimit "PT12H" ; aegis:workKind "DreamLane" .'))
 
     def test_a_malformed_idle_limit_or_unknown_kind_is_refused(self):
         for bad in ("P1M", "3 days", "P", "P1DT"):
