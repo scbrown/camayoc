@@ -85,8 +85,9 @@ if __name__ == "__main__":
 
 class PlannedWorkExpiryTests(unittest.TestCase):
     def test_lane_observation_uses_creation_not_later_activity_or_status(self):
-        first = self.body(labels=["dream-cycle"])
-        later = self.body(labels=["dream-cycle"], status="closed",
+        cycle = {"labels": ["dream", "dream-cycle"], "title": "DREAM propose: improve infra"}
+        first = self.body(**cycle)
+        later = self.body(**cycle, status="closed",
                           updated_at="2026-09-02T00:00:00Z")
         self.assertEqual(first["nodes"][2:], later["nodes"][2:])
         lane, observation = first["nodes"][2:]
@@ -95,7 +96,13 @@ class PlannedWorkExpiryTests(unittest.TestCase):
         self.assertEqual(observation["properties"]["observedStatus"], "open")
         self.assertIn({"source": observation["name"], "target": lane["name"],
                        "relation": "about"}, first["edges"])
-        self.assertEqual(first, self.body(labels=["dream-cycle"]))
+        self.assertEqual(first, self.body(**cycle))
+
+    def test_unrelated_project_cycle_does_not_refresh_the_crew_lane(self):
+        body = self.body(labels=["dream-cycle"], title="Project reflection cycle")
+        self.assertEqual(body["nodes"][0]["properties"]["workKind"], "DreamCycle")
+        self.assertEqual(len(body["nodes"]), 2)
+        self.assertFalse(any(e["source"] == "shantytown-dream-lane" for e in body["edges"]))
 
     """aegis-qx96wr: planned work carries a kind and an idle limit; ordinary work is untouched."""
 
