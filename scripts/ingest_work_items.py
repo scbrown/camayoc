@@ -198,6 +198,28 @@ def episode_for(payload: object, *, actor: str, source: str, about: list[str] | 
         }],
         "edges": edges,
     }
+    if kind == "DreamCycle":
+        # The lane's clock follows cycle CREATION, never a later comment or
+        # completion. Immutable observations make retries and out-of-order
+        # tracker delivery safe: review_due always selects the newest instant.
+        lane = "shantytown-dream-lane"
+        arrival = f"dream-cycle-created-{item_id}"
+        value = json.dumps({"item": item_id, "created_at": created}, sort_keys=True)
+        body["nodes"].extend([{
+            "name": lane, "type": "Service",
+            "description": "Shantytown reflection lane; activity is creation of a dream cycle.",
+            "properties": {"sourceKind": SOURCE_KIND, "workKind": "DreamLane",
+                           "idleLimit": "PT12H"},
+        }, {
+            "name": arrival, "type": "Observation", "description": value,
+            "properties": {"sourceKind": SOURCE_KIND, "observedAt": created,
+                           "observedStatus": "open", "observedValue": value},
+        }])
+        body["edges"].extend([
+            {"source": lane, "target": arrival, "relation": "observes"},
+            {"source": arrival, "target": lane, "relation": "about"},
+            {"source": arrival, "target": item_id, "relation": "about"},
+        ])
     return body
 
 

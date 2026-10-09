@@ -84,6 +84,19 @@ if __name__ == "__main__":
 
 
 class PlannedWorkExpiryTests(unittest.TestCase):
+    def test_lane_observation_uses_creation_not_later_activity_or_status(self):
+        first = self.body(labels=["dream-cycle"])
+        later = self.body(labels=["dream-cycle"], status="closed",
+                          updated_at="2026-09-02T00:00:00Z")
+        self.assertEqual(first["nodes"][2:], later["nodes"][2:])
+        lane, observation = first["nodes"][2:]
+        self.assertEqual(lane["properties"]["workKind"], "DreamLane")
+        self.assertEqual(observation["properties"]["observedAt"], OPEN["created_at"])
+        self.assertEqual(observation["properties"]["observedStatus"], "open")
+        self.assertIn({"source": observation["name"], "target": lane["name"],
+                       "relation": "about"}, first["edges"])
+        self.assertEqual(first, self.body(labels=["dream-cycle"]))
+
     """aegis-qx96wr: planned work carries a kind and an idle limit; ordinary work is untouched."""
 
     def body(self, **extra):

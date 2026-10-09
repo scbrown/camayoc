@@ -20,6 +20,15 @@ def change(subject, prop, value=None, old=None):
 
 
 class Incremental(unittest.TestCase):
+    def test_kind_change_is_subscribed_and_rejudges_only_changed_entity(self):
+        self.assertIn(bb.A + "workKind", ca.description("review")["attributes"])
+        store = ReviewStore([("f", "reviewAfter", '"2026-09-01"'),
+                             ("f", "workKind", '"DreamCycle"')])
+        result = ca.evaluate("review", store.post, {"now": NOW,
+                             "changes": [change("f", "workKind", "DreamCycle")]})
+        self.assertEqual(result["scope"], ["f"])
+        self.assertEqual(result["records"][0]["work_kind"], "DreamCycle")
+
     def test_batched_history_matches_full_and_bounds_reads(self):
         triples = item("w", "open") + [("w", "blockedOn", "d")]
         for i in range(100):
