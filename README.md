@@ -215,7 +215,8 @@ so the consumer retains pending work. This protocol performs no graph writes.
 ### Reflection cycle and lane expiry
 
 Tracker ingress classifies a `dream-cycle` label as `DreamCycle`. Its ordinary
-idle limit follows tracker activity. The same creation event records an immutable
+idle limit follows tracker activity. A crew cycle also has the `dream` label and
+the controller's `DREAM consolidate:` or `DREAM propose:` title. Its creation records an immutable
 observation of the reflection lane, typed `Service`, with kind `DreamLane` and a
 12-hour idle limit. The lane clock uses cycle creation time; later comments,
 completion, retries and out-of-order ingress cannot postpone or rewind it.

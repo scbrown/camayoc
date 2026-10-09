@@ -198,7 +198,14 @@ def episode_for(payload: object, *, actor: str, source: str, about: list[str] | 
         }],
         "edges": edges,
     }
-    if kind == "DreamCycle":
+    # A project's autonomous reflection may share the cycle label. Only the
+    # crew controller's actual cycle identity is evidence that its lane ran.
+    labels = record.get("labels") or []
+    if isinstance(labels, str):
+        labels = labels.split(",")
+    lane_cycle = (kind == "DreamCycle" and "dream" in labels
+                  and title.startswith(("DREAM consolidate:", "DREAM propose:")))
+    if lane_cycle:
         # The lane's clock follows cycle CREATION, never a later comment or
         # completion. Immutable observations make retries and out-of-order
         # tracker delivery safe: review_due always selects the newest instant.
