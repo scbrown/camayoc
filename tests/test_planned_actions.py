@@ -16,7 +16,7 @@ def row(**changes):
     return {"item": "https://seeds.test/item/plan", "id": "plan", "status": "deferred",
             "title": "Role redesign: keeper routes work; lead does review/design",
             "description": "A stronger model for review work.", "owner": "https://seeds.test/principal/wu",
-            "modified": "2026-10-08T23:40:47.015686843Z", "label": "stiwi-directive", **changes}
+            "modified": "2026-10-08T23:40:47.015686843Z", "label": "stiwi-directive", "type": "https://schema.org/Action", **changes}
 
 
 class NativePlannedReader(unittest.TestCase):
@@ -40,9 +40,9 @@ class NativePlannedReader(unittest.TestCase):
         self.assertEqual(len(calls), 3)
 
     def test_invalid_closed_unknown_conflict_and_overflow_refuse(self):
-        for rows in [[row(status="closed")], [row(label="task")],
+        for rows in [[row(status="unknown-new-status")], [row(label="task")],
                      [row(), row(status="open")], [row(owner="not-an-iri")],
-                     [row(modified="tomorrow")], [row(description=[])],
+                     [row(modified="tomorrow")], [row(type=None)], [row(description=[])],
                      [row(item=f"https://seeds.test/item/{i}", id=str(i)) for i in range(26)]]:
             with self.subTest(rows=rows), self.assertRaises(ValueError):
                 reader.candidates({"rows": rows}, ["review"])
@@ -123,9 +123,37 @@ class NativeStoredQuery(unittest.TestCase):
         result, = run()
         self.assertEqual(str(result.status), "deferred")
         self.assertEqual(run("other"), [])
+        board.add((item, seeds.status, rdflib.Literal("closed")))
+        conflicting = run()
+        self.assertEqual({str(r.status) for r in conflicting}, {"deferred", "closed"})
+        actual_rows = [{str(k): str(v) for k, v in r.asdict().items()} for r in conflicting]
+        with self.assertRaises(ValueError):
+            reader.candidates({"rows": actual_rows}, ["review"])
         board.set((item, seeds.status, rdflib.Literal("closed")))
-        self.assertEqual(run(), [])
+        closed, = run()
+        self.assertEqual(str(closed.status), "closed")
+        self.assertEqual(reader.candidates({"rows": [row(status="closed")]}, ["review"]), [])
+        board.set((item, seeds.status, rdflib.Literal("unknown-new-status")))
+        unknown, = run()
+        self.assertEqual(str(unknown.status), "unknown-new-status")
+        with self.assertRaises(ValueError):
+            reader.candidates({"rows": [{str(k): str(v) for k, v in unknown.asdict().items()}]}, ["review"])
+        board.add((item, seeds.status, rdflib.Literal("open")))
+        open_unknown = run()
+        self.assertEqual({str(r.status) for r in open_unknown}, {"open", "unknown-new-status"})
+        with self.assertRaises(ValueError):
+            reader.candidates({"rows": [{str(k): str(v) for k, v in r.asdict().items()}
+                                        for r in open_unknown]}, ["review"])
         board.set((item, seeds.status, rdflib.Literal("open")))
+        for predicate in [schema.name, schema.dateModified, seeds.status, rdflib.RDF.type]:
+            originals = list(board.triples((item, predicate, None)))
+            board.remove((item, predicate, None))
+            missing, = run()
+            missing_rows = [{str(k): str(v) for k, v in missing.asdict().items()}]
+            with self.subTest(predicate=predicate), self.assertRaises(ValueError):
+                reader.candidates({"rows": missing_rows}, ["review"])
+            for triple in originals:
+                board.add(triple)
         board.set((item, schema.keywords, rdflib.Literal("ordinary")))
         self.assertEqual(run(), [])
 

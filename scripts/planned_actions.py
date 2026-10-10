@@ -48,7 +48,7 @@ def candidates(response, words):
     if len(groups) > MAX_ITEMS:
         raise ValueError("native candidate budget exceeded; narrow the question")
     result = []
-    fields = ("id", "status", "title", "description", "owner", "modified")
+    fields = ("id", "status", "title", "description", "owner", "modified", "type")
     for item, records in groups.items():
         iri(item)
         values = {key: {json.dumps(row.get(key), sort_keys=True) for row in records}
@@ -59,7 +59,8 @@ def candidates(response, words):
         labels = {row.get("label") for row in records}
         if (not isinstance(record["id"], str)
                 or not re.fullmatch(r"[A-Za-z0-9_.-]+", record["id"])
-                or record["status"] not in {"open", "in_progress", "blocked", "deferred"}
+                or record["status"] not in {"open", "in_progress", "blocked", "deferred", "closed"}
+                or record["type"] not in {S + "Action", "schema:Action"}
                 or not labels <= set(KINDS) or not labels
                 or not isinstance(record["title"], str)
                 or record["description"] is not None and not isinstance(record["description"], str)):
@@ -75,6 +76,8 @@ def candidates(response, words):
             raise ValueError("unproven native modification timestamp")
         datetime.fromisoformat(re.sub(r"(\.\d{6})\d+", r"\1", modified[:-1]) + "+00:00")
         record["modified"] = modified
+        if record["status"] == "closed":
+            continue
         text = (record["title"] + " " + (record["description"] or "")).lower()
         matches = [word for word in words if word in text]
         if not matches:
